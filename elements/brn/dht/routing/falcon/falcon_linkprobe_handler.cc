@@ -131,11 +131,11 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
   BRN_DEBUG("Send");
 
   DHTnodelist nodes;
-  DHTnode* next;
+  DHTnode* next = NULL;
   DHTnode* highest;
   HawkRoutingtable::RTEntry* entry;
   Vector <uint8_t> mlist;
-  
+
   //send the highest node to avoid partitioning
   if( DHTProtocolFalcon::max_no_nodes_in_lp(size) > 0 && _no_nodes_per_lp > 0 && _frt->_allnodes.size() > 0){
 	_frt->_allnodes.sort();
@@ -191,7 +191,6 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
          }
         }else
       nodes.add_dhtnode(next);
-    
     }
   }
   }
@@ -224,10 +223,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   }
 
   BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
-  
 
-
-  
   if (_rfrt != NULL){
    len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes,&mlist);
    BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));

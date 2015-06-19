@@ -173,12 +173,12 @@ if (best_father != NULL) return best_father;
 DHTnode *
 DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
 {
-//  int diffbit;
+  //int diffbit;
   DHTnode *best_node = NULL;
   DHTnode *best_father = NULL;
-  int position_best_node;
+  //int position_best_node;
   DHTnode *acnode;
-  int position_ac_node;
+  //int position_ac_node;
   int diffbit_ac_node;
   int diffbit_best_node;
 

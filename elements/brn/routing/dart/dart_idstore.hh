@@ -68,12 +68,12 @@ class DartIDStore : public Element
   BRN2NodeIdentity *_me;
 
   DHTStorage *_dht_storage;
-  
 
  public:
-  int _debug;
+
   void *_drt;
   Brn2LinkTable * _lt;
+  int _debug;
 };
 
 CLICK_ENDDECLS

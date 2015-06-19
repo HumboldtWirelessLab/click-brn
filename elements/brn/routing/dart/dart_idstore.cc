@@ -89,7 +89,7 @@ DartIDStore::uninitialize()
 /*************************************************************************************************/
 
 void
-DartIDStore::routingtable_callback_func(void *e, int status)
+DartIDStore::routingtable_callback_func(void *e, int /*status*/)
 {
   DartIDStore *s = (DartIDStore *)e;
   s->store_nodeid();

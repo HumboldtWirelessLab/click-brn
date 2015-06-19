@@ -323,7 +323,8 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
 
   uint32_t flow_id = ntohl(header->flowID);
-  uint32_t packet_id = ntohl(header->packetID);
+  //uint32_t packet_id = ntohl(header->packetID);
+
   EtherAddress src_ea = EtherAddress(header->src);
   FlowID fid = FlowID(src_ea, flow_id);
 
