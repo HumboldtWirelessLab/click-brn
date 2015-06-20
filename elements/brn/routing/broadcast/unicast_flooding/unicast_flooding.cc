@@ -346,21 +346,19 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
           }
 
         } while (candidate_set.empty());
-
-
-        /* We have a candidate set. We fix it now*/
-        if ( _fix_candidate_set && (!candidate_set.empty()) ) {
-          for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
-            _flooding_db->add_node_info(&src, bcast_id, i, false, false, true, false);
-            //BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
-          }
-        }
-
-        /* print result */
-        _fhelper->print_vector(candidate_set);
       }
-
     }  //end fix_target
+
+    /* We have a candidate set. We fix it now*/
+    if ( _fix_candidate_set && (!candidate_set.empty()) ) {
+      for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
+        _flooding_db->add_node_info(&src, bcast_id, i, false, false, true, false);
+        //BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
+      }
+    }
+
+    /* print result */
+    _fhelper->print_vector(candidate_set);
 
     //clear known neighbours1
     known_neighbors.clear();
