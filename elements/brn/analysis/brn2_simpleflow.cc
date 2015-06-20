@@ -323,8 +323,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
 
   uint32_t flow_id = ntohl(header->flowID);
-  //uint32_t packet_id = ntohl(header->packetID);
-
+  uint32_t packet_id = ntohl(header->packetID);
   EtherAddress src_ea = EtherAddress(header->src);
   FlowID fid = FlowID(src_ea, flow_id);
 
@@ -367,17 +366,8 @@ BRN2SimpleFlow::push( int port, Packet *packet )
       f = _rx_flowMap.find(fid);
     }
 
-
-  /*Handle Packet*/
-
-  EtherAddress src_ea = EtherAddress(header->src);
-BRN_DEBUG("Got Flow-Packet from %s",src_ea.unparse().c_str());
-  //f = _rx_flowMap.find(src_ea);
-  uint32_t packet_id = ntohl(header->packetID);
-
     f->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
                     (uint32_t)(SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet)));
-
 
     f->update_duration();
 
@@ -533,12 +523,9 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->flowID = htonl(f->_id);
   header->size = htons(f->_size);
 
-  f->_txPackets++;
-  BRN_DEBUG("Packet count: %d",f->_txPackets);
- // header->rate = htonl(f->_rate);
-  header->size = htons(f->_size);
   header->interval = htons(f->_interval);
   header->burst = htons(f->_burst);
+
   header->mode = f->_type;
   header->flags = 0;
 
