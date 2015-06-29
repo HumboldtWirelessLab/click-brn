@@ -2,6 +2,7 @@
 #define CPUSWITCH_HH
 #include <click/element.hh>
 CLICK_DECLS
+
 /*
  * =c
  * CPUSwitch()

@@ -1,5 +1,13 @@
 #ifndef FASTUDPFLOWS_HH
 #define FASTUDPFLOWS_HH
+#include <click/element.hh>
+#include <click/glue.hh>
+#include <click/gaprate.hh>
+#include <click/packet.hh>
+#include <clicknet/ether.h>
+#include <clicknet/udp.h>
+
+CLICK_DECLS
 
 /*
  * =c
@@ -47,14 +55,6 @@
  *               100, 10)
  *    -> ToDevice;
  */
-
-#include <click/element.hh>
-#include <click/glue.hh>
-#include <click/gaprate.hh>
-#include <click/packet.hh>
-#include <clicknet/ether.h>
-#include <clicknet/udp.h>
-CLICK_DECLS
 
 class FastUDPFlows : public Element {
 

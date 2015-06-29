@@ -1,5 +1,13 @@
 #ifndef FASTTCPFLOWS_HH
 #define FASTTCPFLOWS_HH
+#include <click/element.hh>
+#include <click/glue.hh>
+#include <click/gaprate.hh>
+#include <click/packet.hh>
+#include <clicknet/ether.h>
+#include <clicknet/tcp.h>
+
+CLICK_DECLS
 
 /*
  * =c
@@ -49,16 +57,6 @@
  *               100, 10)
  *    -> ToDevice;
  */
-
-#include <click/element.hh>
-#include <click/glue.hh>
-#include <click/gaprate.hh>
-#include <click/packet.hh>
-#include <clicknet/ether.h>
-#include <clicknet/tcp.h>
-
-CLICK_DECLS
-
 class FastTCPFlows : public Element {
 
   bool _rate_limited;
