@@ -67,8 +67,8 @@ class SeismoInfoBlock {
     uint64_t _time[CHANNEL_INFO_BLOCK_SIZE];
     uint64_t _systime[CHANNEL_INFO_BLOCK_SIZE];
 
-    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4]; //raw data
-    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];
+    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4]; //raw data (per channel (max 4 channels))
+    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];          //number of used channels
 
     int64_t _channel_mean[4];                            //mean data
 
@@ -116,6 +116,7 @@ class SeismoInfoBlock {
     inline bool is_complete() { return (_next_value_index == CHANNEL_INFO_BLOCK_SIZE); }
     inline bool systime_complete() { return  (_next_systemtime_index == _next_value_index); }
     inline uint16_t missing_time_updates() { return (_next_value_index - _next_systemtime_index); }
+    inline uint16_t size() { return (uint16_t)_next_value_index; }
 
 };
 
