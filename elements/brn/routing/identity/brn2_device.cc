@@ -8,7 +8,7 @@
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#if CLICK_NS
+#ifdef CLICK_NS
 #include <click/router.hh>
 #include <click/simclick.h>
 #include "rxtxcontrol.h"
@@ -92,11 +92,6 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 
   device_etheraddress_fix = device_etheraddress;
 
-  if ((s_cwmin == "") && (s_cwmax == "") && (s_aifs == ""))
-    get_backoff();
-  else
-    parse_queues(s_cwmin, s_cwmax, s_aifs);
-
   return 0;
 }
 
@@ -154,6 +149,8 @@ BRN2Device::initialize(ErrorHandler *)
     BRN_INFO("Power: %d Max. Power: %d", _power, _wificonfig->get_max_txpower());
 
     get_cca();
+
+    get_backoff();
   }
 
   return 0;
@@ -425,7 +422,7 @@ BRN2Device::device_info()
 /*****************************************************************************/
 /***************** D E V I C E   C O N F I G *********************************/
 /*****************************************************************************/
-void
+/*void
 BRN2Device::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
 {
   uint32_t v;
@@ -465,37 +462,7 @@ BRN2Device::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
     args.clear();
   }
 }
-
-
-uint32_t
-Tos2QueueMapper::get_backoff()
-{
-#if CLICK_NS
-  //How many queues ?
-  int tmp_no_queue = 1;
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
-
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
-
-#if CLICK_NS
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
-
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
-
-  int max_q = no_queues;
-  if ( queueinfo[0] < no_queues ) max_q = queueinfo[0];
-
-  for ( int q = 0; q < max_q; q++ ) {
-    _cwmin[q] = queueinfo[1 + q];
-    _cwmax[q] = queueinfo[1 + max_q + q];
-  }
-
-  delete[] queueinfo;
-#endif
-  return 0;
-}
+*/
 
 
 //-----------------------------------------------------------------------------

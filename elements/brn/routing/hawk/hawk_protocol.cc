@@ -36,8 +36,9 @@ HawkProtocol::add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid,
 
 
 struct hawk_routing_header *
-HawkProtocol::get_route_header(Packet *p, Vector<EtherAddress> *route = NULL)
+HawkProtocol::get_route_header(Packet *p, Vector<EtherAddress> *route)
 {
+  (void)route;
   return (struct hawk_routing_header *)p->data();
 }
 

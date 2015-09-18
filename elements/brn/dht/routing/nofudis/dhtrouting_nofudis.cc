@@ -1,8 +1,3 @@
-/* OMNISCIENT
-  DHT knows all othe nodes in the network. For Discovery, flooding is used.
-  Everytime the routingtable of a node changed, it floods all new information.
-  Node-fault detection is done by neighboring nodes
-*/
 #include <click/config.h>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
@@ -12,11 +7,11 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #include "dhtrouting_nofudis.hh"
 #include "dhtprotocol_nofudis.hh"

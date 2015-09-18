@@ -108,7 +108,7 @@ class HawkProtocol {
                                           uint16_t route_len,
                                           Packet *p);
 
-  static struct hawk_routing_header *get_route_header(Packet *p, Vector<EtherAddress> *route);
+  static struct hawk_routing_header *get_route_header(Packet *p, Vector<EtherAddress> *route = NULL);
 
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);
