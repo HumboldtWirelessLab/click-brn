@@ -1577,6 +1577,56 @@ fi
 AC_SUBST(LIBIW_INCLUDES)
 AC_SUBST(LIBIW_LIBS)
 
+dnl libos library
+
+explicit_libos=no
+AC_ARG_WITH(libos, [[  --with-libos[=PREFIX]   locate libos library (optional)]],
+  [libosprefix=$withval; if test -z "$withval" -o "$withval" = yes; then libosprefix=; fi],
+  libosprefix=; explicit_libos=no)
+
+if test "$libosprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$libosprefix" && CPPFLAGS="$CPPFLAGS -I$libosprefix/include"
+    AC_CHECK_HEADER(sim.h, have_libos_h=yes, have_libos_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    libossavelibs="$LIBS"
+    LIBS="-ldl"
+    saveflags="$LDFLAGS"; test -n "$libosprefix" && LDFLAGS="$LDFLAGS -ldl -L$libosprefix/lib"
+    have_libos=yes
+    LDFLAGS="$saveflags"
+    LIBS="$libossavelibs"
+
+    if test $have_libos_h = yes -a $have_libos = yes; then
+	test -n "$libosprefix" && LIBOS_INCLUDES="-I$libosprefix/include" && LIBOS_LIBS="-L$libosprefix/lib"
+	LIBOS_LIBS="$LIBOS_LIBS -ldl"
+        AC_DEFINE([HAVE_LIBOS], [1], [Define if you have sim-init.h.])
+	LIBS="$LIBS $LIBOS_LIBS"
+    else
+      if test $explicit_libos = yes; then
+	LIBOS_INCLUDES= LIBOS_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-libos, but the libos headers and/or libraries
+are not where you said they would be.  Run again supplying --without-libos
+or --with-libos=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,LibOS"
+      else
+        FINDELEMFLAGS="$FINDELEMFLAGS -x LibOS"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LIBOS_INCLUDES)
+AC_SUBST(LIBOS_LIBS)
+
 dnl check linuxmodule for Linux
 
 if test $ac_have_linux_kernel = y; then
