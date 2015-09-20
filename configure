@@ -658,6 +658,8 @@ LINUX_FIXINCLUDES_PROGRAM
 linux_makeargs
 LIBOS_LIBS
 LIBOS_INCLUDES
+LIBOPENANN_LIBS
+LIBOPENANN_INCLUDES
 LIBIW_LIBS
 LIBIW_INCLUDES
 LWIP_LIBS
@@ -863,6 +865,7 @@ with_expat
 with_openssl
 with_tcc
 with_libiw
+with_openann
 with_libos
 '
       ac_precious_vars='build_alias
@@ -1571,6 +1574,7 @@ Optional Packages:
   --with-tcc[=PREFIX]   locate tcc library (optional)
   --with-lwip[=PREFIX]   locate lwip library (optional)
   --with-libiw[=PREFIX]   locate iw library (optional)
+  --with-openann[=PREFIX]   locate openann library (optional)
   --with-libos[=PREFIX]   locate libos library (optional)
 
 Some influential environment variables:
@@ -11539,6 +11543,119 @@ fi
 
 
 
+explicit_openann=no
+
+# Check whether --with-openann was given.
+if test "${with_openann+set}" = set; then :
+  withval=$with_openann; openannprefix=$withval; if test -z "$withval" -o "$withval" = yes; then openannprefix=; fi
+else
+  openannprefix=; explicit_openann=no
+fi
+
+
+if test "$openannprefix" != no; then
+    ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+    saveflags="$CPPFLAGS"; test -n "$openannprefix" && CPPFLAGS="$CPPFLAGS -I$opannprefix/include"
+    ac_fn_cxx_check_header_mongrel "$LINENO" "OpenANN/OpenANN" "ac_cv_header_OpenANN_OpenANN" "$ac_includes_default"
+if test "x$ac_cv_header_OpenANN_OpenANN" = xyes; then :
+  have_openann_h=yes
+else
+  have_openann_h=no
+fi
+
+
+    CPPFLAGS="$saveflags"
+
+    ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+    saveflags="$LDFLAGS"; test -n "$openannprefix" && LDFLAGS="$LDFLAGS -L$openannprefix/lib -lopenann"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for printf in -lopenann" >&5
+$as_echo_n "checking for printf in -lopenann... " >&6; }
+if ${ac_cv_lib_openann_printf+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lopenann  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char printf ();
+int
+main ()
+{
+return printf ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_openann_printf=yes
+else
+  ac_cv_lib_openann_printf=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_openann_printf" >&5
+$as_echo "$ac_cv_lib_openann_printf" >&6; }
+if test "x$ac_cv_lib_openann_printf" = xyes; then :
+  have_openann=yes
+else
+  have_openann=no
+fi
+
+    LDFLAGS="$saveflags"
+
+    if test $have_openann_h = yes -a $have_libiw = yes; then
+        test -n "$openannprefix" && LIBOPENANN_INCLUDES="-I$openannprefix/include" && LIBOPENANN_LIBS="-L$openannprefix/lib"
+        LIBOPENANN_LIBS="$LIBOPENANN_LIBS -lopenann"
+
+$as_echo "#define HAVE_OPENANN 1" >>confdefs.h
+
+        LIBS="$LIBS $OPENANN_LIBS"
+    else
+      if test $explicit_openann = yes; then
+    LIBOPENANN_INCLUDES= LIBOPENANN_LIBS=
+    as_fn_error $? "
+=========================================
+
+You explicitly specified --with-openann, but the openann headers and/or libraries
+are not where you said they would be.  Run again supplying --without-openann
+or --with-openann=PREFIX.
+
+=========================================" "$LINENO" 5
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,BrnAnnRateNet"
+      else
+        FINDELEMFLAGS="$FINDELEMFLAGS -x BrnAnnRateNet"
+      fi
+
+
+
+    fi
+fi
+
+
+
+
 explicit_libos=no
 
 # Check whether --with-libos was given.
@@ -11551,7 +11668,7 @@ fi
 
 if test "$libosprefix" != no; then
     saveflags="$CPPFLAGS"; test -n "$libosprefix" && CPPFLAGS="$CPPFLAGS -I$libosprefix/include"
-    ac_fn_c_check_header_mongrel "$LINENO" "sim.h" "ac_cv_header_sim_h" "$ac_includes_default"
+    ac_fn_cxx_check_header_mongrel "$LINENO" "sim.h" "ac_cv_header_sim_h" "$ac_includes_default"
 if test "x$ac_cv_header_sim_h" = xyes; then :
   have_libos_h=yes
 else

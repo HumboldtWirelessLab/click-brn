@@ -109,6 +109,5 @@ String BrnAnnRateNet::test()
   return(sa.take_string());
 }
 
-    
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(BrnAnnRateNet)

@@ -1577,6 +1577,55 @@ fi
 AC_SUBST(LIBIW_INCLUDES)
 AC_SUBST(LIBIW_LIBS)
 
+dnl openann library
+
+explicit_openann=no
+AC_ARG_WITH(openann, [[  --with-openann[=PREFIX]   locate openann library (optional)]],
+  [openannprefix=$withval; if test -z "$withval" -o "$withval" = yes; then openannprefix=; fi],
+  openannprefix=; explicit_openann=no)
+
+if test "$openannprefix" != no; then
+    AC_LANG_CPLUSPLUS
+    saveflags="$CPPFLAGS"; test -n "$openannprefix" && CPPFLAGS="$CPPFLAGS -I$opannprefix/include"
+    AC_CHECK_HEADER(OpenANN/OpenANN, have_openann_h=yes, have_openann_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_CPLUSPLUS
+    saveflags="$LDFLAGS"; test -n "$openannprefix" && LDFLAGS="$LDFLAGS -L$openannprefix/lib -lopenann"
+    AC_CHECK_LIB(openann, printf, have_openann=yes, have_openann=no)
+    LDFLAGS="$saveflags"
+
+    if test $have_openann_h = yes -a $have_libiw = yes; then
+        test -n "$openannprefix" && LIBOPENANN_INCLUDES="-I$openannprefix/include" && LIBOPENANN_LIBS="-L$openannprefix/lib"
+        LIBOPENANN_LIBS="$LIBOPENANN_LIBS -lopenann"
+        AC_DEFINE([HAVE_OPENANN], [1], [Define if you have -lopenann and OpenANN/OpenANN.])
+        LIBS="$LIBS $OPENANN_LIBS"
+    else
+      if test $explicit_openann = yes; then
+    LIBOPENANN_INCLUDES= LIBOPENANN_LIBS=
+    AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-openann, but the openann headers and/or libraries
+are not where you said they would be.  Run again supplying --without-openann
+or --with-openann=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,BrnAnnRateNet"
+      else
+        FINDELEMFLAGS="$FINDELEMFLAGS -x BrnAnnRateNet"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LIBOPENANN_INCLUDES)
+AC_SUBST(LIBOPENANN_LIBS)
+
 dnl libos library
 
 explicit_libos=no
