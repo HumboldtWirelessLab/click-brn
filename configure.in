@@ -219,7 +219,9 @@ AC_ARG_ENABLE([nsclick],
     [:], [enable_nsclick=no])
 
 dnl jist driver and features
-AC_ARG_ENABLE(jistclick, [  --enable-jistclick        enable JiST/SWANS simulator driver (EXPERIMENTAL)], :, enable_jistclick=no) 
+AC_ARG_ENABLE([jistclick],
+     [AS_HELP_STRING([--enable-jistclick], [enable JiST/SWANS simulator driver (EXPERIMENTAL)])],
+     [:], [enable_jistclick=no])
 
 dnl minios driver
 
@@ -2419,6 +2421,7 @@ test -f $srcdir/bsdmodule/Makefile.in && AC_CONFIG_FILES([bsdmodule/Makefile])
 test -f $srcdir/linuxmodule/Makefile.in && AC_CONFIG_FILES([linuxmodule/Makefile])
 test -f $srcdir/minios/Makefile.in && AC_CONFIG_FILES([minios/Makefile minios/config.mk])
 test -f $srcdir/ns/Makefile.in && AC_CONFIG_FILES([ns/Makefile])
+test -f $srcdir/jist/Makefile.in && AC_CONFIG_FILES([jist/Makefile])
 test -f $srcdir/userlevel/Makefile.in && AC_CONFIG_FILES([userlevel/Makefile])
 
 test -d $srcdir/tools/click-align && AC_CONFIG_FILES([tools/click-align/Makefile])

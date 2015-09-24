@@ -1515,7 +1515,7 @@ Optional Features:
   --enable-bsdmodule      enable FreeBSD kernel driver (EXPERIMENTAL)
     --disable-netisr      disable NETISR scheduling in BSD
   --enable-nsclick        enable NS simulator driver
-  --enable-jistclick        enable JiST/SWANS simulator driver (EXPERIMENTAL)
+  --enable-jistclick      enable JiST/SWANS simulator driver (EXPERIMENTAL)
   --enable-minios         enable MiniOS application
   --enable-all-elements   include all provided element groups
   --disable-analysis      do not include elements for network analysis
@@ -14165,6 +14165,8 @@ test -f $srcdir/minios/Makefile.in && ac_config_files="$ac_config_files minios/M
 
 test -f $srcdir/ns/Makefile.in && ac_config_files="$ac_config_files ns/Makefile"
 
+test -f $srcdir/jist/Makefile.in && ac_config_files="$ac_config_files jist/Makefile"
+
 test -f $srcdir/userlevel/Makefile.in && ac_config_files="$ac_config_files userlevel/Makefile"
 
 
@@ -14912,6 +14914,7 @@ do
     "minios/Makefile") CONFIG_FILES="$CONFIG_FILES minios/Makefile" ;;
     "minios/config.mk") CONFIG_FILES="$CONFIG_FILES minios/config.mk" ;;
     "ns/Makefile") CONFIG_FILES="$CONFIG_FILES ns/Makefile" ;;
+    "jist/Makefile") CONFIG_FILES="$CONFIG_FILES jist/Makefile" ;;
     "userlevel/Makefile") CONFIG_FILES="$CONFIG_FILES userlevel/Makefile" ;;
     "tools/click-align/Makefile") CONFIG_FILES="$CONFIG_FILES tools/click-align/Makefile" ;;
     "tools/click-check/Makefile") CONFIG_FILES="$CONFIG_FILES tools/click-check/Makefile" ;;
