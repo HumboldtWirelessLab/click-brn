@@ -2,7 +2,7 @@ language: c++
 compiler:
   - gcc
   - clang
-script: ./configure --disable-linuxmodule --enable-ip6 --enable-json && make && make check
+script: ./configure --disable-linuxmodule --enable-ip6 --enable-json --enable-wifi --enable-brn --enable-analysis --enable-tools=host --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick && make && make check
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y tcpdump libpcap-dev time
