@@ -2,13 +2,13 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include <click/standard/addressinfo.hh>
 
 #if CLICK_NS
 #include <click/router.hh>
 #endif
 
 #include <elements/brn/brn2.h>
-#include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_nodeidentity.hh"

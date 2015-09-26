@@ -5,8 +5,8 @@
 #include <click/userutils.hh>
 #include <unistd.h>
 #include <sys/types.h>
+#include <click/standard/addressinfo.hh>
 
-#include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "vaserver.hh"

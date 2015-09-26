@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <elements/brn/standard/brnaddressinfo.hh>
+#include <click/standard/addressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "linux_rt_ctrl.hh"
