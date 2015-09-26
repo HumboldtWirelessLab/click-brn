@@ -332,7 +332,12 @@ AddressInfo::query_netdevice(const String &s, unsigned char *store,
 # endif
     bool found = false;
     if (dev && type == tc_ether
-	&& (dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211)) {
+	&& (dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211
+        dev->type == ARPHRD_80211_PRISM ||
+        dev->type == ARPHRD_80211_RADIOTAP ||
+        dev->type == ARPHRD_80211_ATHDESC ||
+        dev->type == ARPHRD_80211_ATHDESCEXT)
+    ) {
 	memcpy(store, dev->dev_addr, 6);
 	found = true;
     } else if (dev && (type == tc_ipv4 || type == tc_ipv4prefix
