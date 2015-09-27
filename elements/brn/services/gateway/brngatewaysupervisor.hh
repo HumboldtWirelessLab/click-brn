@@ -64,7 +64,7 @@ public:
     int _debug;
 private:
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
-    Brn2LinkTable *_link_table;
+    //Brn2LinkTable *_link_table;
 };
 
 

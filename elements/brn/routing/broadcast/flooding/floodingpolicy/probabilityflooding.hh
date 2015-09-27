@@ -52,7 +52,7 @@ class ProbabilityFlooding : public FloodingPolicy
 
     uint32_t _min_no_neighbors;
     uint32_t _fwd_probability;
-    uint32_t _cntbased_min_neighbors_for_abort;
+    //uint32_t _cntbased_min_neighbors_for_abort;
 };
 
 CLICK_ENDDECLS

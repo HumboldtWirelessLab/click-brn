@@ -42,7 +42,7 @@ CLICK_DECLS
 AlarmingAggregation::AlarmingAggregation():
   _delay_queue(NULL),
   _alarm_ret(NULL),
-  _no_agg(0),
+  //_no_agg(0),
   _no_pkts(0)
 {
   BRNElement::init();

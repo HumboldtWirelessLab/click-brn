@@ -141,7 +141,7 @@ private:
   String _full_sname;
 
   BRN2DHCPSubnetList *_dhcpsubnetlist;
-  BRN2VLANTable *_vlantable;
+  //BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
 
   bool _server_redirect;

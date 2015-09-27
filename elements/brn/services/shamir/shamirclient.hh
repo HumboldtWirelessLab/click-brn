@@ -49,7 +49,7 @@ public:
 private:
     EtherAddress _me;
     BN_CTX *_bn_ctx;
-    unsigned int _num_shares;
+    //unsigned int _num_shares;
     HashTable<uint32_t, BIGNUM *> _received_shares;
 
     int store_reply(Packet *p);

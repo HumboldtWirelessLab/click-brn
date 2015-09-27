@@ -65,7 +65,7 @@ public:
     void reset_link_stat();
 
 private:
-    uint32_t detection_id;
+    //uint32_t detection_id;
     DibadawnAlgorithm dibadawnAlgo;
 
     Brn2LinkTable *_lt;

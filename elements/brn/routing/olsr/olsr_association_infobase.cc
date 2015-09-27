@@ -118,7 +118,7 @@ OLSRAssociationInfoBase::find_tuple(IPAddress gateway_addr, IPAddress network_ad
     struct HashMap<OLSRIPPair, void*>::Pair *pair;
     pair = _associationSet->find_pair(ippair);
 
-    if (! pair == 0 ){
+    if (!(pair == 0)){
       association_data *data = (association_data *)pair->value;
       return data;
     }

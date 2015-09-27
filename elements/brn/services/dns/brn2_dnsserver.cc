@@ -44,7 +44,7 @@ CLICK_DECLS
 
 BRN2DNSServer::BRN2DNSServer() :
   _dhcpsubnetlist(NULL),
-  _vlantable(NULL),
+  //_vlantable(NULL),
   _server_redirect(false)
 {
   BRNElement::init();

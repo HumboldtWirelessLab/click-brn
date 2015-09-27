@@ -41,7 +41,7 @@ Ath2Print::Ath2Print() :
   _timestamp(false),
   _txprint(true),
   _rxprint(true),
-  _parser(false),
+  //_parser(false),
   _nowrap(false)
 
 {

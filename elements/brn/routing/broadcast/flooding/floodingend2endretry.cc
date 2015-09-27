@@ -43,9 +43,9 @@ FloodingEnd2EndRetry::FloodingEnd2EndRetry():
   _dfl_timeout(25),
   _time_tolerance(10),
   _retransmit_timer(this),
-  _queued_pkts(0),
-  _dequeued_pkts(0),
-  _retransmissions(0)
+  _queued_pkts(0)
+  //,_dequeued_pkts(0),
+  //_retransmissions(0)
 {
   BRNElement::init();
 }

@@ -41,7 +41,7 @@
 CLICK_DECLS
 
 TopologyDetection::TopologyDetection() :
-detection_id(0),
+//detection_id(0),
 dibadawnAlgo(this),
 _is_detect_periodically(false),
 _probability_of_perriodically_detection(0.8),

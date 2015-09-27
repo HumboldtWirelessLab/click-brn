@@ -48,8 +48,8 @@ private:
   uint32_t _current_bo;
 
   /* packet stats */
-  uint32_t _feedback_cnt;
-  uint32_t _tx_cnt;
+  //uint32_t _feedback_cnt;
+  //uint32_t _tx_cnt;
 
   /* bo stats */
   uint32_t _bo_cnt_up;

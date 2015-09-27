@@ -49,7 +49,7 @@ private:
 
   /* target diff strategy */
   uint32_t _target_diff;
-  uint32_t _last_diff;
+  //uint32_t _last_diff;
 
   /* activate bo cap at lower/upper bound */
   uint8_t _cap;

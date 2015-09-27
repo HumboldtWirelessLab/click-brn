@@ -188,7 +188,7 @@ OLSRNeighborInfoBase::find_neighbor(IPAddress neigh_addr)
 		struct HashMap<IPAddress, void*>::Pair *pair;
 		pair = _neighborSet->find_pair(neigh_addr);
 
-		if (! pair == 0 )
+		if (!(pair == 0))
 		{
 			neighbor_data *data = (neighbor_data *) pair->value;
 			return data;
@@ -204,7 +204,7 @@ OLSRNeighborInfoBase::update_neighbor(IPAddress neigh_addr, int status, int will
 {
 	struct neighbor_data *data;
 	data = find_neighbor(neigh_addr);
-	if (! data == 0 )
+	if (!(data == 0))
 	{
 		data->N_status = status;
 		data->N_willingness = willingness;
@@ -292,7 +292,7 @@ OLSRNeighborInfoBase::find_twohop_neighbor(IPAddress neigh_addr, IPAddress twoho
 		struct HashMap<OLSRIPPair, void *>::Pair *pair;
 		pair = _twohopSet->find_pair(ippair);
 
-		if (! pair == 0 )
+		if (!(pair == 0))
 		{
 			twohop_data *data = (twohop_data *)pair->value;
 			return data;
@@ -369,7 +369,7 @@ OLSRNeighborInfoBase::find_mpr_selector(IPAddress ms_addr)
 	{
 		mpr_selector_data *data = (mpr_selector_data *) _mprSelectorSet->find(ms_addr);
 
-		if (! data == 0 )
+		if (!(data == 0))
 			return data;
 	}
 	return 0;

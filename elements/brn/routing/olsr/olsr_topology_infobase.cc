@@ -70,8 +70,8 @@ OLSRTopologyInfoBase::find_tuple(IPAddress dest_addr, IPAddress last_addr)
     OLSRIPPair ippair = OLSRIPPair(dest_addr, last_addr);
     struct HashMap<OLSRIPPair, void*>::Pair *pair;
     pair = _topologySet->find_pair(ippair);
-    
-    if (! pair == 0 ){
+
+    if (!(pair == 0)){
       topology_data *data = (topology_data *)pair->value;
       return data;
     }

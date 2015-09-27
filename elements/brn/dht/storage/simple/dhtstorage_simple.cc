@@ -25,7 +25,7 @@ DHTStorageSimple::DHTStorageSimple():
   _check_req_queue_timer(req_queue_timer_hook,this),
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
-  _max_req_retries(DEFAULT_MAX_RETRIES),
+  //_max_req_retries(DEFAULT_MAX_RETRIES),
   _add_node_id(false)
 #ifdef DHT_STORAGE_STATS
  ,_stats_requests(0),

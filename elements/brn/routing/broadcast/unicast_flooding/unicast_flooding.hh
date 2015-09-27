@@ -110,7 +110,7 @@ class UnicastFlooding : public BRNElement {
   FloodingDB *_flooding_db;
 
  private:
-  int _max_metric_to_neighbor;         // max. metric towards a neighbor
+  //int _max_metric_to_neighbor;         // max. metric towards a neighbor
   int _cand_selection_strategy;        // the way we choose the candidate for unicast forwarding
   uint32_t _pre_selection_mode;
   uint32_t _ucast_peer_metric;

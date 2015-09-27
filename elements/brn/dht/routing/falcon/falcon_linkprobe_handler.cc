@@ -132,8 +132,8 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 
   DHTnodelist nodes;
   DHTnode* next = NULL;
-  DHTnode* highest;
-  HawkRoutingtable::RTEntry* entry;
+  DHTnode* highest = NULL;
+  HawkRoutingtable::RTEntry* entry = NULL;
   Vector <uint8_t> mlist;
 
   //send the highest node to avoid partitioning

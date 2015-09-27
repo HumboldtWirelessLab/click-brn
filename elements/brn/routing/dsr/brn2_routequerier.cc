@@ -692,7 +692,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
 
           /* For ID Routing*/
           uint16_t _path_id = 0;
-          BrnRouteIdCache::RouteIdEntry* rid_e;
+          BrnRouteIdCache::RouteIdEntry* rid_e = NULL;
 
           if ( _dsr_rid_cache ) {
             rid_e = _dsr_rid_cache->get_entry(&src, &dst);

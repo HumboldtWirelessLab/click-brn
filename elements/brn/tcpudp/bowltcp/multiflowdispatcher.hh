@@ -168,7 +168,7 @@ class MultiFlowHandler {
 
 
     /* The signals needed for pull outputs */ 
-    bool _can_pull[2]; 
+    //bool _can_pull[2]; 
 
     private: 
     class Port { 

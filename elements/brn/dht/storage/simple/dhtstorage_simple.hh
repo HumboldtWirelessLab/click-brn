@@ -170,7 +170,7 @@ class DHTStorageSimple : public DHTStorage
     uint16_t _dht_id;
 
     uint32_t _max_req_time;
-    uint32_t _max_req_retries;
+    //uint32_t _max_req_retries;
 
     int get_time_to_next();
     bool isFinalTimeout(DHTOperationForward *fwdop);

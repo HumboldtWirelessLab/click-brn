@@ -71,7 +71,7 @@ OLSRInterfaceInfoBase::find_interface(IPAddress iface_addr)
     interface_data *data;
     data = (interface_data*) _interfaceSet->find(iface_addr);
 
-    if (! data == 0 )
+    if (!(data == 0))
       return data;
   }
   return 0;
@@ -118,7 +118,7 @@ OLSRInterfaceInfoBase::get_main_address(IPAddress iface_addr)
   if (! _interfaceSet->empty() ){
     interface_data *data;
     data = find_interface(iface_addr);
-    if ( ! data == 0 ){
+    if ( !(data == 0)){
       return data->I_main_addr;
     }
   }
@@ -132,7 +132,7 @@ bool
 OLSRInterfaceInfoBase::update_interface(IPAddress iface_addr, struct timeval time){
   interface_data *data;
   data = find_interface(iface_addr);
-  if ( ! data == 0 ) {
+  if ( !(data == 0)) {
     data->I_time = time;
     return true;
   }

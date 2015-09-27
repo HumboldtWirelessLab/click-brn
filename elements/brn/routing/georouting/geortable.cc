@@ -75,7 +75,7 @@ GeorTable::getClosest(struct gps_position *pos, EtherAddress *ea)
 {
   EtherAddress acea,best;
   bool first = true;
-  int min_dist;
+  int min_dist = 2147483647l;
   GPSPosition *gpspos;
   GPSPosition finpos = GPSPosition(pos);
 

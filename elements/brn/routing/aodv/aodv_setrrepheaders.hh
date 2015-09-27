@@ -33,7 +33,7 @@ class AODVSetRREPHeaders : public Element {
 		
 		void addRREP(Packet*,IPAddress *);
 	private:
-		AODVNeighbours* neighbour_table;
+		//AODVNeighbours* neighbour_table;
 		DestinationMap* destinations;
 };
 

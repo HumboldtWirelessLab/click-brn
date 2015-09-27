@@ -28,8 +28,8 @@ class BoFlooding : public BackoffScheme {
   ~BoFlooding();
 
  private:
-  Flooding *_flooding;
-  FloodingHelper *_fhelper;
+  //Flooding *_flooding;
+  //FloodingHelper *_fhelper;
 
 };
 

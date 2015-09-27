@@ -50,7 +50,7 @@ public:
 private:
 	OLSRARPQuerier		*_arpQuerier;
 	IPAddress		_myMainIP;
-	int			_offset;
+	//int			_offset;
 };
 
 CLICK_ENDDECLS

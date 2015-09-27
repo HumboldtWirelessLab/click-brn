@@ -48,7 +48,7 @@ class AlarmingAggregation : public BRNElement {
   RandomDelayQueue *_delay_queue;
   AlarmingRetransmit *_alarm_ret;
 
-  int _no_agg;
+  //int _no_agg;
   int _no_pkts;
 };
 

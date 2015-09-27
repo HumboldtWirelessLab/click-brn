@@ -22,7 +22,7 @@ BoChannelLoadAware::BoChannelLoadAware()
     _current_bo(BO_CHANNELLOADAWARE_START_BO),
     _target_busy(0),
     _target_diff(0),
-    _last_diff(0),
+    //_last_diff(0),
     _cap(0),
     _cst_sync(0),
     _last_id(999)

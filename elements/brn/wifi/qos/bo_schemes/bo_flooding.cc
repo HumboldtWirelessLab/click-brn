@@ -16,9 +16,10 @@
 
 CLICK_DECLS
 
-BoFlooding::BoFlooding():
-  _flooding(NULL),
-  _fhelper(NULL)
+BoFlooding::BoFlooding()
+//:
+//  _flooding(NULL),
+//  _fhelper(NULL)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_FLOODING;

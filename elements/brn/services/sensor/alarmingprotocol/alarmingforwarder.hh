@@ -46,7 +46,7 @@ class AlarmingForwarder : public BRNElement {
 
   uint8_t alarm_id;
 
-  uint8_t _ttl_limit;
+  //uint8_t _ttl_limit;
 
   bool _rssi_delay;
 };

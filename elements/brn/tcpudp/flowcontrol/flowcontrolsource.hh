@@ -53,7 +53,7 @@ class FlowControlSource : public BRNElement
 
   bool gen_next_flowid();
 
-  uint32_t retransmit_timeout;
+  //uint32_t retransmit_timeout;
 };
 
 CLICK_ENDDECLS

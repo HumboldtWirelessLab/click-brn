@@ -126,8 +126,8 @@ class FloodingEnd2EndRetry : public BRNElement {
   Timer _retransmit_timer;
   
   uint32_t _queued_pkts;
-  uint32_t _dequeued_pkts;
-  uint32_t _retransmissions;
+  //uint32_t _dequeued_pkts;
+  //uint32_t _retransmissions;
 
  public:
     

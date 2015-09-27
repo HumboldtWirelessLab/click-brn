@@ -257,7 +257,7 @@ OLSRHelloGenerator::get_link_code( struct link_data *data, timeval now )
 	else
 	{
 		neighbor_data *neigh_data = _neighborInfoBase->find_neighbor( neigh_main_addr );
-		if ( ! neigh_data == 0 )
+		if ( !(neigh_data == 0))
 		{
 			if ( neigh_data->N_status == OLSR_SYM_NEIGH )
 				link_code = link_code | ( OLSR_SYM_NEIGH << 2 );

@@ -61,7 +61,7 @@ class Ath2Print : public Element {
     bool _txprint;
     bool _rxprint;
 
-    bool _parser;
+    //bool _parser;
     bool _nowrap;
 };
 

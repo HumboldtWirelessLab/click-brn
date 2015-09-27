@@ -20,7 +20,7 @@ public:
   void push(int, Packet *packet);
 
 private:
-  OLSRDuplicateSet *_duplicateSet;
+  //OLSRDuplicateSet *_duplicateSet;
 };
 
 CLICK_ENDDECLS

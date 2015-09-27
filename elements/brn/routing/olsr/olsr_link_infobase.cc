@@ -217,7 +217,7 @@ OLSRLinkInfoBase::find_link(IPAddress local_addr, IPAddress neigh_addr)
 		OLSRIPPair ippair = OLSRIPPair(local_addr, neigh_addr);
 		link_data *data = (link_data *) _linkSet->find(ippair);
 
-		if (! data == 0 )
+		if (!(data == 0))
 			return data;
 	}
 	return 0;
@@ -229,7 +229,7 @@ OLSRLinkInfoBase::update_link(IPAddress local_addr, IPAddress neigh_addr, struct
 {
 	link_data *data;
 	data = find_link(local_addr, neigh_addr);
-	if (! data == 0 )
+	if (!(data == 0))
 	{
 		data->L_SYM_time = sym_time;
 		data->L_ASYM_time = asym_time;

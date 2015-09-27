@@ -19,7 +19,7 @@ class Base64
 
  private:
 
-  int _debug;
+  //int _debug;
 };
 
 CLICK_ENDDECLS

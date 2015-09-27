@@ -186,7 +186,7 @@ class BRN2DHCPServer : public BRNElement {
 
   //DEBUG
   int debug_count_dhcp_packet;
-  int debug_count_dht_packets;
+  //int debug_count_dht_packets;
 
   BRN2DHCPSubnetList *_dhcpsubnetlist;
   BRN2VLANTable *_vlantable;

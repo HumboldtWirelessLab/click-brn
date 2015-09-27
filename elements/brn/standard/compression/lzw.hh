@@ -58,7 +58,7 @@ class LZW
   int32_t output_bit_count;
   uint32_t output_bit_buffer;
 
-  int _debug;
+  //int _debug;
 };
 
 CLICK_ENDDECLS
