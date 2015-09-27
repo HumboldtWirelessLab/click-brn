@@ -58,6 +58,8 @@
 #include <clicknet/udp.h>
 #include <click/ip6address.hh>
 
+CLICK_DECLS
+
 class FastUDPSourceIP6 : public Element {
 
   bool _rate_limited; // obey _rate? rather than as fast as possible.
@@ -113,4 +115,5 @@ class FastUDPSourceIP6 : public Element {
 #endif
 };
 
+CLICK_ENDDECLS
 #endif

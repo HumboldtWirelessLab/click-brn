@@ -21,6 +21,7 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/standard/alignmentinfo.hh>
+CLICK_DECLS
 
 const unsigned FastUDPSourceIP6::NO_LIMIT;
 
@@ -265,5 +266,6 @@ FastUDPSourceIP6::add_handlers()
   add_write_handler("limit", FastUDPSourceIP6_limit_write_handler, 0);
 }
 
+CLICK_ENDDECLS
 ELEMENT_REQUIRES(ip6)
 EXPORT_ELEMENT(FastUDPSourceIP6)
