@@ -91,17 +91,17 @@ HeapTest::initialize(ErrorHandler *errh)
     less<Pair<int, int> > ll;
     place_intpair place;
 
-    vv.push_back(make_pair(0, -9));
+    vv.push_back(click_make_pair(0, -9));
     push_heap(vv.begin(), vv.end(), ll, place);
     CHECK_PLACE(vv);
 
-    vv.push_back(make_pair(-1, -9));
+    vv.push_back(click_make_pair(-1, -9));
     push_heap(vv.begin(), vv.end(), ll, place);
     CHECK(vv[0].first == -1);
     CHECK(vv[1].first == 0);
     CHECK_PLACE(vv);
 
-    vv.push_back(make_pair(1, -9));
+    vv.push_back(click_make_pair(1, -9));
     push_heap(vv.begin(), vv.end(), ll, place);
     CHECK(vv[0].first == -1);
     CHECK(vv[1].first == 0);
@@ -115,10 +115,10 @@ HeapTest::initialize(ErrorHandler *errh)
     vv.pop_back();
     CHECK_PLACE(vv);
 
-    vv.push_back(make_pair(10, -9));
+    vv.push_back(click_make_pair(10, -9));
     push_heap(vv.begin(), vv.end(), ll, place);
     CHECK_PLACE(vv);
-    vv.push_back(make_pair(8, -9));
+    vv.push_back(click_make_pair(8, -9));
     push_heap(vv.begin(), vv.end(), ll, place);
     CHECK(vv[0].first == 0);
     CHECK(vv[1].first == 1);
