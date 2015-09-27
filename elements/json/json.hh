@@ -1843,7 +1843,7 @@ inline Pair<Json::object_iterator, bool> Json::insert(const object_value_type &x
     uniqueify_object(false);
     ObjectJson *oj = ojson();
     int n = oj->n_, i = oj->find_insert(x.first, x.second);
-    return make_pair(object_iterator(this, i), i == n);
+    return click_make_pair(object_iterator(this, i), i == n);
 }
 
 /** @brief Insert element @a x in this object Json.

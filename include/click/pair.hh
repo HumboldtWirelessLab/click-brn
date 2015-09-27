@@ -80,7 +80,7 @@ inline hashcode_t Pair<T, U>::hashcode() const
 }
 
 template <class T, class U>
-inline Pair<T, U> make_pair(T t, U u)
+inline Pair<T, U> click_make_pair(T t, U u)
 {
     return Pair<T, U>(t, u);
 }
