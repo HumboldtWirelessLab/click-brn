@@ -457,7 +457,7 @@ Brn2LinkTable::print_links()
   StringAccum sa;
   sa << "<linktable id=\"";
   sa << _node_identity->getMasterAddress()->unparse().c_str();
-  sa << "\" time=\"" << Timestamp::now() << "\" >\n";
+  sa << "\" time=\"" << Timestamp::now() << "\" linkcnt=\"" << _links.size() << "\" >\n";
 
 
   for (LTIter iter = _links.begin(); iter.live(); ++iter) {
