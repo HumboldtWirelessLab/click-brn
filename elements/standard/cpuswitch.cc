@@ -17,8 +17,6 @@
 #include <click/error.hh>
 CLICK_DECLS
 
-CLICK_DECLS
-
 CPUSwitch::CPUSwitch()
 {
 }

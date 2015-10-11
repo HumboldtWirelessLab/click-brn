@@ -25,8 +25,6 @@
 #include <click/standard/alignmentinfo.hh>
 CLICK_DECLS
 
-CLICK_DECLS
-
 const unsigned FastUDPFlows::NO_LIMIT;
 
 FastUDPFlows::FastUDPFlows()

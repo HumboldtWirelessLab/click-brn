@@ -4,8 +4,6 @@
 #include <click/args.hh>
 CLICK_DECLS
 
-CLICK_DECLS
-
 CPUQueue::CPUQueue()
   : _last(0), _drops(0)
 {
