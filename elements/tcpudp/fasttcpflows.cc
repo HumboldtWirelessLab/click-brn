@@ -25,6 +25,8 @@
 #include <click/standard/alignmentinfo.hh>
 CLICK_DECLS
 
+CLICK_DECLS
+
 const unsigned FastTCPFlows::NO_LIMIT;
 
 FastTCPFlows::FastTCPFlows()
