@@ -95,7 +95,7 @@ SeismoDetectionLongShortAvg::initialize(ErrorHandler *)
 void
 SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
 {
-    SeismoInfoBlock* sib;
+    SeismoInfoBlock* sib = NULL;
     uint32_t ac_block_id = next_new_block;
     uint32_t _index_in_block;
 
@@ -112,7 +112,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
     while ( (sib = si->get_block(ac_block_id)) != NULL ) {
       if ( ! sib->is_complete() ) break;
 
-      for ( _index_in_block = 0; _index_in_block < sib->_next_value_index; _index_in_block++ ) {
+      for ( _index_in_block = 0; _index_in_block < sib->size(); _index_in_block++ ) {
         if ( swin.add_data(sib->_channel_values[_index_in_block][0]) == 0 ) { //only channel 1 (0)
           /* check for alarm */
           swin.calc_stats(false);
