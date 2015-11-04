@@ -1678,6 +1678,47 @@ fi
 AC_SUBST(LIBOS_INCLUDES)
 AC_SUBST(LIBOS_LIBS)
 
+dnl iw library
+
+explicit_libfftw3=no
+AC_ARG_WITH(libfftw3, [[  --with-libfftw3[=PREFIX]   locate fftw3 library (optional)]],
+  [libfftw3prefix=$withval; if test -z "$withval" -o "$withval" = yes; then libfftw3prefix=; fi],
+  libfftw3prefix=; explicit_libfftw3=no)
+
+if test "$libfftw3prefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$libfftw3prefix" && CPPFLAGS="$CPPFLAGS -I$libfftw3prefix/include"
+    AC_CHECK_HEADER(fftw3.h, have_libfftw3_h=yes, have_libfftw3_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    saveflags="$LDFLAGS"; test -n "$libfftw3prefix" && LDFLAGS="$LDFLAGS -L$libfftw3prefix/lib -lfftw3"
+    AC_CHECK_LIB(fftw3, fftw_malloc, have_libfftw3=yes, have_libfftw3=no)
+    LDFLAGS="$saveflags"
+
+    if test $have_libfftw3_h = yes -a $have_libfftw3 = yes; then
+        test -n "$libfftw3prefix" && LIBFFTW3_INCLUDES="-I$libfftw3prefix/include" && LIBFFTW3_LIBS="-L$libfftw3prefix/lib"
+        LIBFFTW3_LIBS="$LIBFFTW3_LIBS -lfftw3"
+        AC_DEFINE([HAVE_LIBFFTW3], [1], [Define if you have -lfftw3 and fftw3.h.])
+        LIBS="$LIBS $LIBFFTW3_LIBS"
+    else
+      if test $explicit_libfftw3 = yes; then
+    LIBFFTW3_INCLUDES= LIBFFTW3_LIBS=
+    AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-libfftw3, but the libfftw3 headers and/or libraries
+are not where you said they would be.  Run again supplying --without-libfftw3
+or --with-libfftw3=PREFIX.
+
+=========================================])
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LIBFFTW3_INCLUDES)
+AC_SUBST(LIBFFTW3_LIBS)
+
 dnl check linuxmodule for Linux
 
 if test $ac_have_linux_kernel = y; then
