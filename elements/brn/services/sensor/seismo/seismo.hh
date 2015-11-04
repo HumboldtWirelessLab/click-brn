@@ -68,7 +68,8 @@ class SeismoInfoBlock {
     uint64_t _systime[CHANNEL_INFO_BLOCK_SIZE];
 
     int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4]; //raw data (per channel (max 4 channels))
-    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];          //number of used channels
+    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];          //number of used channels (is an array,
+                                                         //since the number of channels can cange during a block)
 
     int64_t _channel_mean[4];                            //mean data
 
@@ -80,11 +81,13 @@ class SeismoInfoBlock {
     SeismoInfoBlock(uint32_t block_index) :_next_value_index(0),_next_systemtime_index(0)
     {
       _block_index = block_index;
+      memset(_channel_mean,0,sizeof(_channel_mean));
     }
 
     void reset() {
       _next_systemtime_index = 0;
       _next_value_index = 0;
+      memset(_channel_mean,0,sizeof(_channel_mean));
     }
 
     inline int32_t insert(uint64_t time, uint64_t systime, uint32_t channels, int32_t *values, bool net2host = true) {
@@ -97,14 +100,22 @@ class SeismoInfoBlock {
       if ( net2host ) {
         for ( uint32_t i = 0; i < channels; i++ ) {
           _channel_values[_next_value_index][i] = (uint32_t)ntohl(values[i]);
+          _channel_mean[i] += (int64_t)(ntohl(values[i]));
         }
       } else {
         for ( uint32_t i = 0; i < channels; i++ ) {
           _channel_values[_next_value_index][i] = values[i];
+          _channel_mean[i] += (int64_t)(values[i]);
         }
       }
 
       _next_value_index++;
+
+      if ( _next_value_index == CHANNEL_INFO_BLOCK_SIZE ) {
+        for ( uint32_t i = 0; i < 3; i++ ) {
+          _channel_mean[i] /= (int64_t)CHANNEL_INFO_BLOCK_SIZE;
+        }
+      }
 
       return _next_value_index;
     }

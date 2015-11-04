@@ -58,6 +58,12 @@ class SeismoDetectionAlgorithm {
  public:
   virtual ~SeismoDetectionAlgorithm() {};
 
+  /* update Function */
+  /* This function is called on every update
+   * Whether the next block is complete can be check with SeismoInfoBlock->is_complete()
+   * if it is not complete, the indices can be used to get the already set values of the block
+   * (the already ready part of the block)
+   */
   virtual void update(SrcInfo *sibl, uint32_t next_new_block) = 0;
   virtual SeismoAlarmList *get_alarm() = 0;
 };
