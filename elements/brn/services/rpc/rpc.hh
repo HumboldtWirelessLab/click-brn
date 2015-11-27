@@ -41,10 +41,18 @@ struct rpc_dht_header {
   uint16_t code_size;
 };
 
-#define RPC_FUNCTION_CALL_REQUEST  0
-#define RPC_FUNCTION_CALL_REPLY    1
-#define RPC_FUNCTION_DATA_CALL     2
-#define RPC_FUNCTION_FUNCTION_CALL 4
+#define RPC_REQUEST_OR_REPLY (1 << 0)
+#define RPC_CALLTYPE         (1 << 1)
+#define RPC_REQUEST       0
+#define RPC_REPLY         1
+#define RPC_DATA_CALL     0
+#define RPC_FUNCTION_CALL 2
+
+#define RPC_TYPE             (RPC_REQUEST_OR_REPLY | RPC_CALLTYPE)
+#define RPC_DATA_REQUEST     (RPC_REQUEST | RPC_DATA_CALL)
+#define RPC_DATA_REPLY       (RPC_REPLY | RPC_DATA_CALL)
+#define RPC_FUNCTION_REQUEST (RPC_REQUEST | RPC_FUNCTION_CALL)
+#define RPC_FUNCTION_REPLY   (RPC_REPLY | RPC_FUNCTION_CALL)
 
 
 struct rpc_function_call_header {
@@ -63,15 +71,17 @@ class RPC : public BRNElement {
    public:
 
     Timestamp _last_update;
-    String _uri;
+    String _uri;                  //just handler/function
     Vector<EtherAddress> _node;
   };
 
   class RPCInfo {
    public:
-    String _name;
-    RPCAddress _addr;
-    Element *_local_addr;
+    Timestamp _last_update;
+    String _name;                 //handler or function name (full, including params)
+    RPCAddress _addr;             //RPC Address
+    Vector<EtherAddress> _rpc_src;
+    Vector<RPCInfo*> _rpc_dep;
   };
 
  public:
@@ -100,11 +110,17 @@ class RPC : public BRNElement {
   int handle_dht_reply(DHTOperation *op);
 
   int call_function(String params);
+  int call_remote_function(String params);
   String get_handler_value(String full_handler_name);
 
   void request_data(const EtherAddress ea, String handler);
   void handle_request_data(Packet *p);
   void handle_reply_data(Packet *p);
+
+  void request_function(const EtherAddress ea, String handler);
+  void handle_request_function(Packet *p);
+  void send_reply_function(Packet *p);
+  void handle_reply_function(Packet *p);
 
   String get_result();
 
@@ -113,6 +129,7 @@ class RPC : public BRNElement {
   Timer _tcc_check_timer;
   uint32_t _tcc_check_interval;
   HashMap<String, Timestamp> _known_tcc_function;
+  HashMap<String, RPCAddress*> _n_known_tcc_function;
 
   void dht_request(DHTOperation *op);
 
@@ -125,6 +142,10 @@ class RPC : public BRNElement {
   Vector<String> _pending_rpcs;
 
   HashMap<String, String> _pending_params;
+
+  Vector<RPCInfo*> _n_pending_rpcs;
+
+  HashMap<String, RPCInfo*> _n_pending_rpc_map;
 
   //int add_rpc(String object, String name, Vector<String> out, Vector<String> in, String config); //real function
 };

@@ -141,15 +141,19 @@ RPC::push( int port, Packet *packet )
   BRN_DEBUG("got packet");
   struct rpc_dht_header *rpcdhth = (struct rpc_dht_header *)packet->data();
 
-  if ( rpcdhth->flags & RPC_FUNCTION_CALL_REPLY ) {   //handle replies
-    if ( rpcdhth->flags & RPC_FUNCTION_DATA_CALL ) {  //handle data reply
-      BRN_DEBUG("Reply");
-      handle_reply_data(packet);
-    }
-  } else {
-    if ( rpcdhth->flags & RPC_FUNCTION_DATA_CALL ) {  //handle data reply
+  switch (rpcdhth->flags & RPC_TYPE) {
+    case RPC_DATA_REQUEST:
       handle_request_data(packet);
-    }
+      break;
+    case RPC_DATA_REPLY:
+      handle_reply_data(packet);
+      break;
+    case RPC_FUNCTION_REQUEST:
+      handle_request_function(packet);
+      break;
+    case RPC_FUNCTION_REPLY:
+      handle_reply_function(packet);
+      break;
   }
 }
 
@@ -159,11 +163,13 @@ RPC::handle_dht_reply(DHTOperation *op)
   BRN_DEBUG("Handle DHT-Reply");
   /* Test: ip found ?*/	
 
+  String key = String(op->key, op->header.keylen);
+
   if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
     BRN_DEBUG("DHT Error !!!");
+    BRN_DEBUG("Function: %s not found!", key.c_str());
   } else {
     if ( op->is_reply() ) {
-      String key = String(op->key, op->header.keylen);
 
       if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT ) {
         BRN_DEBUG("Insert was successful. Function: %s", key.c_str());
@@ -315,6 +321,35 @@ RPC::call_function(String params)
   return res;
 }
 
+int
+RPC::call_remote_function(String params)
+{
+  int res = 0;
+
+  StringAccum sa;
+
+  Vector<String> args;
+  cp_spacevec(params, args);
+
+  String target = args[0];
+  args.erase(args.begin());
+
+  for ( int i = 0; i < args.size(); i++) {
+    sa << args[i] << " ";
+  }
+
+  EtherAddress rpc_dst;
+  String rpc_func = sa.take_string();
+
+  cp_ethernet_address(target, &rpc_dst);
+
+  click_chatter("Ask %s for >%s<",rpc_dst.unparse().c_str(), rpc_func.c_str());
+
+  request_function(rpc_dst, rpc_func);
+
+  return res;
+}
+
 String
 RPC::get_handler_value(String full_handler_name)
 {
@@ -363,7 +398,7 @@ RPC::request_data(const EtherAddress ea, String handler)
                                 sizeof(struct rpc_function_call_header)+handler.length(), 32);
 
   struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
-  fch->flags = 0 | RPC_FUNCTION_DATA_CALL;
+  fch->flags = RPC_DATA_REQUEST;
   fch->request_size = handler.length();
   fch->result_size = 0;
   fch->request_id = 0;
@@ -389,7 +424,7 @@ RPC::handle_request_data(Packet *p)
 
   WritablePacket *p_out = p->put(result.length());
   fch = (struct rpc_function_call_header*)p_out->data();
-  fch->flags |= RPC_FUNCTION_CALL_REPLY;
+  fch->flags |= RPC_REPLY;
   fch->result_size = htons(result.length());
 
   BRN_DEBUG("Handle request: %s (%d) -> %s (%d)",handler.c_str(), fch->request_size, result.c_str(), result.length());
@@ -423,13 +458,94 @@ RPC::handle_reply_data(Packet *p)
   }
 }
 
+void
+RPC::request_function(const EtherAddress ea, String handler)
+{
+  BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
+  WritablePacket *p = WritablePacket::make( 256, NULL,
+                                sizeof(struct rpc_function_call_header)+handler.length(), 32);
+
+  struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
+  fch->flags = RPC_FUNCTION_REQUEST;
+  fch->request_size = handler.length();
+  fch->result_size = 0;
+  fch->request_id = 0;
+
+  memcpy(&(fch[1]), handler.data(),handler.length());
+
+  WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_RPC, BRN_PORT_RPC, DEFAULT_TTL, 0);
+  BRN_ERROR("Add annos: %s %s",EtherAddress().unparse().c_str(),ea.unparse().c_str());
+  BRNPacketAnno::set_ether_anno(p_out, EtherAddress(), ea, ETHERTYPE_BRN);
+
+  output(0).push(p_out);
+}
+
+void
+RPC::handle_request_function(Packet *p)
+{
+  EtherAddress src = BRNPacketAnno::src_ether_anno(p);
+  EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
+  struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
+
+  String called_function = String((char*)&(fch[1]), fch->request_size);
+  BRN_DEBUG("Function request: %s (%d))",called_function.c_str(), fch->request_size);
+
+  call_function(called_function);
+}
+
+void
+RPC::send_reply_function(Packet *p)
+{
+  EtherAddress src = BRNPacketAnno::src_ether_anno(p);
+  EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
+  struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
+
+  String handler = String((char*)&(fch[1]), fch->request_size);
+  String result = get_handler_value(handler);
+
+  WritablePacket *p_out = p->put(result.length());
+  fch = (struct rpc_function_call_header*)p_out->data();
+  fch->flags |= RPC_REPLY;
+  fch->result_size = htons(result.length());
+
+  BRN_DEBUG("Handle request: %s (%d) -> %s (%d)",handler.c_str(), fch->request_size, result.c_str(), result.length());
+  BRN_DEBUG("Int: %d", (int)(result.data()[0]));
+
+  memcpy(((char*)&(fch[1])) + fch->request_size, &(result.data()[0]),result.length());
+
+  BRNProtocol::add_brn_header(p_out, BRN_PORT_RPC, BRN_PORT_RPC, DEFAULT_TTL, 0);
+  BRN_ERROR("Add annos: %s %s", dst.unparse().c_str(), src.unparse().c_str());
+  BRNPacketAnno::set_ether_anno(p_out, dst, src , ETHERTYPE_BRN);
+
+  output(0).push(p_out);
+}
+
+void
+RPC::handle_reply_function(Packet *p)
+{
+  EtherAddress src = BRNPacketAnno::src_ether_anno(p);
+  struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
+
+  String handler = String((char*)&(fch[1]), fch->request_size);
+  String result = String(((char*)&(fch[1])) + fch->request_size, ntohs(fch->result_size));
+
+  BRN_DEBUG("%s -> %s (%d)",(src.unparse() + ":" + handler).c_str(), result.c_str(), ntohs(fch->result_size));
+  _pending_params.insert(src.unparse() + ":" + handler, result);
+
+  for( int i = _pending_rpcs.size()-1; i >= 0; i-- ) {
+    if ( call_function(_pending_rpcs[i]) != 0 ) {
+       _pending_rpcs.erase(_pending_rpcs.begin() + i);
+    }
+  }
+}
+
 String
 RPC::get_result()
 {
   return _tcc->_last_result;
 }
 
-enum { H_STATS, H_CALL_PROCEDURE, H_RESULT };
+enum { H_STATS, H_CALL_PROCEDURE, H_CALL_REMOTEPROCEDURE, H_RESULT };
 
 static String RPC_read_param(Element *e, void *thunk) {
   StringAccum sa;
@@ -452,6 +568,9 @@ static int RPC_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
     case H_CALL_PROCEDURE:
       rpc->call_function(s);
       break;
+    case H_CALL_REMOTEPROCEDURE:
+      rpc->call_remote_function(s);
+      break;
   }
 
   return 0;
@@ -463,6 +582,7 @@ RPC::add_handlers()
   BRNElement::add_handlers();
 
   add_write_handler("call", RPC_write_param, (void *)H_CALL_PROCEDURE);
+  add_write_handler("remote_call", RPC_write_param, (void *)H_CALL_REMOTEPROCEDURE);
 
   add_read_handler("result", RPC_read_param, (void *)H_RESULT);
 }
