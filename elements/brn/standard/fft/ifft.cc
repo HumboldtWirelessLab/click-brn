@@ -120,7 +120,8 @@ IFFT::ifft(int32_t xre[], int32_t xim[], uint16_t n)
   uint32_t nu;
   uint32_t n2;
   uint32_t nu1;
-  int p, k, l, i;
+  uint32_t l, i;
+  int p, k;
   int64_t c, s, tr, ti;
 
   nu = ilog2(n);
