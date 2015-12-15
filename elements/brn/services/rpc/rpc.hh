@@ -28,6 +28,7 @@
 #include <click/ipaddress.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn/dht/storage/dhtstorage.hh"
 #include "elements/brn/services/system/tcc.hh"
 
@@ -119,12 +120,17 @@ class RPC : public BRNElement {
 
   void request_function(const EtherAddress ea, String handler);
   void handle_request_function(Packet *p);
-  void send_reply_function(Packet *p);
+  void send_reply_function(const EtherAddress ea, String handler,String result);
   void handle_reply_function(Packet *p);
 
+  int insert_pending_rpc(String rpc);
   String get_result();
 
+  String stats();
+
  private:
+
+  BRN2NodeIdentity *_node_identity;
 
   Timer _tcc_check_timer;
   uint32_t _tcc_check_interval;
@@ -142,6 +148,7 @@ class RPC : public BRNElement {
   Vector<String> _pending_rpcs;
 
   HashMap<String, String> _pending_params;
+  HashMap<String, EtherAddress> _rpc_source;
 
   Vector<RPCInfo*> _n_pending_rpcs;
 

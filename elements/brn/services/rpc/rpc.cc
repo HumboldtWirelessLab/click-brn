@@ -44,7 +44,8 @@
 CLICK_DECLS
 
 RPC::RPC()
-: _tcc_check_timer(this),
+: _node_identity(),
+  _tcc_check_timer(this),
   _tcc_check_interval(RPC_TCC_DFLT_CHECK_TIMER_INTERVAL),
   _dht_storage(NULL)
 {
@@ -60,6 +61,7 @@ int
 RPC::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
+    "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
     "TCC", cpkP+cpkM, cpElement, &_tcc,
     "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
     "DEBUG", cpkP, cpInteger, &_debug,
@@ -262,7 +264,9 @@ RPC::call_function(String params)
 
   if ( _tcc->_func_map.findp(function) == NULL ) {
 
-    _pending_rpcs.push_back(params);
+    BRN_DEBUG("Function not found in tcc. Use DHT to get sourcecode.");
+
+    insert_pending_rpc(params);
 
     DHTOperation *req = new DHTOperation();
 
@@ -276,7 +280,7 @@ RPC::call_function(String params)
     /* check each arg */
     for (int i = 0; i < args.size(); i++) {
 
-      BRN_DEBUG("handler has : ? (with addr)");
+      BRN_DEBUG("handler (%s) has : ? (with addr)",args[i].c_str());
       int last_colon = args[i].find_right(':',args[i].length());
       if ( last_colon > 0 ) {
         if ( _pending_params.findp(args[i]) != NULL ) {  // we already search for params (data request)
@@ -284,7 +288,7 @@ RPC::call_function(String params)
           if (pp.length() > 0) {                         // and we got a result
             finished_params.push_back(args[i]);
             args[i] = pp;
-          } else {                                       // we are waiting fpor some results
+          } else {                                       // we are waiting for some results
             pending_params++;
           }
         } else {
@@ -295,25 +299,45 @@ RPC::call_function(String params)
           String full_handler_name = args[i].substring(last_colon+1, args[i].length()-1);
           BRN_DEBUG("Ask %s (%s) for %s",ea.unparse().c_str(), ea_string.c_str(), full_handler_name.c_str());
 
-          request_data(ea, full_handler_name);
-          pending_params++;
-          _pending_params.insert(args[i],String());
+          if ( _node_identity->isIdentical(&ea) ) {
+            args[i] = get_handler_value(full_handler_name);
+            BRN_ERROR("Value: >%s<",args[i].c_str());
+          } else {
+            request_data(ea, args[i]);
+            pending_params++;
+            _pending_params.insert(args[i],String());
+          }
         }
       } else {
+        BRN_DEBUG("get_handler_value for %s",args[i].c_str());
+
         args[i] = get_handler_value(args[i]);
-        BRN_ERROR(">%s<",args[i].c_str());
+
+        BRN_ERROR("Value: >%s<",args[i].c_str());
       }
 
     }
+
+    BRN_DEBUG("Pending_params = %d", pending_params);
 
     if ( pending_params == 0 ) {
       for( int i = finished_params.size()-1; i >= 0; i-- ) _pending_params.remove(finished_params[i]);
       finished_params.clear();
 
+      StringAccum args_sa;
+      for( int i = 0; i < args.size(); i++) args_sa << args[i] << " ";
+      BRN_DEBUG("Call tcc: func: %s Args: %s",function.c_str(), args_sa.take_string().c_str());
+
       res = _tcc->call_function(function,args);
+      BRN_DEBUG("Result for ttc->call_function: %d",res);
+
+      if ( res != 0 ) {
+        BRN_WARN("TCC call function error? Return %d",res);
+      }
 
     } else {
-      _pending_rpcs.push_back(params);
+      insert_pending_rpc(params);
+
       res = pending_params;
     }
   }
@@ -343,7 +367,7 @@ RPC::call_remote_function(String params)
 
   cp_ethernet_address(target, &rpc_dst);
 
-  click_chatter("Ask %s for >%s<",rpc_dst.unparse().c_str(), rpc_func.c_str());
+  BRN_DEBUG("Ask %s for >%s<",rpc_dst.unparse().c_str(), rpc_func.c_str());
 
   request_function(rpc_dst, rpc_func);
 
@@ -353,8 +377,20 @@ RPC::call_remote_function(String params)
 String
 RPC::get_handler_value(String full_handler_name)
 {
-  String result = full_handler_name;
+  String result = String();
   Vector<String> arg_nospace;
+
+  int last_colon = full_handler_name.find_right(':',full_handler_name.length());
+
+  if ( last_colon > 0 ) {
+    BRN_DEBUG("with colon");
+    String ea_string = full_handler_name.substring(0,last_colon);
+    EtherAddress ea;
+    cp_ethernet_address(ea_string, &ea);
+    if ( _node_identity->isIdentical(&ea) ) {
+      full_handler_name = full_handler_name.substring(last_colon+1, full_handler_name.length()-1);
+    }
+  }
 
   /* find element prefix: e.g. foo/bar -> foo/ */
   String element_name = router()->ename(this->eindex());
@@ -364,6 +400,8 @@ RPC::get_handler_value(String full_handler_name)
   if ( last_slash > 0 ) element_class_prefix = element_name.substring(0,last_slash+1);
 
   int handler_point = full_handler_name.find_right('.',full_handler_name.length());
+
+  BRN_DEBUG("%d %d",last_slash,handler_point);
 
   if ( handler_point > 0 ) {
     BRN_DEBUG("arg has point. handler?");
@@ -382,10 +420,22 @@ RPC::get_handler_value(String full_handler_name)
         result = HandlerCall::call_read(element_class_prefix + full_handler_name,
                                         router()->root_element(), ErrorHandler::default_handler());
     }
+
+    if ( s_element == NULL ) {
+      BRN_DEBUG("Unknown element");
+    } else {
+      BRN_DEBUG("Result: %s", result.c_str());
+      //remove linebreak
+      cp_spacevec(result, arg_nospace);
+      result = arg_nospace[0];
+    }
+  } else {
+    BRN_DEBUG("Result: %s", full_handler_name.c_str());
     //remove linebreak
-    cp_spacevec(result, arg_nospace);
+    cp_spacevec(full_handler_name, arg_nospace);
     result = arg_nospace[0];
   }
+
 
   return result;
 }
@@ -395,7 +445,7 @@ RPC::request_data(const EtherAddress ea, String handler)
 {
   BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
   WritablePacket *p = WritablePacket::make( 256, NULL,
-                                sizeof(struct rpc_function_call_header)+handler.length(), 32);
+                                            sizeof(struct rpc_function_call_header)+handler.length(), 32);
 
   struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
   fch->flags = RPC_DATA_REQUEST;
@@ -421,6 +471,8 @@ RPC::handle_request_data(Packet *p)
 
   String handler = String((char*)&(fch[1]), fch->request_size);
   String result = get_handler_value(handler);
+
+  BRN_DEBUG("data_request: %s -> %s", handler.c_str(), result.c_str());
 
   WritablePacket *p_out = p->put(result.length());
   fch = (struct rpc_function_call_header*)p_out->data();
@@ -449,10 +501,21 @@ RPC::handle_reply_data(Packet *p)
   String result = String(((char*)&(fch[1])) + fch->request_size, ntohs(fch->result_size));
 
   BRN_DEBUG("%s -> %s (%d)",(src.unparse() + ":" + handler).c_str(), result.c_str(), ntohs(fch->result_size));
-  _pending_params.insert(src.unparse() + ":" + handler, result);
+  _pending_params.insert(/*src.unparse() + ":" + */handler, result);
 
   for( int i = _pending_rpcs.size()-1; i >= 0; i-- ) {
-    if ( call_function(_pending_rpcs[i]) != 0 ) {
+    BRN_DEBUG("Call pending function (x of %d): %s!",_pending_rpcs.size(), _pending_rpcs[i].c_str());
+
+    BRN_DEBUG("Check for remote (%d)",_rpc_source.size());
+    if ( call_function(_pending_rpcs[i]) == 0 ) { //TODO: return value
+       if ( _rpc_source.findp(_pending_rpcs[i]) != NULL ) {
+         EtherAddress ea = _rpc_source.find(_pending_rpcs[i]);
+         BRN_DEBUG("RPC %s was remote: %s! Result: %s", _pending_rpcs[i].c_str(), ea.unparse().c_str(), _tcc->_last_result.c_str());
+         send_reply_function(ea, _pending_rpcs[i], _tcc->_last_result);
+       }
+
+       BRN_DEBUG("Finished and delete pending function: %s.",_pending_rpcs[i].c_str());
+
        _pending_rpcs.erase(_pending_rpcs.begin() + i);
     }
   }
@@ -483,39 +546,39 @@ RPC::request_function(const EtherAddress ea, String handler)
 void
 RPC::handle_request_function(Packet *p)
 {
-  EtherAddress src = BRNPacketAnno::src_ether_anno(p);
-  EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
+  //EtherAddress src = BRNPacketAnno::src_ether_anno(p);
+  //EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
   struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
 
   String called_function = String((char*)&(fch[1]), fch->request_size);
-  BRN_DEBUG("Function request: %s (%d))",called_function.c_str(), fch->request_size);
+  EtherAddress src_ea = EtherAddress(p->ether_header()->ether_shost);
+
+  BRN_DEBUG("Function request from %s: %s (%d))",src_ea.unparse().c_str(), called_function.c_str(), fch->request_size);
+
+  _rpc_source.insert(called_function,src_ea);
 
   call_function(called_function);
 }
 
 void
-RPC::send_reply_function(Packet *p)
+RPC::send_reply_function(const EtherAddress ea, String handler,String result)
 {
-  EtherAddress src = BRNPacketAnno::src_ether_anno(p);
-  EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
+  BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
+  WritablePacket *p = WritablePacket::make( 256, NULL,
+                                            sizeof(struct rpc_function_call_header) + handler.length() + result.length(), 32);
+
   struct rpc_function_call_header *fch = (struct rpc_function_call_header*)p->data();
-
-  String handler = String((char*)&(fch[1]), fch->request_size);
-  String result = get_handler_value(handler);
-
-  WritablePacket *p_out = p->put(result.length());
-  fch = (struct rpc_function_call_header*)p_out->data();
-  fch->flags |= RPC_REPLY;
+  fch->flags = RPC_FUNCTION_REPLY;
+  fch->request_size = handler.length();
   fch->result_size = htons(result.length());
+  fch->request_id = 0;
 
-  BRN_DEBUG("Handle request: %s (%d) -> %s (%d)",handler.c_str(), fch->request_size, result.c_str(), result.length());
-  BRN_DEBUG("Int: %d", (int)(result.data()[0]));
+  memcpy(&(fch[1]), handler.data(),handler.length());
+  memcpy(&(((char*)&(fch[1]))[handler.length()]), result.data(),result.length());
 
-  memcpy(((char*)&(fch[1])) + fch->request_size, &(result.data()[0]),result.length());
-
-  BRNProtocol::add_brn_header(p_out, BRN_PORT_RPC, BRN_PORT_RPC, DEFAULT_TTL, 0);
-  BRN_ERROR("Add annos: %s %s", dst.unparse().c_str(), src.unparse().c_str());
-  BRNPacketAnno::set_ether_anno(p_out, dst, src , ETHERTYPE_BRN);
+  WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_RPC, BRN_PORT_RPC, DEFAULT_TTL, 0);
+  BRN_ERROR("Add annos: %s %s",EtherAddress().unparse().c_str(),ea.unparse().c_str());
+  BRNPacketAnno::set_ether_anno(p_out, EtherAddress(), ea, ETHERTYPE_BRN);
 
   output(0).push(p_out);
 }
@@ -530,13 +593,19 @@ RPC::handle_reply_function(Packet *p)
   String result = String(((char*)&(fch[1])) + fch->request_size, ntohs(fch->result_size));
 
   BRN_DEBUG("%s -> %s (%d)",(src.unparse() + ":" + handler).c_str(), result.c_str(), ntohs(fch->result_size));
-  _pending_params.insert(src.unparse() + ":" + handler, result);
 
-  for( int i = _pending_rpcs.size()-1; i >= 0; i-- ) {
-    if ( call_function(_pending_rpcs[i]) != 0 ) {
-       _pending_rpcs.erase(_pending_rpcs.begin() + i);
-    }
-  }
+  _tcc->_last_result = result;
+}
+
+int
+RPC::insert_pending_rpc(String rpc)
+{
+  for( int i = _pending_rpcs.size()-1; i >= 0; i-- )
+    if ( rpc == _pending_rpcs[i] ) return 0;
+
+  _pending_rpcs.push_back(rpc);
+
+  return 0;
 }
 
 String
@@ -545,17 +614,30 @@ RPC::get_result()
   return _tcc->_last_result;
 }
 
+String
+RPC::stats()
+{
+  StringAccum sa;
+
+  sa << "<rpc node=\"" << NODEIDENTITY << "\" time=\"" << Timestamp::now().unparse() << "\" pending_rpc=\"";
+  sa << _pending_rpcs.size() << "\" pending_params=\""
+  pending_sou 
+
+
+  return sa.take_string();
+}
+
 enum { H_STATS, H_CALL_PROCEDURE, H_CALL_REMOTEPROCEDURE, H_RESULT };
 
 static String RPC_read_param(Element *e, void *thunk) {
-  StringAccum sa;
   RPC *rpc = (RPC *)e;
 
   switch((uintptr_t) thunk) {
     case H_RESULT: return rpc->get_result();
+    case H_STATS: return rpc->stats();
   }
 
-  return sa.take_string();
+  return String();
 }
 
 
@@ -585,6 +667,7 @@ RPC::add_handlers()
   add_write_handler("remote_call", RPC_write_param, (void *)H_CALL_REMOTEPROCEDURE);
 
   add_read_handler("result", RPC_read_param, (void *)H_RESULT);
+  add_read_handler("stats", RPC_read_param, (void *)H_STATS);
 }
 
 CLICK_ENDDECLS
