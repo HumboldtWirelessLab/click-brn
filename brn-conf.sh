@@ -52,7 +52,7 @@ else
     GCCPREFIX="arm-linux-uclibcgnueabi-"
   else
     if [ "x$TARGET" = "xi386" ]; then
-      CONFOPTION="$CONFOPTION --host=i386-openwrt-linux --enable-tools=host --enable-ialign"
+      CONFOPTION="$CONFOPTION --host=i486-openwrt-linux --enable-tools=host --enable-ialign"
       XCFLAGS="$XCFLAGS -static"
       GCCPREFIX="i486-openwrt-linux-"
     else
