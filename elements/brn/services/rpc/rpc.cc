@@ -51,10 +51,14 @@ RPC::RPC()
 {
   _known_tcc_function.clear();
   _pending_rpcs.clear();
+  _pending_params.clear();
 }
 
 RPC::~RPC()
 {
+  _known_tcc_function.clear();
+  _pending_rpcs.clear();
+  _pending_params.clear();
 }
 
 int
@@ -128,19 +132,16 @@ RPC::dht_request(DHTOperation *op)
 
   if ( result == 0 )
   {
-    BRN_DEBUG("Got local reply");
+    BRN_DEBUG("Got local dht reply");
     handle_dht_reply(op);
   }
 }
 
 
 void
-RPC::push( int port, Packet *packet )
+RPC::push( int /*port*/, Packet *packet )
 {
-  (void)port;
-  (void)packet;
-
-  BRN_DEBUG("got packet");
+  BRN_DEBUG("new packet");
   struct rpc_dht_header *rpcdhth = (struct rpc_dht_header *)packet->data();
 
   switch (rpcdhth->flags & RPC_TYPE) {
@@ -158,12 +159,13 @@ RPC::push( int port, Packet *packet )
       break;
   }
 }
-
+/************************************************************************/
+/***********************      D H T - S T U F F    **********************/
+/************************************************************************/
 int
 RPC::handle_dht_reply(DHTOperation *op)
 {
   BRN_DEBUG("Handle DHT-Reply");
-  /* Test: ip found ?*/	
 
   String key = String(op->key, op->header.keylen);
 
@@ -177,16 +179,20 @@ RPC::handle_dht_reply(DHTOperation *op)
         BRN_DEBUG("Insert was successful. Function: %s", key.c_str());
       } else if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_READ ) {
         BRN_DEBUG("Read was successful. Function: %s", key.c_str());
+
         _known_tcc_function.insert(key,Timestamp::now());
-        dht2tcc(key,op->value, op->header.valuelen);
+        dht2tcc(key, op->value, op->header.valuelen);
+
         for( int i = _pending_rpcs.size()-1; i >= 0; i-- ) {
           Vector<String> args;
           cp_spacevec(_pending_rpcs[i], args);
 
           if ( args[0] == key ) {
-            String pending_rpc = _pending_rpcs[i];
+            call_function(_pending_rpcs[i]);
             _pending_rpcs.erase(_pending_rpcs.begin() + i);
-            call_function(pending_rpc);
+            if (_pending_rpcs.size() == 0) {
+              _pending_params.clear();
+            }
           }
         }
       }
@@ -194,6 +200,7 @@ RPC::handle_dht_reply(DHTOperation *op)
   }
 
   delete op;
+
   return(0);
 }
 
@@ -248,6 +255,10 @@ RPC::dht2tcc(String fname, uint8_t *data, int /*data_size*/)
 
   return res;
 }
+
+/************************************************************************/
+/***********************      D H T - S T U F F    **********************/
+/************************************************************************/
 
 int
 RPC::call_function(String params)
@@ -517,6 +528,9 @@ RPC::handle_reply_data(Packet *p)
        BRN_DEBUG("Finished and delete pending function: %s.",_pending_rpcs[i].c_str());
 
        _pending_rpcs.erase(_pending_rpcs.begin() + i);
+       if (_pending_rpcs.size() == 0) {
+         _pending_params.clear();
+       }
     }
   }
 }
@@ -619,10 +633,9 @@ RPC::stats()
 {
   StringAccum sa;
 
-  sa << "<rpc node=\"" << NODEIDENTITY << "\" time=\"" << Timestamp::now().unparse() << "\" pending_rpc=\"";
-  sa << _pending_rpcs.size() << "\" pending_params=\""
-  pending_sou 
-
+  sa << "<rpc node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse() << "\" pending_rpc=\"";
+  sa << _pending_rpcs.size() << "\" pending_params=\"" << _pending_params.size() << "\" >\n";
+  sa << "</rpc>";
 
   return sa.take_string();
 }
