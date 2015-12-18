@@ -107,6 +107,9 @@ for op in $@; do
 	"userlevel")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-userlevel --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    ;;
+	"userlevel_kernel")
+	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --enable-fixincludes --enable-userlevel --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
+	    ;;
 	"ns2_userlevel")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    ;;
