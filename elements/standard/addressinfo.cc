@@ -236,7 +236,11 @@ create_deviceinfo(Vector<String> &deviceinfo)
 	strcpy(ifr.ifr_name, dev_name.c_str());
 	if (ioctl(query_fd, SIOCGIFHWADDR, &ifr) >= 0
 	    && (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER
-		|| ifr.ifr_hwaddr.sa_family == ARPHRD_80211))
+		|| ifr.ifr_hwaddr.sa_family == ARPHRD_80211
+		|| ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM
+        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP
+        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC
+        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT))
 	    add_deviceinfo(deviceinfo, dev_name, tc_ether, String(ifr.ifr_hwaddr.sa_data, sizeof(EtherAddress)));
 	char x[8];
 	if (ioctl(query_fd, SIOCGIFADDR, &ifr) >= 0
@@ -332,7 +336,7 @@ AddressInfo::query_netdevice(const String &s, unsigned char *store,
 # endif
     bool found = false;
     if (dev && type == tc_ether
-	&& (dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211
+	&& (dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211 ||
         dev->type == ARPHRD_80211_PRISM ||
         dev->type == ARPHRD_80211_RADIOTAP ||
         dev->type == ARPHRD_80211_ATHDESC ||
