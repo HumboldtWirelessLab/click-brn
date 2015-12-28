@@ -193,7 +193,9 @@ create_deviceinfo(Vector<String> &deviceinfo)
 #  if defined(AF_PACKET) && HAVE_NETPACKET_PACKET_H
 	    if (ifa->ifa_addr->sa_family == AF_PACKET) {
 		struct sockaddr_ll *sll = (struct sockaddr_ll *) ifa->ifa_addr;
-		if ((sll->sll_hatype == ARPHRD_ETHER || sll->sll_hatype == ARPHRD_80211) && sll->sll_halen == sizeof(EtherAddress))
+		if ((sll->sll_hatype == ARPHRD_ETHER || sll->sll_hatype == ARPHRD_80211 ||
+            ((sll->sll_hatype > 802) && (sll->sll_hatype <= 807)))
+          && sll->sll_halen == sizeof(EtherAddress))
 		    add_deviceinfo(deviceinfo, ifa->ifa_name, tc_ether, String((char *) sll->sll_addr, sizeof(EtherAddress)));
 	    }
 #  endif
@@ -237,10 +239,7 @@ create_deviceinfo(Vector<String> &deviceinfo)
 	if (ioctl(query_fd, SIOCGIFHWADDR, &ifr) >= 0
 	    && (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER
 		|| ifr.ifr_hwaddr.sa_family == ARPHRD_80211
-		|| ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM
-        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP
-        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC
-        || ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT))
+		|| ( (ifr.ifr_hwaddr.sa_family > 802) && (ifr.ifr_hwaddr.sa_family <= 807)))
 	    add_deviceinfo(deviceinfo, dev_name, tc_ether, String(ifr.ifr_hwaddr.sa_data, sizeof(EtherAddress)));
 	char x[8];
 	if (ioctl(query_fd, SIOCGIFADDR, &ifr) >= 0

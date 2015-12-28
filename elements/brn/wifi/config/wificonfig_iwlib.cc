@@ -327,8 +327,13 @@ WifiConfigIwLib::set_backoff(uint32_t */*_queue_info*/)
 }
 
 uint32_t
-WifiConfigIwLib::get_backoff(uint32_t **/*_queue_info*/)
+WifiConfigIwLib::get_backoff(uint32_t **queue_info)
 {
+  *queue_info = new uint32_t[2];
+  memset(*queue_info, 0, (2)*sizeof(uint32_t));
+  (*queue_info)[0] = 0;
+  (*queue_info)[1] = 0;
+
   return 0;
 }
 
