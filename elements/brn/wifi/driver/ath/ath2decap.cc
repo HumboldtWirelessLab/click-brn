@@ -157,6 +157,10 @@ Ath2Decap::simple_action(Packet *p)
       eh->rate2 = ratecode_to_dot11(desc->xmit_rate2);
       eh->rate3 = ratecode_to_dot11(desc->xmit_rate3);
 
+      if ( desc->rts_cts_enable == 1 ) eh->flags |= WIFI_EXTRA_DO_RTS_CTS;
+      if ( desc->cts_enable == 1 ) eh->flags |= WIFI_EXTRA_DO_CTS;
+      if ( desc->more == 1 ) eh->flags |= WIFI_EXTRA_RX_MORE;
+
       eh->max_tries = desc->xmit_tries0;
       eh->max_tries1 = desc->xmit_tries1;
       eh->max_tries2 = desc->xmit_tries2;
@@ -176,8 +180,11 @@ Ath2Decap::simple_action(Packet *p)
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
-    if ( eh->retries < ath2_h->anno.tx.ts_longretry )
-      eh->retries = ath2_h->anno.tx.ts_longretry;
+
+    if ( ( eh->flags & WIFI_EXTRA_DO_RTS_CTS ) != 0 ) { //looks like rts/cts (Unicast?)
+      if ( eh->retries < ath2_h->anno.tx.ts_longretry )
+        eh->retries = ath2_h->anno.tx.ts_longretry;
+    }
 
     if ( (_cst != NULL) && ((uint8_t)ath2_h->anno.tx.ts_channel_utility != CHANNEL_UTILITY_INVALID) )
       _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.tx.ts_channel_utility, 0, 0);
