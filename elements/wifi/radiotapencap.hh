@@ -37,7 +37,7 @@ class RadiotapEncap : public Element { public:
 
   void add_handlers() CLICK_COLD;
 
-
+  int _mcs_known;
   bool _debug;
  private:
 

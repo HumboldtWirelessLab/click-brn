@@ -199,8 +199,27 @@ enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_MCS = 19,
 	IEEE80211_RADIOTAP_A_MPDU_STATUS = 20,
 	IEEE80211_RADIOTAP_VHT = 21,
+
+	/**
+	* BRN_EXTENTION
+	**/
+	/* RATE Version 1 */
+	IEEE80211_RADIOTAP_MULTIRATE = 22,         // 4 * uint8_t
+	/* RETRIES Version 1 */
+	IEEE80211_RADIOTAP_DATA_MULTIRETRIES = 23, // 4 * uint8_t
+	/* Hardware queue ( QoS support ) */
+	IEEE80211_RADIOTAP_QUEUE = 24,             // uint8_t
+	/* RSSI values */
+	IEEE80211_RADIOTAP_MULTI_RSSI = 25,        // 12 * uint8_t
+
+	/* valid in every it_present bitmap, even vendor namespaces */
+	IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE = 29,
+	IEEE80211_RADIOTAP_VENDOR_NAMESPACE = 30,
 	IEEE80211_RADIOTAP_EXT = 31
 };
+
+#define RADIOTAP_RATE_MCS_INVALID	255
+#define RADIOTAP_RATE_IS_MCS		1
 
 #if !defined(__KERNEL__) && !defined(_KERNEL)
 /* Channel flags. */
@@ -235,6 +254,7 @@ enum ieee80211_radiotap_type {
 						 */
 /* For IEEE80211_RADIOTAP_RX_FLAGS */
 #define	IEEE80211_RADIOTAP_F_RX_BADFCS	0x0001	/* frame failed crc check */
+#define IEEE80211_RADIOTAP_F_RX_BADPLCP  0x0002	/* frame failed crc check */
 
 /* For IEEE80211_RADIOTAP_TX_FLAGS */
 #define	IEEE80211_RADIOTAP_F_TX_FAIL	0x0001	/* failed due to excessive 
@@ -244,6 +264,26 @@ enum ieee80211_radiotap_type {
 
 #define IEEE80211_RADIOTAP_F_TX_NOACK   0x0008  /* Receiver will not ack */
 
+/* For IEEE80211_RADIOTAP_MCS */
+#define IEEE80211_RADIOTAP_MCS_HAVE_BW          0x01
+#define IEEE80211_RADIOTAP_MCS_HAVE_MCS         0x02
+#define IEEE80211_RADIOTAP_MCS_HAVE_GI          0x04
+#define IEEE80211_RADIOTAP_MCS_HAVE_FMT         0x08
+#define IEEE80211_RADIOTAP_MCS_HAVE_FEC         0x10
+/*BRN Extention */
+#define IEEE80211_RADIOTAP_MCS_HAVE_SP          0x20
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC        0x40
 
+#define IEEE80211_RADIOTAP_MCS_BW_MASK          0x03
+#define IEEE80211_RADIOTAP_MCS_BW_20               0
+#define IEEE80211_RADIOTAP_MCS_BW_40               1
+#define IEEE80211_RADIOTAP_MCS_BW_20L              2
+#define IEEE80211_RADIOTAP_MCS_BW_20U              3
+#define IEEE80211_RADIOTAP_MCS_SGI              0x04
+#define IEEE80211_RADIOTAP_MCS_FMT_GF           0x08
+#define IEEE80211_RADIOTAP_MCS_FEC_LDPC         0x10
+/*BRN Extention */
+#define IEEE80211_RADIOTAP_MCS_SP               0x20
+#define IEEE80211_RADIOTAP_MCS_STBC             0x40
 
 #endif /* _NET_IF_IEEE80211RADIOTAP_H_ */

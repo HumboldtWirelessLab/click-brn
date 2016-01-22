@@ -25,24 +25,48 @@
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 #include <clicknet/radiotap.h>
+
+#include <elements/brn/brnprotocol/brnpacketanno.hh>
+#include <elements/brn/wifi/brnwifi.hh>
+
 CLICK_DECLS
 
 
 
 #define CLICK_RADIOTAP_PRESENT (		\
 	(1 << IEEE80211_RADIOTAP_RATE)		| \
+	(1 << IEEE80211_RADIOTAP_CHANNEL)	| \
 	(1 << IEEE80211_RADIOTAP_DBM_TX_POWER)	| \
 	(1 << IEEE80211_RADIOTAP_TX_FLAGS)	| \
+	(1 << IEEE80211_RADIOTAP_RTS_RETRIES)	| \
 	(1 << IEEE80211_RADIOTAP_DATA_RETRIES)	| \
+	(1 << IEEE80211_RADIOTAP_MCS)	| \
+	(1 << IEEE80211_RADIOTAP_MULTIRATE)	| \
+	(1 << IEEE80211_RADIOTAP_DATA_MULTIRETRIES)	| \
+	(1 << IEEE80211_RADIOTAP_QUEUE)	| \
 	0)
 
 struct click_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
 	u_int8_t	wt_rate;
+	u_int8_t	wt_align_for_channel;
+	u_int16_t	wt_channel_frequence;
+	u_int16_t	wt_channel_flags;
 	u_int8_t	wt_txpower;
 	u_int16_t	wt_tx_flags;
-	u_int8_t        wt_data_retries;
-};
+	u_int8_t	wt_rts_retries;
+	u_int8_t	wt_data_retries;
+	/* MCS: see http://www.radiotap.org/defined-fields/MCS */
+	u_int8_t	wt_known;            // field indicates which information is known
+	u_int8_t	wt_flags;            // HT,FEC,...
+	u_int8_t	wt_mcs;              // field indicates the MCS rate index as in IEEE_802.11n-2009
+	/* BRN Extention */
+	u_int8_t	wt_rates[4];
+	u_int8_t	wt_multi_mcs[4];
+
+	u_int8_t	wt_multi_retries[4];
+	u_int8_t	wt_queue;
+};// __attribute__((__packed__));
 
 
 
@@ -79,6 +103,7 @@ RadiotapEncap::simple_action(Packet *p)
   if (p_out) {
 	  struct click_radiotap_header *crh  = (struct click_radiotap_header *) p_out->data();
 	  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+	  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p_out);
 
 	  memset(crh, 0, sizeof(struct click_radiotap_header));
 
@@ -86,7 +111,26 @@ RadiotapEncap::simple_action(Packet *p)
 	  crh->wt_ihdr.it_len = cpu_to_le16(sizeof(struct click_radiotap_header));
 	  crh->wt_ihdr.it_present = cpu_to_le32(CLICK_RADIOTAP_PRESENT);
 
-	  crh->wt_rate = ceh->rate;
+	  if ( BrnWifi::getMCS(ceh, 0) == 1 ) {                                         //Is MCS-rate ?
+			crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;                                   //yes, so set normal rate to invalid
+
+			uint8_t mcs_index, mcs_bandwidth, mcs_guard_interval;
+
+			BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate); //get mcs data
+
+			crh->wt_known = (uint8_t)_mcs_known;
+			crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | (BrnWifi::getHTMode(wee, 0) << 3) |
+                                                                        (BrnWifi::getFEC(wee,0) << 4);
+			crh->wt_mcs = mcs_index;
+
+	  } else {
+			crh->wt_rate = ceh->rate;
+			crh->wt_known = RADIOTAP_RATE_MCS_INVALID;
+			crh->wt_flags = RADIOTAP_RATE_MCS_INVALID;
+			crh->wt_mcs = RADIOTAP_RATE_MCS_INVALID;
+      }
+
+	  crh->wt_rts_retries = 0;
 	  crh->wt_txpower = ceh->power;
           if (ceh->flags & WIFI_EXTRA_TX_NOACK) {
                   crh->wt_tx_flags |= IEEE80211_RADIOTAP_F_TX_NOACK;
@@ -96,6 +140,29 @@ RadiotapEncap::simple_action(Packet *p)
 	  } else {
 		  crh->wt_data_retries = WIFI_MAX_RETRIES + 1;
 	  }
+
+	  crh->wt_channel_frequence = 0; //channel2frequ(BRNPacketAnno::channel_anno(p));
+	  crh->wt_channel_flags = 0;
+
+	  crh->wt_rates[0] = ceh->rate;
+	  crh->wt_rates[1] = ceh->rate1;
+	  crh->wt_rates[2] = ceh->rate2;
+	  crh->wt_rates[3] = ceh->rate3;
+
+	  for ( int i = 0; i < 4; i++ ) {
+		if ( BrnWifi::getMCS(ceh, i) == 1 ) {
+			crh->wt_known = (uint8_t)_mcs_known;
+			//set mcs,fec and gf for index
+			crh->wt_multi_mcs[i] |= RADIOTAP_RATE_IS_MCS | (wee->mcs_flags[i] << 1);
+		}
+	  }
+
+	  crh->wt_multi_retries[0] = ceh->max_tries;
+	  crh->wt_multi_retries[1] = ceh->max_tries1;
+	  crh->wt_multi_retries[2] = ceh->max_tries2;
+	  crh->wt_multi_retries[3] = ceh->max_tries3;
+
+      crh->wt_queue = BrnWifi::getTxQueue(ceh);
   }
 
   return p_out;
