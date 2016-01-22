@@ -33,7 +33,7 @@
 
 CLICK_DECLS
 
-#define NUM_RADIOTAP_ELEMENTS 27
+#define NUM_RADIOTAP_ELEMENTS 26
 
 static int32_t frequ_array[] =   {2412,2417,2422,2427,2432,2437,2442,2447,2452,2457,2462,2467,2472,2484,
                                   5180,5200,5220,5240,5260,5280,5300,5320,
@@ -64,12 +64,51 @@ static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
 	 2, /* IEEE80211_RADIOTAP_TX_FLAGS */
 	 1, /* IEEE80211_RADIOTAP_RTS_RETRIES */
 	 1, /* IEEE80211_RADIOTAP_DATA_RETRIES */
-   0, /* IEEE80211_RADIOTAP_UNUSED */
-   3, /* IEEE80211_RADIOTAP_MCS */
-   8, /* IEEE80211_RADIOTAP_MULTIRATE */
-   4, /* IEEE80211_RADIOTAP_DATA_MULTIRETRIES */
-   1, /* IEEE80211_RADIOTAP_QUEUE */
-   12, /* IEEE80211_RADIOTAP_MULTI_RSSI */
+	 0, /* IEEE80211_RADIOTAP_UNUSED */
+	 3, /* IEEE80211_RADIOTAP_MCS */
+	 8, /* IEEE80211_RADIOTAP_AMPDU_STATUS */
+	 12,/* IEEE80211_RADIOTAP_VHT */
+	 8, /* IEEE80211_RADIOTAP_MULTIRATE */
+	 4, /* IEEE80211_RADIOTAP_DATA_MULTIRETRIES */
+	 1, /* IEEE80211_RADIOTAP_QUEUE */
+	 12 /* IEEE80211_RADIOTAP_MULTI_RSSI */
+  };
+
+
+static const char *radiotap_elem_to_char[32 /*NUM_RADIOTAP_ELEMENTS*/] =
+  {
+    "IEEE80211_RADIOTAP_TSFT",             /*  0 */
+    "IEEE80211_RADIOTAP_FLAGS",
+    "IEEE80211_RADIOTAP_RATE",
+    "IEEE80211_RADIOTAP_CHANNEL",
+    "IEEE80211_RADIOTAP_FHSS",
+    "IEEE80211_RADIOTAP_DBM_ANTSIGNAL",
+    "IEEE80211_RADIOTAP_DBM_ANTNOISE",
+    "IEEE80211_RADIOTAP_LOCK_QUALITY",
+    "IEEE80211_RADIOTAP_TX_ATTENUATION",
+    "IEEE80211_RADIOTAP_DB_TX_ATTENUATION",
+    "IEEE80211_RADIOTAP_DBM_TX_POWER",      /* 10 */
+    "IEEE80211_RADIOTAP_ANTENNA",
+    "IEEE80211_RADIOTAP_DB_ANTSIGNAL",
+    "IEEE80211_RADIOTAP_DB_ANTNOISE",
+    "IEEE80211_RADIOTAP_RX_FLAGS",
+    "IEEE80211_RADIOTAP_TX_FLAGS",          /* 15 */
+    "IEEE80211_RADIOTAP_RTS_RETRIES",
+    "IEEE80211_RADIOTAP_DATA_RETRIES",
+    "IEEE80211_RADIOTAP_UNUSED",
+    "IEEE80211_RADIOTAP_MCS",
+    "IEEE80211_RADIOTAP_AMPDU_STATUS",      /* 20 */
+    "IEEE80211_RADIOTAP_VHT",
+    "IEEE80211_RADIOTAP_MULTIRATE",
+    "IEEE80211_RADIOTAP_DATA_MULTIRETRIES",
+    "IEEE80211_RADIOTAP_QUEUE",
+    "IEEE80211_RADIOTAP_MULTI_RSSI",        /* 25 */
+    "IEEE80211_RADIOTAP_UNUSED",
+    "IEEE80211_RADIOTAP_UNUSED",
+    "IEEE80211_RADIOTAP_UNUSED",
+    "IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE",/* 29 */
+    "IEEE80211_RADIOTAP_VENDOR_NAMESPACE",  /* 30 */
+    "IEEE80211_RADIOTAP_EXT",                /* 31 */
   };
 
 static int rt_el_present(struct ieee80211_radiotap_header *th, u_int32_t element)
@@ -94,16 +133,20 @@ static int rt_check_header(struct ieee80211_radiotap_header *th, int len)
 	for (x = 0; x < NUM_RADIOTAP_ELEMENTS; x++) {
 		if (rt_el_present(th, x))
 		    bytes += radiotap_elem_to_bytes[x];
+        click_chatter("%d %s: %d",x, radiotap_elem_to_char[x],((le32_to_cpu(th->it_present) & (1 << x)) != 0)?1:0);
 	}
 
 	if (le16_to_cpu(th->it_len) < sizeof(struct ieee80211_radiotap_header) + bytes) {
+        click_chatter("Wrong size: %d vs %d", le16_to_cpu(th->it_len), sizeof(struct ieee80211_radiotap_header) + bytes );
 		return 0;
 	}
 
 	if (le16_to_cpu(th->it_len) > (uint32_t)len) {
+        click_chatter("Wrong len: %d vs %d",le16_to_cpu(th->it_len), (uint32_t)len);
 		return 0;
 	}
 
+	click_chatter("rt is ok");
 	return 1;
 }
 
@@ -154,6 +197,21 @@ freq2channel(int freq, bool debug)
   return 0;
 }
 
+static
+const char *byte_to_binary(int x)
+{
+    static char b[9];
+    b[0] = '\0';
+
+    int z;
+    for (z = 128; z > 0; z >>= 1)
+    {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+    }
+
+    return b;
+}
+
 BrnRadiotapDecap::BrnRadiotapDecap()
 {
 }
@@ -189,6 +247,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
 		if (rt_el_present(th, IEEE80211_RADIOTAP_FLAGS)) {
 			u_int8_t flags = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_FLAGS));
+            click_chatter("Flags: %s",byte_to_binary(flags));
 			if (flags & IEEE80211_RADIOTAP_F_DATAPAD) {
 				ceh->pad = 1;
 			}
@@ -204,6 +263,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
     if (rt_el_present(th, IEEE80211_RADIOTAP_RATE)) {
       ceh->rate = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RATE));
+      click_chatter("Rate: %d",ceh->rate);
     }
 
     if (rt_el_present(th, IEEE80211_RADIOTAP_CHANNEL)) {
@@ -250,7 +310,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
       uint8_t index = 0;
       uint8_t *rt_el_offset_p = (uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS);
 
-      //click_chatter("p: %d mcs p: %d",p->data(),rt_el_offset_p);
+      click_chatter("p: %d mcs p: %d",p->data(),rt_el_offset_p);
 
       //known = rt_el_offset_p[0];
       flags = rt_el_offset_p[1];
@@ -291,6 +351,8 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
     p->pull(le16_to_cpu(th->it_len));
     p->set_mac_header(p->data());  // reset mac-header pointer
+  } else {
+	  click_chatter("RT-Header contains errors");
   }
 
   if ( _debug ) click_chatter("Noise: %d",ceh->silence);

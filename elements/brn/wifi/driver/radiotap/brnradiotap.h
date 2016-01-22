@@ -196,19 +196,20 @@ enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_RTS_RETRIES = 16,
 	IEEE80211_RADIOTAP_DATA_RETRIES = 17,
 
-  IEEE80211_RADIOTAP_MCS = 19,
-
+    IEEE80211_RADIOTAP_MCS = 19,
+    IEEE80211_RADIOTAP_AMPDU_STATUS = 20,
+    IEEE80211_RADIOTAP_VHT = 21,
 /**
  * BRN_EXTENTION
 **/
 /* RATE Version 1 */
-  IEEE80211_RADIOTAP_MULTIRATE = 20,         // 4 * uint8_t
+  IEEE80211_RADIOTAP_MULTIRATE = 22,         // 4 * uint8_t
 /* RETRIES Version 1 */
-  IEEE80211_RADIOTAP_DATA_MULTIRETRIES = 21, // 4 * uint8_t
+  IEEE80211_RADIOTAP_DATA_MULTIRETRIES = 23, // 4 * uint8_t
 /* Hardware queue ( QoS support ) */
-  IEEE80211_RADIOTAP_QUEUE = 22,             // uint8_t
+  IEEE80211_RADIOTAP_QUEUE = 24,             // uint8_t
   /* RSSI values */
-  IEEE80211_RADIOTAP_MULTI_RSSI = 23,         // 12 * uint8_t
+  IEEE80211_RADIOTAP_MULTI_RSSI = 25,         // 12 * uint8_t
 
   /* valid in every it_present bitmap, even vendor namespaces */
   IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE = 29,
