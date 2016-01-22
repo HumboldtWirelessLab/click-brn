@@ -6,6 +6,7 @@
 #include <sys/un.h>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
@@ -49,6 +50,8 @@ private:
   uint16_t _local_port;   // for AF_INET, port to bind()
   IPAddress _remote_ip;   // for AF_INET, address to connect() to or sendto()
   uint16_t _remote_port;  // for AF_INET, port to connect() to or sendto()
+
+  BRN2NodeIdentity *_node_identity;
 
   int _family;      // AF_INET or AF_UNIX
   int _socktype;    // SOCK_STREAM or SOCK_DGRAM

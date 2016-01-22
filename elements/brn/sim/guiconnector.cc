@@ -22,6 +22,7 @@ CLICK_DECLS
 GuiConnector::GuiConnector()
   : _timer(this),
     _fd(-1),_local_port(0),
+    _node_identity(NULL),
     _sndbuf(-1), _rcvbuf(-1)
 {
   BRNElement::init();
@@ -40,7 +41,8 @@ GuiConnector::configure(Vector<String> &conf, ErrorHandler *errh)
   _family = AF_INET;
   _socktype = SOCK_STREAM;
 
-  if (args.read_mp("ADDR", _remote_ip)
+  if (args.read_mp("NODEIDENTITY", ElementCastArg("BRN2NodeIdentity"), _node_identity)
+          .read_mp("ADDR", _remote_ip)
           .read_mp("PORT", IPPortArg(_protocol), _remote_port)
           .read_p("DEBUG", _debug)
           .complete() < 0)
@@ -109,7 +111,7 @@ GuiConnector::initialize(ErrorHandler *errh)
   fcntl(_fd, F_SETFL, O_NONBLOCK);
   fcntl(_fd, F_SETFD, FD_CLOEXEC);
 
-  String out_str = "init";
+  String out_str = "init " + _node_identity->getNodeName();
   int len = write(_active, out_str.data(), out_str.length());
   if ( len < 0 ) BRN_WARN("Write error");
 
@@ -145,7 +147,7 @@ GuiConnector::finish()
     String out_str = "finish";
     _timer.unschedule();
     int len = write(_active, out_str.data(), out_str.length());
-    
+
     if ( len < 0 ) BRN_WARN("Write error");
 
     communicationLoop();
