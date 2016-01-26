@@ -181,8 +181,8 @@ SeismoDetectionIFFT::update(SrcInfo *si, uint32_t next_new_block)
 
 int
 SeismoDetectionIFFT::detect_alarm( int32_t *in_data, uint16_t n) {
-  int32_t min_v = LONG_MAX;
-  int32_t max_v = LONG_MIN;
+  int32_t min_v = INT32_MIN;
+  int32_t max_v = INT32_MAX;
   int32_t val = 0;
 
   for ( int32_t i = 0; i < n; i++ ) {
@@ -194,7 +194,7 @@ SeismoDetectionIFFT::detect_alarm( int32_t *in_data, uint16_t n) {
     min_v = 1;
   }
 
-  if ( abs(max_v/min_v) > _fft_threshold ) {
+  if ( ((uint32_t)abs(max_v/min_v)) > _fft_threshold ) {
     BRN_ERROR("Detect Signal: %d (%d,%d)", (max_v/min_v), max_v, min_v);
     if ( _current_alarm == NULL ) {
       _current_alarm = new SeismoAlarm();

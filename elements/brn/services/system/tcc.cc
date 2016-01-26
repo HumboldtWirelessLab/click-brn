@@ -134,7 +134,11 @@ TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_
   if (tcc_relocate(tcc_s, TCC_RELOCATE_AUTO) < 0) return -1;
 #else
   /* get needed size of the code */
+#ifdef TCC_OUTPUT_FORMAT_ELF
+  size = tcc_relocate(tcc_s);
+#else
   size = tcc_relocate(tcc_s, NULL);
+#endif
   if (size == -1) return 1;
 
   /* allocate memory and copy the code into it */
