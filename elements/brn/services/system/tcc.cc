@@ -99,7 +99,9 @@ TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_
 {
 #ifndef TCC_RELOCATE_AUTO
   int size;
+#ifndef TCC_OUTPUT_FORMAT_ELF
   void *mem;
+#endif
 #endif
 
   /* if tcclib.h and libtcc1.a are not installed, where can we find them */
@@ -136,14 +138,15 @@ TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_
   /* get needed size of the code */
 #ifdef TCC_OUTPUT_FORMAT_ELF
   size = tcc_relocate(tcc_s);
+  if (size == -1) return -1;
 #else
   size = tcc_relocate(tcc_s, NULL);
-#endif
-  if (size == -1) return 1;
+  if (size == -1) return -1;
 
   /* allocate memory and copy the code into it */
    mem = malloc(size); //TODO: memleak!!! use TCCFUNCTION to hold pointer
    tcc_relocate(tcc_s, mem);
+#endif
 #endif
 
   return 0;
