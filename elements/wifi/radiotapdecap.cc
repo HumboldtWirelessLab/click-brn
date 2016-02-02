@@ -153,12 +153,12 @@ static int rt_check_header(struct ieee80211_radiotap_header *th, int len, u_int8
 	u_int8_t *ptr = (u_int8_t *)(th + 1);
 
 	if (th->it_version != 0) {
-		click_chatter("RT-Version invalid");
+		//click_chatter("RT-Version invalid");
 		return 0;
 	}
 
 	if (le16_to_cpu(th->it_len) < sizeof(struct ieee80211_radiotap_header)) {
-		click_chatter("RT-size invalid");
+		//click_chatter("RT-size invalid");
 		return 0;
 	}
 
@@ -177,12 +177,12 @@ static int rt_check_header(struct ieee80211_radiotap_header *th, int len, u_int8
 	}
 
 	if (le16_to_cpu(th->it_len) < sizeof(struct ieee80211_radiotap_header) + bytes) {
-		click_chatter("RT-Element invalid");
+		//click_chatter("RT-Element invalid");
 		return 0;
 	}
 
 	if (le16_to_cpu(th->it_len) > len) {
-		click_chatter("Packet to short");
+		//click_chatter("Packet to short");
 		return 0;
 	}
 
@@ -207,6 +207,28 @@ freq2channel(int freq, bool debug)
 	if ( freq == frequ_array[low_index] ) return channel_array[low_index];
 	if ( high_index < 0 ) return 0;
 	if ( freq == frequ_array[high_index] ) return channel_array[high_index];
+
+	return 0;
+}
+
+static int32_t
+RadiotapDecap::channel2frequ(uint8_t channel, bool debug)
+{
+	if ( debug ) click_chatter("channel: %d",channel);
+
+	int32_t low_index = 0, next_index = 0;
+	int32_t high_index = 37;
+
+	while ( low_index < high_index ) {
+		next_index = (high_index + low_index) >> 1;
+		if ( channel == channel_array[next_index] ) return frequ_array[next_index];
+		if ( channel > channel_array[next_index] ) low_index = next_index + 1;
+		else high_index = next_index - 1;
+	}
+
+	if ( channel == channel_array[low_index] ) return frequ_array[low_index];
+	if ( high_index < 0 ) return 0;
+	if ( channel == channel_array[high_index] ) return frequ_array[high_index];
 
 	return 0;
 }
@@ -334,7 +356,7 @@ RadiotapDecap::simple_action(Packet *p)
 			uint8_t index = 0;
 			uint8_t *rt_el_offset_p = (uint8_t *)offsets[IEEE80211_RADIOTAP_MCS];
 
-			click_chatter("p: %d mcs p: %p",p->data(), rt_el_offset_p);
+			if ( _debug ) click_chatter("p: %d mcs p: %p",p->data(), rt_el_offset_p);
 
 			//known = rt_el_offset_p[0];
 			flags = rt_el_offset_p[1];
@@ -382,7 +404,7 @@ RadiotapDecap::simple_action(Packet *p)
 		p->pull(le16_to_cpu(th->it_len));
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	} else {
-		click_chatter("RT-header check failed");
+		if ( _debug ) click_chatter("RT-header check failed");
 	}
 
 	if ( _debug ) click_chatter("Noise: %d",(int)((int8_t)ceh->silence));

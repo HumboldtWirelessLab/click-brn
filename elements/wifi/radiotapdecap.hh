@@ -33,6 +33,7 @@ class RadiotapDecap : public Element { public:
 
   Packet *simple_action(Packet *);
 
+  static int32_t channel2frequ(uint8_t channel, bool debug);
 
   void add_handlers() CLICK_COLD;
 
