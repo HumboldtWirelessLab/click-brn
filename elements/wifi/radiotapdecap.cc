@@ -101,7 +101,7 @@ static const int radiotap_elem_pad_size[NUM_RADIOTAP_ELEMENTS] =
 	 2 /* IEEE80211_RADIOTAP_MULTI_RSSI */
 };
 
-
+#ifdef RADIOTABDECAP_DEBUG
 static const char *radiotap_elem_to_char[32 /*NUM_RADIOTAP_ELEMENTS*/] =
   {
     "IEEE80211_RADIOTAP_TSFT",             /*  0 */
@@ -137,6 +137,7 @@ static const char *radiotap_elem_to_char[32 /*NUM_RADIOTAP_ELEMENTS*/] =
     "IEEE80211_RADIOTAP_VENDOR_NAMESPACE",  /* 30 */
     "IEEE80211_RADIOTAP_EXT",                /* 31 */
 };
+#endif
 
 static int rt_el_present(struct ieee80211_radiotap_header *th, u_int32_t element)
 {
@@ -211,7 +212,7 @@ freq2channel(int freq, bool debug)
 	return 0;
 }
 
-static int32_t
+int32_t
 RadiotapDecap::channel2frequ(uint8_t channel, bool debug)
 {
 	if ( debug ) click_chatter("channel: %d",channel);
