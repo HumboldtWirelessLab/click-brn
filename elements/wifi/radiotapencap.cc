@@ -17,6 +17,7 @@
 
 #include <click/config.h>
 #include "radiotapencap.hh"
+#include "radiotapdecap.hh"
 #include <click/etheraddress.hh>
 #include <click/args.hh>
 #include <click/error.hh>
@@ -53,6 +54,7 @@ struct click_radiotap_header {
 	u_int16_t	wt_channel_frequence;
 	u_int16_t	wt_channel_flags;
 	u_int8_t	wt_txpower;
+	u_int8_t	wt_align_for_tx_flags;
 	u_int16_t	wt_tx_flags;
 	u_int8_t	wt_rts_retries;
 	u_int8_t	wt_data_retries;
@@ -66,7 +68,7 @@ struct click_radiotap_header {
 
 	u_int8_t	wt_multi_retries[4];
 	u_int8_t	wt_queue;
-};// __attribute__((__packed__));
+} __attribute__((__packed__));
 
 
 
@@ -130,11 +132,22 @@ RadiotapEncap::simple_action(Packet *p)
 			crh->wt_mcs = RADIOTAP_RATE_MCS_INVALID;
       }
 
-	  crh->wt_rts_retries = 0;
+      if ( ceh->flags & WIFI_EXTRA_DO_RTS_CTS ) {
+		crh->wt_tx_flags |= IEEE80211_RADIOTAP_F_TX_RTS;
+		crh->wt_rts_retries = 1;
+	  } else {
+		crh->wt_rts_retries = 0;
+	  };
+
+	  if ( ceh->flags & WIFI_EXTRA_DO_CTS ) {
+		crh->wt_tx_flags |= IEEE80211_RADIOTAP_F_TX_CTS;
+	  }
+
 	  crh->wt_txpower = ceh->power;
           if (ceh->flags & WIFI_EXTRA_TX_NOACK) {
                   crh->wt_tx_flags |= IEEE80211_RADIOTAP_F_TX_NOACK;
           }
+
 	  if (ceh->max_tries > 0) {
 		  crh->wt_data_retries = ceh->max_tries - 1;
 	  } else {
@@ -161,6 +174,9 @@ RadiotapEncap::simple_action(Packet *p)
 	  crh->wt_multi_retries[1] = ceh->max_tries1;
 	  crh->wt_multi_retries[2] = ceh->max_tries2;
 	  crh->wt_multi_retries[3] = ceh->max_tries3;
+
+	  crh->wt_channel_frequence = RadiotapDecap::channel2frequ(BRNPacketAnno::get_channel_anno(p),_debug);
+	  crh->wt_channel_flags = 0;
 
       crh->wt_queue = BrnWifi::getTxQueue(ceh);
   }
