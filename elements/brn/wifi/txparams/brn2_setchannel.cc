@@ -45,6 +45,7 @@ BRN2SetChannel::simple_action(Packet *p_in)
   {
 //    operation = BRNPacketAnno::operation_anno(p_in);
     set_channel = BRNPacketAnno::channel_anno(p_in);
+    BRN_DEBUG("Channel: %d",set_channel);
 
     if ( ( set_channel == 0 ) && ( _channel != 0 ) )
       BRNPacketAnno::set_channel_anno(p_in, _channel, OPERATION_SET_CHANNEL_BEFORE_PACKET);

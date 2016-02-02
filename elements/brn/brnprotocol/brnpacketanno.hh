@@ -178,6 +178,8 @@ class BRNPacketAnno {
   static void set_channel_anno(Packet *p, uint8_t channel, uint8_t operation);
   static void set_channel_anno(Packet *p, uint8_t channel);
 
+  static uint8_t get_channel_anno(Packet *p);
+
 };
 
 CLICK_ENDDECLS

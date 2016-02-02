@@ -192,6 +192,13 @@ BRNPacketAnno::set_channel_anno(Packet *p, uint8_t channel)
   set_channel_anno(p, channel, OPERATION_SET_CHANNEL_NONE);
 }
 
+uint8_t
+BRNPacketAnno::get_channel_anno(Packet *p)
+{
+  uint8_t* ch = (uint8_t*) ((p->anno_u8()) + CHANNEL_ANNO_OFFSET);
+  return ch[0];
+}
+
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(BRNPacketAnno)
 
