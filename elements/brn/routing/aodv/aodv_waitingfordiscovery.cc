@@ -47,12 +47,14 @@ void AODVWaitingForDiscovery::runTask(const IPAddress & destination, TimerData* 
 		// it's over, clean up everything
 		Vector<Packet*>::iterator iter = pair->value->packets.begin();
 		// at least one packet is still waiting, use it to generate ICMP error
-		output(1).push(*iter); 
-		iter = pair->value->packets.erase(iter);
+		output(1).push(*iter);
+		Vector<Packet*>::iterator p_iter= iter;
+		iter = pair->value->packets.erase(p_iter);
 		
 		// drop all other packets from buffer
 		while(iter != pair->value->packets.end()) {
-			(*iter)->kill();
+			Packet* p = *iter;
+			p->kill();
 			iter = pair->value->packets.erase(iter);
 		}
 		

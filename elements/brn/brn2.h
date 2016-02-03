@@ -79,7 +79,7 @@ class StringTokenizer {
     }
 
     ~StringTokenizer() {
-      delete buf;
+      delete[] buf;
     }
 
     String getNextToken() {

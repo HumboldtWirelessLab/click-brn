@@ -667,7 +667,7 @@ void simclick_sim_macaddr_from_name(simclick_node_t *simnode,const char* ifname,
     delete[] result;
   }
   else {
-    buf = '\0';
+    buf[0] = '\0';
   }
 }
 
@@ -718,7 +718,7 @@ void simclick_sim_get_node_name(simclick_node_t *simnode,char* buf,int len)
     delete[] result;
   }
   else {
-    buf = '\0';
+    buf[0] = '\0';
   }
 }
 
@@ -803,7 +803,7 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
         result = NULL;
       }
       else {
-        buf = '\0';
+        buf[0] = '\0';
       }
 
       r = 0;

@@ -59,6 +59,7 @@ void AODVTrackNeighbours::expire(IPAddress* ip){
 		uint32_t* seqNr = neighbour_table->getSequenceNumber(*ip);
 		seqNrs.push_back(*seqNr);
 		ips.push_back(*ip); // add expired IP too, that's the main source for the RERR
+		delete(seqNr);
 		
 		for(Vector<IPAddress>::iterator iter = precursors->begin(); iter != precursors->end(); ++iter){
 			// it's possible to be your own precursor in case of HELLOs, for clean RERRs let's filter out those

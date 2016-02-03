@@ -50,6 +50,7 @@ class AODVNeighbours : public Element {
 		void addLifeTime(const IPAddress &, uint32_t);
 		IPAddress* nexthop(const IPAddress &) const;
 		uint32_t* getSequenceNumber(const IPAddress &) const;
+		bool hasSequenceNumber(const IPAddress & destination) const;
 		int8_t getHopcount(const IPAddress &) const;
 		uint32_t getAndIncrementMySequenceNumber();
 		uint32_t updateMySequenceNumber(uint32_t);

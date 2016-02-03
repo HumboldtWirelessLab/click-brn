@@ -931,7 +931,9 @@ BRN2LinkStat::add_metric(String metric_str, ErrorHandler *errh)
   cp_spacevec(metric_str, metric_vec);
 
   BRN2GenericMetric **new_metrics = new BRN2GenericMetric*[_metrics_size + metric_vec.size()];
-  memcpy(new_metrics, _metrics, _metrics_size * sizeof(BRN2GenericMetric*));
+
+  //memcpy(new_metrics, _metrics, _metrics_size * sizeof(BRN2GenericMetric*));
+  for ( int i = 0; i  < _metrics_size; i++) new_metrics[i] = _metrics[i];
 
   if (_metrics) delete _metrics;
 

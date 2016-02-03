@@ -101,8 +101,13 @@ void KeyManagement::set_seed(const unsigned char *data) {
 	}
 
 	if(ctrl_data.seed_len > 0) {
-		seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
-		memcpy(seed, data, ctrl_data.seed_len);
+		unsigned char *new_seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
+		if ( new_seed != NULL ) {
+			seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
+			memcpy(seed, data, ctrl_data.seed_len);
+		} else {
+			click_chatter("realloc error");
+		}
 	} else {
 		click_chatter("Trying to set seed having seed length 0.");
 	}

@@ -193,8 +193,13 @@ void AODVNeighbours::addPrecursor(const IPAddress & neighbour, const IPAddress &
 
 uint32_t* AODVNeighbours::getSequenceNumber(const IPAddress & destination) const{
 	NeighbourMap::Pair* pair = neighbours.find_pair(destination);
-	if (!pair) return 0;
+	if (!pair) return NULL;
 	return new uint32_t(pair->value.destinationSequenceNumber);
+}
+
+bool AODVNeighbours::hasSequenceNumber(const IPAddress & destination) const{
+	NeighbourMap::Pair* pair = neighbours.find_pair(destination);
+	return (pair != NULL);
 }
 
 int8_t AODVNeighbours::getHopcount(const IPAddress & destination) const{
@@ -250,7 +255,7 @@ Vector<IPAddress>* AODVNeighbours::getPrecursors(const IPAddress & ip) const{
 	Vector<IPAddress>* res = new Vector<IPAddress>;
 	for(PrecursorMap::iterator iter = pair->value.precursorlist.begin(); iter != pair->value.precursorlist.end(); ++iter){
 		// some results may not be valid any more, instead of deleting those on expiry don't return them
-		if (getSequenceNumber(iter.key())) res->push_back(iter.key());
+		if (hasSequenceNumber(iter.key())) res->push_back(iter.key());
 	}
 	return res;
 }

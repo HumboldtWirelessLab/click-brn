@@ -33,6 +33,8 @@
 CLICK_DECLS
 
 TimeSyncInfo::TimeSyncInfo() :
+  _timestamps(NULL),
+  _packet_ids(NULL),
   _max_ids(TIMESYNCINFO_DEFAULT_MAX_IDS),
   _next_id(0)
 {
@@ -58,6 +60,9 @@ TimeSyncInfo::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 TimeSyncInfo::initialize(ErrorHandler */*errh*/)
 {
+  if ( _timestamps != NULL ) delete[] _timestamps;
+  if ( _packet_ids != NULL ) delete[] _packet_ids;
+
   _timestamps = new Timestamp[_max_ids];
   _packet_ids = new int32_t[_max_ids];
 

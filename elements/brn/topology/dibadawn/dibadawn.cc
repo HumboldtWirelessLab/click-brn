@@ -106,17 +106,19 @@ void DibadawnAlgorithm::clearFinischedSearches()
   do
   {
     done = true;
-    for (Vector<DibadawnSearch*>::iterator i = searches.begin(); i != searches.end(); i++)
-    {
+    Vector<DibadawnSearch*>::iterator i = searches.begin();
+    while(i != searches.end()) {
       DibadawnSearch *s = *i;
-      if (s->isRunFinished)
-      {
-        searches.erase(i);
+
+      if (s->isRunFinished) {
+        i = searches.erase(i);
         delete(s);
         done = false;
+      } else {
+        ++i;
       }
     }
-  }while (!done);
+  } while (!done);
 }
 
 

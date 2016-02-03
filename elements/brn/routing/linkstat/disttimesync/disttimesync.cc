@@ -437,7 +437,7 @@ HostTimeBuf::HostTimeBuf() :
 
 HostTimeBuf::~HostTimeBuf()
 {
-  delete hst_tpls;
+  delete[] hst_tpls;
 }
 
 int HostTimeBuf::has_pkt(uint32_t packet_handle)
