@@ -44,7 +44,7 @@ public:
     bool operator==(DibadawnPayloadElement &b);
 
 private:
-    uint8_t mayInconsistentlyData[length];
+    uint8_t *mayInconsistentlyData;
 };
 
 StringAccum& operator << (StringAccum &output, const DibadawnPayloadElement &id);

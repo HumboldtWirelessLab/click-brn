@@ -103,8 +103,8 @@ void KeyManagement::set_seed(const unsigned char *data) {
 	if(ctrl_data.seed_len > 0) {
 		unsigned char *new_seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
 		if ( new_seed != NULL ) {
-			seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
-			memcpy(seed, data, ctrl_data.seed_len);
+			memcpy(new_seed, data, ctrl_data.seed_len);
+			seed = new_seed;
 		} else {
 			click_chatter("realloc error");
 		}
@@ -164,11 +164,12 @@ void KeyManagement::gen_seeded_keylist() {
 	RAND_seed("Wir möchten gerne, dass der Computer das tut, was wir wollen; doch er tut nur das, was wir schreiben. Ich weiß auch nicht warum -- W.", 80);
 
 	// Deallocation and allocation to prepare for dynamic seeding.
-	seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
-
-	if (seed != NULL) {
+	unsigned char *new_seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
+	if ( new_seed != NULL ) {
+		seed = new_seed;
 		RAND_bytes(seed, ctrl_data.seed_len);
 	} else {
+		click_chatter("realloc error");
 		click_chatter("Seed generation failed.");
 	}
 
