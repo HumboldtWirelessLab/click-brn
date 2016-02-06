@@ -9,8 +9,8 @@
 #include "click_olsr.hh"
 
 
-//#define profiling
-//#define debug
+//#define OLSR_PROFILING
+//#define OLSR_DEBUG
 CLICK_DECLS
 
 OLSRNeighborInfoBase::OLSRNeighborInfoBase()
@@ -586,7 +586,7 @@ OLSRNeighborInfoBase::compute_mprset()
 	//twohopset for all local interfaces built.
 
 
-#ifdef debug
+#ifdef OLSR_DEBUG
 
 	click_chatter ("Node %s\n",_myMainIP.unparse().cc());
 	click_chatter ("general neighborset entries %d\n",_neighborSet->size());
@@ -657,7 +657,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		N2=n2_set.findp(it.key());
 		twohopset=twohop_set.findp(it.key());
 		if ( twohopset == NULL ) click_chatter("Twohopset is empty");
-#ifdef debug
+#ifdef OLSR_DEBUG
 		click_chatter ("computing for interface %s\n",it.key().unparse().c_str());
 #endif
 
@@ -680,7 +680,7 @@ OLSRNeighborInfoBase::compute_mprset()
 					{					//the elected mpr as main address
 						if (linkSet->find(OLSRIPPair(it.key(),tuple->I_iface_addr))) 			//check wheter there exists a link to this interface
 						{ mprset.insert(iter.key(),iter.key());
-#ifdef debug
+#ifdef OLSR_DEBUG
 							click_chatter ("inserting %d as already MPR for other interface and link exists\n",iter.key().unparse().c_str());
 #endif
 						}
@@ -727,7 +727,7 @@ OLSRNeighborInfoBase::compute_mprset()
 			if (iter.value().size()==1)
 			{
 				mprset.insert(iter.value()[0],iter.value()[0]);
-#ifdef debug
+#ifdef OLSR_DEBUG
 				click_chatter ("step 3 adding mpr %s \n",iter.value()[0].unparse().c_str());
 #endif
 				if ((IP_Vector_ptr=coverage.findp(iter.value()[0])))
@@ -735,7 +735,7 @@ OLSRNeighborInfoBase::compute_mprset()
 					for (int i=0;i<IP_Vector_ptr->size();i++)
 					{
 						N2->remove((*IP_Vector_ptr)[i]);
-#ifdef debug
+#ifdef OLSR_DEBUG
 						click_chatter ("\t removing now covered %s \n",(*IP_Vector_ptr)[i].unparse().c_str());
 #endif
 
@@ -792,14 +792,14 @@ OLSRNeighborInfoBase::compute_mprset()
 				}
 			}
 			mprset.insert(best_mpr,best_mpr);
-#ifdef debug
+#ifdef OLSR_DEBUG
 			click_chatter ("step 4 adding mpr %s \n",best_mpr.unparse().c_str());
 #endif
 			if ((IP_Vector_ptr=coverage.findp(best_mpr)))
 				for (int i=0;i<IP_Vector_ptr->size();i++)
 				{
 					N2->remove((*IP_Vector_ptr)[i]);
-#ifdef debug
+#ifdef OLSR_DEBUG
 					click_chatter ("\t removing now covered %s \n",(*IP_Vector_ptr)[i].unparse().c_str());
 #endif
 
@@ -823,12 +823,12 @@ OLSRNeighborInfoBase::compute_mprset()
 	// This piece of the code does not match the RFC and is optional
 	if (_additional_mprs && _mprSet->size() < MIN_MPR)
 	{
-#ifdef debug
+#ifdef OLSR_DEBUG
 		click_chatter ("additional mprs are needed\n");
 #endif
 		// keep a track of how much MPRs we have chosen:
 		int mpr_count = _mprSet->size();
-#ifdef debug
+#ifdef OLSR_DEBUG
 		click_chatter ("so far we have %d mprs\n",mpr_count);
 #endif
 		// make sure that the tmp data structure is empty
@@ -842,7 +842,7 @@ OLSRNeighborInfoBase::compute_mprset()
 			//check if all the N2 neighbors are covered ... if so adding additional MPRs will not work
 			if (_neighborSet->size() == _mprSet->size() + mprset.size())
 			{
-#ifdef debug
+#ifdef OLSR_DEBUG
 				click_chatter ("breaking: all our neighbors are already MPR, so no way I can choose additional MPRs\n");
 #endif
 				break;
@@ -873,7 +873,7 @@ OLSRNeighborInfoBase::compute_mprset()
 					}
 				}
 			}
-#ifdef debug
+#ifdef OLSR_DEBUG
 			click_chatter ("chose %s as additional MPR\n",best_mpr.unparse().c_str());
 #endif
 			mprset.insert(best_mpr, best_mpr);
