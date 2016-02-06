@@ -58,7 +58,7 @@ BRN2EtherEncap::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "SRC", cpkP, cpEthernetAddress, &_src,
       "DST", cpkP, cpEthernetAddress, &_dst,
-      "ETHERTYPE", cpkP, cpInteger, &_ethertype,
+      "ETHERTYPE", cpkP, cpUnsignedShort, &_ethertype,
       "USEANNO", cpkP, cpBool, &_use_anno,
       "PUSHHEADER", cpkP, cpBool, &_push_header,
       "DEBUG", cpkP, cpInteger, &_debug,

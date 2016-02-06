@@ -38,7 +38,7 @@ void * BoConstant::cast(const char *name)
 int BoConstant::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "BO", cpkP+cpkM, cpInteger, &_const_bo,
+      "BO", cpkP+cpkM, cpUnsignedShort, &_const_bo,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 

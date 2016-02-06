@@ -74,7 +74,7 @@ SeismoDetectionLongShortAvg::configure(Vector<String> &conf, ErrorHandler* errh)
       "NORMALIZE", cpkP, cpInteger, &_normalize,
       "MAXALARM", cpkP, cpInteger, &_max_alarm_count,
       "PRINTALARM", cpkP, cpBool, &_print_alarm,
-      "ALARMTIMEDIST", cpkP, cpInteger, &_alarm_dist,
+      "ALARMTIMEDIST", cpkP, cpUnsignedShort, &_alarm_dist,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;

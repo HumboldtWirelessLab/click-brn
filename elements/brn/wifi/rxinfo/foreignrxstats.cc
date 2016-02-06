@@ -34,8 +34,8 @@ ForeignRxStats::configure(Vector<String> &conf, ErrorHandler* errh)
 
   ret = cp_va_kparse(conf, this, errh,
 		     "DEVICE", cpkP+cpkM, cpElement, &_device,
-		     "TIMEOUT", cpkP, cpInteger, &ack_timeout,
-                     "DEBUG", cpkP, cpInteger, &_debug,
+		     "TIMEOUT", cpkP, cpUnsignedShort, &ack_timeout,
+             "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd);
 
   return ret;

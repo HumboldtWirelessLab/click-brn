@@ -72,7 +72,7 @@ int BoMediumShare::configure(Vector<String> &conf, ErrorHandler* errh)
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "COOPCHANNELSTATSPATH", cpkP+cpkM, cpString, &_cocst_string,
       "HIDDENNODE", cpkP+cpkM, cpElement, &_hnd,
-      "BO", cpkP+cpkM, cpInteger, &_current_bo,
+      "BO", cpkP+cpkM, cpUnsignedShort, &_current_bo,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 

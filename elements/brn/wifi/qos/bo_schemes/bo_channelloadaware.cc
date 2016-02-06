@@ -49,8 +49,8 @@ int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "TARGETLOAD", cpkP, cpInteger, &_target_busy,
       "TARGETDIFF", cpkP, cpInteger, &_target_diff,
-      "CAP", cpkP, cpInteger, &_cap,
-      "CST_SYNC", cpkP, cpInteger, &_cst_sync,
+      "CAP", cpkP, cpByte, &_cap,
+      "CST_SYNC", cpkP, cpByte, &_cst_sync,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 

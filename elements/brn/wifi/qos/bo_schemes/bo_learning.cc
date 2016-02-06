@@ -55,8 +55,8 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "MIN_CWMIN", cpkP, cpInteger, &_learning_min_cwmin,
       "MAX_CWMIN", cpkP, cpInteger, &_learning_max_cwmin,
-      "STRICT", cpkP, cpInteger, &_strict,
-      "CAP", cpkP, cpInteger, &_cap,
+      "STRICT", cpkP, cpByte, &_strict,
+      "CAP", cpkP, cpByte, &_cap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 

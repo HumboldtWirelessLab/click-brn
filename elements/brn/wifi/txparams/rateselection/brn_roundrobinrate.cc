@@ -37,7 +37,7 @@ int
 BrnRoundRobinRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     if (cp_va_kparse(conf, this, errh,
-      "TRIES", 0, cpInteger, &_tries,
+      "TRIES", 0, cpByte, &_tries,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;

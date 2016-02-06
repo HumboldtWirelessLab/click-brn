@@ -53,7 +53,7 @@ BatmanRouting::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEID", cpkP+cpkM , cpElement, &_nodeid,
       "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
-      "HOPMARGIN", cpkP, cpInteger, &_hop_margin,
+      "HOPMARGIN", cpkP, cpUnsignedShort, &_hop_margin,
       cpEnd) < 0)
        return -1;
 

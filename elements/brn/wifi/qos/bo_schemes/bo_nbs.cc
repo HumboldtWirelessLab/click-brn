@@ -45,7 +45,7 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
-      "CST_SYNC", cpkP, cpInteger, &_cst_sync,
+      "CST_SYNC", cpkP, cpByte, &_cst_sync,
       "ALPHA", cpkP, cpInteger, &_alpha,
       "BETA", cpkP, cpInteger, &_beta,
       "DEBUG", cpkP, cpInteger, &_debug,
