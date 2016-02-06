@@ -156,6 +156,8 @@ SeismoDetectionCooperative::push(int /*port*/, Packet *p)
 
   if ( (no_new_alarm > 0) && (_salm.size() > 2) )
     get_cooperative_alarms();
+
+  p->kill();
 }
 
 void
