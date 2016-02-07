@@ -149,6 +149,8 @@ LwIP::push( int port, Packet *packet )
       _task.reschedule();
     }
   }
+
+  packet->kill();
 }
 
 void
