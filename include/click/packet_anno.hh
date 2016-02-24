@@ -14,7 +14,7 @@
 // bytes 16-31
 #define WIFI_EXTRA_ANNO_OFFSET		16
 #define WIFI_EXTRA_ANNO_SIZE		24
-#define WIFI_EXTRA_ANNO(p)		((click_wifi_extra *) ((p)->anno_u8() + WIFI_EXTRA_ANNO_OFFSET))
+#define WIFI_EXTRA_ANNO(p)		(reinterpret_cast<click_wifi_extra *>((p)->anno_u8() + WIFI_EXTRA_ANNO_OFFSET))
 
 // byte 16
 #define PAINT_ANNO_OFFSET		16
