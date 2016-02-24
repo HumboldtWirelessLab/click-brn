@@ -96,7 +96,8 @@ class BRN2DHCPServer : public BRNElement {
 
     BRN2Device *_dev;  //currently not used
 
-    DHCPClientInfo() : _rerequest_counter(0)
+    DHCPClientInfo() : _status(0), _dht_op(0), _id(0), _xid(0), _broadcast(false), _lease_time(0),
+                       _old_lease_time(0), _client_packet(NULL), _rerequest_counter(0), _dev(NULL)
     {
       memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
       memcpy(&(_ciaddr),"\0\0\0\0",4);

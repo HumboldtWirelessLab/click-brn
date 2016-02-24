@@ -75,7 +75,7 @@ BrnLogger::get_id(const Element* elem)
   if (NULL == elem2 || !elem2->cast("BRN2NodeIdentity"))
     return get_na();
 
-  BRN2NodeIdentity* id = (BRN2NodeIdentity*)elem2;
+  BRN2NodeIdentity* id = reinterpret_cast<BRN2NodeIdentity*>(elem2);
   _id_map->insert(router, id->getMasterAddress()->unparse());
 
   return (*_id_map->findp(router));

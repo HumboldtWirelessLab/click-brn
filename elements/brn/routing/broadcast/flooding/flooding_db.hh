@@ -117,15 +117,13 @@ class BroadcastNode
 
   bool _fix_target_set;
 
-  BroadcastNode()
+  BroadcastNode():_src(EtherAddress::make_broadcast())
   {
-    _src = EtherAddress::make_broadcast();
     init();
   }
 
-  BroadcastNode( EtherAddress *src )
+  explicit BroadcastNode( EtherAddress *src ): _src(*src)
   {
-    _src = *src;
     init();
   }
 
@@ -238,7 +236,7 @@ class BroadcastNode
     }
   }
 
-  inline int get_sent(uint16_t id) {
+  inline int get_sent(uint16_t id) const {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     return (_bcast_id_list[index] == id)?_bcast_snd_list[index]:0;
   }

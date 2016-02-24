@@ -34,7 +34,7 @@ class DibadawnNeighborContainer
     Vector<DibadawnNeighbor> neighbors;
     DibadawnSearchId &searchId;
 public:
-    DibadawnNeighborContainer(DibadawnSearchId &id);
+    explicit DibadawnNeighborContainer(DibadawnSearchId &id);
     size_t numOfNeighbors();
     DibadawnNeighbor& getNeighbor(EtherAddress &addr);
     DibadawnNeighbor& getNeighbor(int num);

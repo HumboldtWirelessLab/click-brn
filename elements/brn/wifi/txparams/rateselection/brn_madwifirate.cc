@@ -19,9 +19,9 @@ CLICK_DECLS
 
 BrnMadwifiRate::BrnMadwifiRate()
   : _stepup(0),
-    _stepdown(0)
+    _stepdown(0),
+    _alt_rate(false),_period(0), mcs_zero(0)
 {
-  mcs_zero = MCS(0);
   _default_strategy = RATESELECTION_MADWIFI;
 }
 
@@ -29,7 +29,7 @@ void *
 BrnMadwifiRate::cast(const char *name)
 {
   if (strcmp(name, "BrnMadwifiRate") == 0)
-    return (BrnMadwifiRate *) this;
+    return dynamic_cast<BrnMadwifiRate *>(this);
 
   return RateSelection::cast(name);
 }
@@ -56,7 +56,7 @@ BrnMadwifiRate::adjust_all(NeighborTable *neighbors)
 {
   Vector<EtherAddress> n;
 
-  for (NIter iter = neighbors->begin(); iter.live(); iter++) {
+  for (NIter iter = neighbors->begin(); iter.live(); ++iter) {
     NeighbourRateInfo *nri = iter.value();
     n.push_back(nri->_eth);
   }
@@ -70,7 +70,7 @@ void
 BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 {
   NeighbourRateInfo *nri = neighbors->find(dst);
-  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo*>(nri->_rs_data);
 
   BRN_DEBUG("Adjust");
 
@@ -133,7 +133,7 @@ BrnMadwifiRate::process_feedback(struct rateselection_packet_info *rs_pkt_info, 
   bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
 
-  DstInfo *nfo = (DstInfo*)(nri->_rs_data);
+  DstInfo *nfo = reinterpret_cast<DstInfo*>((nri->_rs_data));
 
   MCS mcs = MCS(ceh, 0);
 
@@ -172,14 +172,14 @@ BrnMadwifiRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neigh
     return;
   }
 
-  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo*>(nri->_rs_data);
 
   if (!nfo) {
     sort_rates_by_data_rate(nri);
 
     click_chatter("New dst info");
     nfo = new DstInfo();
-    nri->_rs_data = (void*)nfo;
+    nri->_rs_data = reinterpret_cast<void*>(nfo);
 
     nfo->_successes = 0;
     nfo->_retries = 0;
@@ -219,7 +219,7 @@ BrnMadwifiRate::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
 {
   StringAccum sa;
 
-  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo*>(nri->_rs_data);
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
 
@@ -243,7 +243,7 @@ enum { H_STEPUP, H_STEPDOWN, H_PERIOD, H_ALT_RATE};
 static String
 BrnMadwifiRate_read_param(Element *e, void *thunk)
 {
-  BrnMadwifiRate *td = (BrnMadwifiRate *)e;
+  BrnMadwifiRate *td = reinterpret_cast<BrnMadwifiRate *>(e);
   switch ((uintptr_t) thunk) {
    case H_STEPDOWN:
       return String(td->_stepdown) + "\n";
@@ -261,7 +261,7 @@ BrnMadwifiRate_read_param(Element *e, void *thunk)
 static int
 BrnMadwifiRate_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BrnMadwifiRate *f = (BrnMadwifiRate *)e;
+  BrnMadwifiRate *f = reinterpret_cast<BrnMadwifiRate *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_ALT_RATE: {

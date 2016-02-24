@@ -144,7 +144,7 @@ static String
 read_position_param(Element *e, void *thunk)
 {
   StringAccum sa;
-  GPS *gps = (GPS *)e;
+  GPS *gps = reinterpret_cast<GPS *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -162,7 +162,7 @@ static int
 write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler */*errh*/)
 {
   int x,y,z;
-  GPS *gps = (GPS *)e;
+  GPS *gps = reinterpret_cast<GPS *>(e);
   GPSPosition *pos = gps->getPosition();
   switch ((uintptr_t) thunk)
   {

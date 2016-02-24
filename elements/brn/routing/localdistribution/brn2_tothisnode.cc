@@ -43,7 +43,9 @@ enum {MODE_NONE = 0,
 
 
 BRN2ToThisNode::BRN2ToThisNode()
-  : _id(NULL),
+  : _debug(0),
+    _id(NULL),
+    _addr_data(NULL),
     _mode(MODE_NONE)
 {
 }
@@ -90,7 +92,7 @@ BRN2ToThisNode::push(int, Packet *p_in)
 //  BRN_DEBUG(" * BRN2ToThisNode::push called()");
 
   // use ether annotation
-  click_ether *ether = (click_ether *) p_in->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>( p_in->ether_header());
 
   if (!ether)
   {
@@ -139,7 +141,7 @@ BRN2ToThisNode::push(int, Packet *p_in)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2ToThisNode *on = (BRN2ToThisNode *)e;
+  BRN2ToThisNode *on = reinterpret_cast<BRN2ToThisNode *>(e);
   return String(on->_debug) + "\n";
 }
 
@@ -147,7 +149,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
 		      ErrorHandler *errh)
 {
-  BRN2ToThisNode *on = (BRN2ToThisNode *)e;
+  BRN2ToThisNode *on = reinterpret_cast<BRN2ToThisNode *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

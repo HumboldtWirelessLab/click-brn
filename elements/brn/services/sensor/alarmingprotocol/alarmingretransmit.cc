@@ -39,7 +39,9 @@
 CLICK_DECLS
 
 AlarmingRetransmit::AlarmingRetransmit():
+  _nodeid(NULL),
   _timer(this),
+  _as(NULL),
   _alarm_active(false),
   _retransmit_time(ALARMING_DEFAULT_RETRANMIT_TIME)
 {
@@ -168,7 +170,7 @@ static int
 AlarmingRetransmit_write_param(const String &in_s, Element *e, void *vparam,
                              ErrorHandler *errh)
 {
-  AlarmingRetransmit *as = (AlarmingRetransmit *)e;
+  AlarmingRetransmit *as = reinterpret_cast<AlarmingRetransmit *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_RETRANSMIT_ACTIVE: {    //debug

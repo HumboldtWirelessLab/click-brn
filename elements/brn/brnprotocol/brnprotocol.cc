@@ -36,7 +36,7 @@ BRNProtocol::add_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint8
 
 void
 BRNProtocol::set_brn_header(uint8_t *data, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
-  struct click_brn *brn_h = (struct click_brn *)data;
+  struct click_brn *brn_h = reinterpret_cast<struct click_brn*>(data);
   brn_h->dst_port = dst_port;
   brn_h->src_port = src_port;
   brn_h->body_length = htons(len);
@@ -86,13 +86,13 @@ BRNProtocol::push_brn_header(Packet *p) {
 bool
 BRNProtocol::is_brn_etherframe(Packet *p)
 {
-  return ((click_ether *)p->data())->ether_type == htons(ETHERTYPE_BRN);
+  return (reinterpret_cast<const click_ether *>(p->data())->ether_type == htons(ETHERTYPE_BRN));
 }
 
 struct click_brn*
 BRNProtocol::get_brnheader_in_etherframe(Packet *p)
 {
-  return (struct click_brn*)&(p->data()[sizeof(click_ether)]);
+  return (struct click_brn*)(&(p->data()[sizeof(click_ether)]));
 }
 
 CLICK_ENDDECLS

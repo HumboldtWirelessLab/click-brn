@@ -45,6 +45,7 @@ FloodingPassiveAck::FloodingPassiveAck():
   _retransmit_element(NULL),
   _fhelper(NULL),
   _flooding_db(NULL),
+  _flooding_scheduling(NULL),
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
   _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
   _cntbased_min_neighbors_for_abort(0),
@@ -276,12 +277,10 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 }
 
 PassiveAckPacket*
-FloodingPassiveAck::get_pap(EtherAddress *src, uint16_t bcast_id)
+FloodingPassiveAck::get_pap(EtherAddress *src, uint16_t bcast_id) const
 {
-  PassiveAckPacket *pap = NULL;
-
   for ( int i = 0; i < p_queue.size(); i++ ) {
-     pap = p_queue[i];
+     PassiveAckPacket *pap = p_queue[i];
      if ((pap->_bcast_id == bcast_id) && (pap->_src == *src)) return pap;
   }
   return NULL;
@@ -317,7 +316,7 @@ FloodingPassiveAck::stats()
 static String
 read_stats_param(Element *e, void *)
 {
-  return ((FloodingPassiveAck *)e)->stats();
+  return(reinterpret_cast<FloodingPassiveAck *>(e))->stats();
 }
 
 void

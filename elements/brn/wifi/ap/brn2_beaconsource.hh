@@ -66,7 +66,6 @@ class BRN2BeaconSource : public BRNElement { public:
 
 
   Timer _timer;
-  bool _debug;
   bool _active;
   uint32_t _target_channel;
   uint32_t _switch_channel_countdown;

@@ -62,12 +62,18 @@ class BRNDB : public BRNElement {
 
         DBrow():
           value(NULL),
+          valuelen(0),
           key(NULL),
+          keylen(0),
           locked(false),
+          max_lock_duration(0),
+          store_timeout(0),
           status(DATA_OK),
           move_id(0),
           replica(0)
         {
+          memset(md5_key,0,sizeof(md5_key));
+          memset(lock_node,0,sizeof(lock_node));
         }
 
         ~DBrow()

@@ -111,7 +111,7 @@ private:
 
   uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
 
-  PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id);
+  PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id) const;
 
   Vector<EtherAddress>* get_passive_ack_neighbors(PassiveAckPacket *pap);
   int set_unfinished_neighbors(PassiveAckPacket *pap);

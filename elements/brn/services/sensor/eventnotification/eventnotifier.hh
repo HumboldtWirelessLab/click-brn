@@ -45,16 +45,14 @@ CLICK_DECLS
 
 class EventData {
   public:
-    Timestamp _time;
     String _data;
+    Timestamp _time;
 
-    EventData() {
-      _data = NULL;
+    EventData(): _data(), _time(Timestamp::now()) {
     }
 
-    EventData(String data) {
-      _data = data;
-      _time = Timestamp::now();
+    explicit EventData(String data): _data(data), _time(Timestamp::now())
+    {
     }
 };
 

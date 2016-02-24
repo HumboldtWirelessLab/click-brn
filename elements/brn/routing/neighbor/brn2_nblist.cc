@@ -6,7 +6,8 @@
 
 CLICK_DECLS
 
-BRN2NBList::BRN2NBList()
+BRN2NBList::BRN2NBList():
+  _nodeid(NULL)
 {
   BRNElement::init();
 }
@@ -51,11 +52,10 @@ BRN2NBList::getEntry(EtherAddress *v)
 
 const EtherAddress *
 BRN2NBList::getDeviceAddressForNeighbor(EtherAddress *v) {
-  BRN2Device *dev;
   NeighborInfo *nb_info = _nb_list.findp(*v);
 
   if ( nb_info->_devs.size() > 0 ) {
-    dev = nb_info->_devs[0];
+    BRN2Device *dev = nb_info->_devs[0];
     return dev->getEtherAddress();
   }
 
@@ -70,7 +70,7 @@ BRN2NBList::printNeighbors()
 
   sa << "<nblist node=\"" << BRN_NODE_NAME << "\" nb_count=\"" << _nb_list.size() << "\" >\n";
 
-  for (NBMap::iterator i = _nb_list.begin(); i.live(); i++) {
+  for (NBMap::iterator i = _nb_list.begin(); i.live(); ++i) {
     NeighborInfo &nb_info = i.value();
     for ( int d = 0; d < nb_info._devs.size(); d++ ) {
       sa << "\t<neighbour node=\"" << nb_info._eth.unparse() << "\" device=\"";
@@ -93,8 +93,6 @@ BRN2NBList::insert(EtherAddress eth, uint8_t dev_number)
 int
 BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
 {
-  BRN2Device *acdev;
-
   if (!(eth && dev)) {
 //    BRN_WARN("* You idiot, you tried to insert %s, %s", eth.unparse().c_str(), dev->device_name.c_str());
     return -1;
@@ -109,7 +107,7 @@ BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
 
   int d;
   for ( d = 0; d < nb_info->_devs.size(); d++ ) {
-    acdev = nb_info->_devs[d];
+    BRN2Device *acdev = nb_info->_devs[d];
     if ( acdev->getDeviceName() == dev->getDeviceName() ) break;
   }
 
@@ -124,7 +122,7 @@ BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
 static String
 read_neighbor_param(Element *e, void */*thunk*/)
 {
-  BRN2NBList *nbl = (BRN2NBList *)e;
+  BRN2NBList *nbl = reinterpret_cast<BRN2NBList *>(e);
   return nbl->printNeighbors()+"\n";
 }
 

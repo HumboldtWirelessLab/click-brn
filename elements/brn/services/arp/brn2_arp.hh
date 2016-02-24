@@ -51,7 +51,7 @@ class BRN2Arp : public Element {
 
    long _time;
 
-   ARPrequest(uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_ip_add, uint8_t id, long time)
+   ARPrequest(const uint8_t *s_hw_add, const uint8_t *s_ip_add, const uint8_t *d_ip_add, uint8_t id, long time)
    {
      memcpy(_s_hw_add,s_hw_add,6);
      memcpy(_s_ip_add,s_ip_add,4);
@@ -96,8 +96,8 @@ class BRN2Arp : public Element {
 
   int handle_arp_request(Packet *p);
 
-  int send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add, uint8_t *d_ip_add );
-  int send_arp_request( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add, uint8_t *d_ip_add );
+  int send_arp_reply( const uint8_t *s_hw_add, const uint8_t *s_ip_add, const uint8_t *d_hw_add, const uint8_t *d_ip_add );
+  int send_arp_request( const uint8_t *s_hw_add, const uint8_t *s_ip_add, const uint8_t *d_hw_add, const uint8_t *d_ip_add );
 
   void dht_request(DHTOperation *op);
 

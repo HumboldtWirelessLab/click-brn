@@ -167,7 +167,7 @@ TCPConnection::tcp_input(WritablePacket *p)
     u_long		ts_val, ts_ecr;
 //    int			len; //,tlen; /* seems to be unused */
     unsigned	off, optlen;
-    u_char		*optp;
+    const u_char		*optp;
     int		ts_present = 0;
     int 	iss = 0; 
     int 	todrop, acked, ourfinisacked, needoutput = 0;
@@ -202,7 +202,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 
     /*237*/
     optlen = off - sizeof(click_tcp);
-    optp   = (u_char *)iph + 40;
+    optp   = reinterpret_cast<const u_char *>(iph + 40);
 
 	/* TODO Timestamp prediction */
 
@@ -1449,7 +1449,6 @@ TCPConnection::tcp_setpersist() {
 }
 void 
 TCPConnection::tcp_xmit_timer(short rtt) { 
-	short delta; 
 	speaker()->_tcpstat.tcps_rttupdated++; 
 	
 	debug_output(VERB_TIMERS, "[%s] now: [%u]: tcp_xmit_timer: srtt [%d] cur rtt [%d]\n", SPKRNAME, speaker()->tcp_now(), tp->t_srtt, rtt); 
@@ -1461,7 +1460,7 @@ TCPConnection::tcp_xmit_timer(short rtt) {
 		 * an alpha of .875 (srtt = rtt/8 + srtt*7/8 in fixed
 		 * point).  Adjust rtt to origin 0.
 		 */
-		delta = rtt - 1 - (tp->t_srtt >> TCP_RTT_SHIFT);
+		short delta = rtt - 1 - (tp->t_srtt >> TCP_RTT_SHIFT);
 		if ((tp->t_srtt += delta) <= 0)
 			tp->t_srtt = 1;
 		/*
@@ -1634,8 +1633,7 @@ TCPConnection::stateless_decap(WritablePacket *p) {
 	/* Payloadless signal packet */ 
 	} else if (hlen == p->length()) { 
 		debug_output(VERB_TCP, "[%s] tcpcon::st_decap recieved a payloadless tcp segment (probably a signal segment)", SPKRNAME);
-	    p->kill(); 
-		p = NULL;
+	    p->kill();
 	    return 0; 
 	} else {
 		// EINVAL means Error Invalid. man errno :-)
@@ -1810,19 +1808,18 @@ TCPConnection::ip_output(WritablePacket *p) {
 
 
 void 
-TCPConnection::_tcp_dooptions(u_char *cp, int cnt, const click_tcp * ti, 
+TCPConnection::_tcp_dooptions(const u_char *cp, int cnt, const click_tcp * ti, 
 	int * ts_present, u_long *ts_val, u_long *ts_ecr) 
 { 
 	uint16_t mss;
-	int opt, optlen; 
-	optlen = 0; 
+	int optlen = 0; 
 
 	debug_output(VERB_DEBUG, "[%s] tcp_dooption cnt [%u]\n", SPKRNAME, cnt);
 	for (; cnt > 0; cnt -= optlen, cp += optlen) { 
 
 		debug_output(VERB_DEBUG, "[%s] processing opt: optlen:<%u>,cnt:<%u>", SPKRNAME, 
 				optlen, cnt);
-		opt = cp[0]; 
+		int opt = cp[0]; 
 		if (opt == TCPOPT_EOL) {
 			debug_output(VERB_DEBUG, "b1");
 			break; 
@@ -2026,7 +2023,7 @@ TCPConnection::TCPConnection(TCPSpeaker *s, const IPFlowID &id, const char dir)
 String
 TCPSpeaker::read_num_connections(Element *e, void *)
 {
-  	TCPSpeaker *tcps = (TCPSpeaker *)e;
+  	TCPSpeaker *tcps = reinterpret_cast<TCPSpeaker *>(e);
 	int buckets = tcps->num_connections();
 	return String(buckets);
 }
@@ -2107,7 +2104,7 @@ TCPSpeaker::is_syn(const Packet * p) {
 String
 TCPSpeaker::read_verb(Element *e, void *)
 {
-  	TCPSpeaker *tcps = (TCPSpeaker *)e;
+  	TCPSpeaker *tcps = reinterpret_cast<TCPSpeaker *>(e);
 	return String(tcps->_verbosity);
 }
 
@@ -2115,7 +2112,7 @@ TCPSpeaker::read_verb(Element *e, void *)
 int
 TCPSpeaker::write_verb(const String &s, Element *e, void *, ErrorHandler *errh)
 {
-    TCPSpeaker *tcps = (TCPSpeaker *)e;
+    TCPSpeaker *tcps = reinterpret_cast<TCPSpeaker *>(e);
     int verbosity;
     if (!cp_integer(s, &verbosity))
 		return errh->error("Verbosity bitmask must be integer");
@@ -2174,9 +2171,9 @@ TCPSpeaker::cast(const char *n)
 */
 void *TCPSpeaker::cast(const char *name) {
     if (strcmp(name, "TCPSpeaker") == 0)
-	return (TCPSpeaker *) this;
+	return reinterpret_cast<TCPSpeaker *>(this);
     else if (strcmp(name, "MultiFlowDispatcher") == 0)
-	return (MultiFlowDispatcher *) this;
+	return reinterpret_cast<MultiFlowDispatcher *>(this);
     else if (strcmp(name, Notifier::EMPTY_NOTIFIER) == 0)
 		return static_cast<Notifier *>(empty_note()); 
     else
@@ -2275,13 +2272,13 @@ TCPSpeaker::run_timer(Timer *t)
     TCPConnection *con; 
 
     if (t == _fast_ticks) {
-		for (; i; i++) {
+		for (; i; ++i) {
 			con = dynamic_cast<TCPConnection *>(i->second);
 			con->fasttimo(); 
 		}
 		_fast_ticks->reschedule_after_msec(TCP_FAST_TICK_MS);
     } else if (t == _slow_ticks) {
-		for (; i; i++) {
+		for (; i; ++i) {
 			con = dynamic_cast<TCPConnection *>(i->second);
 			con->slowtimo(); 
 			if (con->state() == TCPS_CLOSED) {
@@ -2617,7 +2614,7 @@ TCPQueue::pretty_print(StringAccum &sa, int signed_width)
 }
 
 
-TCPFifo::TCPFifo(TCPConnection *con)
+TCPFifo::TCPFifo(TCPConnection *con): _peek_cache_position(0),_peek_cache_offset(0)
 { 
 	_con = con;
 	_q = (WritablePacket**) CLICK_LALLOC(sizeof(WritablePacket *) * FIFO_SIZE); 

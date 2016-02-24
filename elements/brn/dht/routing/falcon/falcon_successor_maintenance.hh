@@ -60,7 +60,6 @@ class FalconSuccessorMaintenance : public BRNElement
     int _update_interval;
 
     int _min_successor_ping;
-    int _debug;
 
     HawkRoutingtable *_rfrt;
 

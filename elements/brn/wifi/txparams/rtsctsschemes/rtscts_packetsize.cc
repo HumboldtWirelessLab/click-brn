@@ -25,7 +25,7 @@ void *
 RtsCtsPacketSize::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsPacketSize") == 0)
-    return (RtsCtsPacketSize *) this;
+    return dynamic_cast<RtsCtsPacketSize *>(this);
 
   return RtsCtsScheme::cast(name);
 }
@@ -53,13 +53,11 @@ RtsCtsPacketSize::configure(Vector<String> &conf, ErrorHandler* errh)
 bool
 RtsCtsPacketSize::set_rtscts(PacketInfo *pinfo)
 {
-  int32_t duration;
-
   if ( _pduration != 0 ) {
     //if ( pinfo->_ceh _is_ht )
     //  duration = BrnWifi::pkt_duration(pinfo->_p_size + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
     //else
-    duration = calc_transmit_time(pinfo->_ceh->rate, pinfo->_p_size + 4 /*crc*/); //TODO: check CRC ??
+    int32_t duration = calc_transmit_time(pinfo->_ceh->rate, pinfo->_p_size + 4 /*crc*/); //TODO: check CRC ??
     BRN_WARN("Duration limit: %d cdur: %d", _pduration, duration);
     return ( duration > _pduration );
   }
@@ -71,7 +69,7 @@ enum {H_THRESHOLD_PACKETSIZE, H_THRESHOLD_PACKETDURATION};
 
 static String RtsCtsPacketSize_read_param(Element *e, void *thunk)
 {
-  RtsCtsPacketSize *f = (RtsCtsPacketSize *)e;
+  RtsCtsPacketSize *f = reinterpret_cast<RtsCtsPacketSize *>(e);
   switch ((uintptr_t) thunk) {
     case H_THRESHOLD_PACKETSIZE:
       return String(f->_psize);
@@ -85,7 +83,7 @@ static String RtsCtsPacketSize_read_param(Element *e, void *thunk)
 
 static int RtsCtsPacketSize_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  RtsCtsPacketSize *f = (RtsCtsPacketSize *)e;
+  RtsCtsPacketSize *f = reinterpret_cast<RtsCtsPacketSize *>(e);
   String s = cp_uncomment(in_s);
   int value;
   if (!cp_integer(s, &value)) return errh->error("rtscts_packetsize parameter must be integer");

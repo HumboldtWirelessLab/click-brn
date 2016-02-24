@@ -38,7 +38,8 @@
 CLICK_DECLS
 
 MacFilter::MacFilter():
-  _device(NULL)
+  _device(NULL),
+  use_frame(0)
 {
 	BRNElement::init();
 }
@@ -71,7 +72,7 @@ MacFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	} else if(!_use_frame) {
 		if(_device != NULL) {
 
-			BRN2Device *device = (BRN2Device *) _device;
+			BRN2Device *device = reinterpret_cast<BRN2Device *>(_device);
 			uint32_t type = device->getDeviceType();
 
 			switch(type) {
@@ -109,26 +110,26 @@ void MacFilter::push(int port, Packet *p) {
 		return;
 	}
 
-	struct click_wifi *w;
-        click_ether *ether;
 	EtherAddress src_addr;
 
 	switch(use_frame) {
-	case 2:
-		// Get data from wifi frame
-		w = (struct click_wifi *)p->data();
-		src_addr = EtherAddress(w->i_addr2);
-		break;
-        case 3:
+		case 2: {
+			// Get data from wifi frame
+			const struct click_wifi *w = reinterpret_cast<const struct click_wifi *>(p->data());
+			src_addr = EtherAddress(w->i_addr2);
+			break;
+		}
+        case 3: {
                 // Get data from ether frame
-                ether = (click_ether *)p->data();
+                const click_ether *ether = reinterpret_cast<const click_ether *>(p->data());
                 src_addr = EtherAddress(ether->ether_shost);
                 break;
+        }
         case 1: //is like default
-	default:
-		// Get data from Packet Anno
-		src_addr = BRNPacketAnno::src_ether_anno(p);
-		break;
+		default:
+			// Get data from Packet Anno
+			src_addr = BRNPacketAnno::src_ether_anno(p);
+			break;
 	}
 
 	if (macFilterList.findp(src_addr) != NULL) {
@@ -175,7 +176,7 @@ MacFilter::stats()
   StringAccum sa;
 
   sa << "<macfilter node=\"" << BRN_NODE_NAME << "\" filtersize=\"" << macFilterList.size() << "\" >\n";
-  for(HashMap<EtherAddress, int>::iterator it = macFilterList.begin(); it.live(); it++) {
+  for(HashMap<EtherAddress, int>::iterator it = macFilterList.begin(); it.live(); ++it) {
     sa << "\t<filteredmac mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\" >\n";
   }
   sa << "</macfilter>\n";
@@ -187,7 +188,7 @@ enum {H_ADD_MAC, H_DEL_MAC, H_FILTER_STAT};
 
 
 static String MacFilter_read_param(Element *e, void *thunk) {
-	MacFilter *mf = (MacFilter *)e;
+	MacFilter *mf = reinterpret_cast<MacFilter *>(e);
 
 	StringAccum sa;
 
@@ -205,7 +206,7 @@ static String MacFilter_read_param(Element *e, void *thunk) {
 
 static int MacFilter_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *) {
 
-	MacFilter *mf = (MacFilter *)e;
+	MacFilter *mf = reinterpret_cast<MacFilter *>(e);
 	String s = cp_uncomment(in_s);
 
 	EtherAddress mac;

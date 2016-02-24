@@ -111,7 +111,7 @@ static int
 write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler */*errh*/)
 {
   int x,y,z,speed;
-  Mobility *mob = (Mobility *)e;
+  Mobility *mob = reinterpret_cast<Mobility *>(e);
   switch ((uintptr_t) thunk)
   {
     case H_MOVE: {

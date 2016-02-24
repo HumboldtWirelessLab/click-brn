@@ -47,8 +47,24 @@ CLICK_DECLS
 
 BRN2InfrastructureClient::BRN2InfrastructureClient()
 :   _device(NULL),
+    _wireless_info(NULL),
+    _rtable(NULL),
+    _beaconscanner(NULL),
+    _probereq(NULL),
+    _authreq(NULL),
+    _assocreq(NULL),
+    _wifiencap(NULL),
     request_timer(this),
+    _auth(false),
+    _ap_available(false),
+    _ad_hoc(false),
     _active_scan_mode(false),
+    _scan_all_channels(false),
+    _channel_index(0),
+    _channellist(NULL),
+    _channel_is_set(0),
+    _minChannelScanTime(0),
+    _maxChannelScanTime(0),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -214,10 +230,10 @@ BRN2InfrastructureClient::find_best_ap()
   int rssi = 0;
 
 //  click_chatter("try to find good ap");
-  for (BRN2BeaconScanner::PAPIter piter = _beaconscanner->_paps.begin(); piter.live(); piter++) {
+  for (BRN2BeaconScanner::PAPIter piter = _beaconscanner->_paps.begin(); piter.live(); ++piter) {
     BRN2BeaconScanner::pap pap = piter.value();
 
-    for (BRN2BeaconScanner::VAPIter iter = pap._vaps.begin(); iter.live(); iter++) {
+    for (BRN2BeaconScanner::VAPIter iter = pap._vaps.begin(); iter.live(); ++iter) {
       BRN2BeaconScanner::vap ap = iter.value();
 
       if ( _debug >= BrnLogger::INFO ) {
@@ -364,7 +380,7 @@ enum { H_WIRELESS_INFO,
 static String
 BRN2InfrastructureClient_read_param(Element *e, void *thunk)
 {
-  BRN2InfrastructureClient *infstr_client = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *infstr_client = reinterpret_cast<BRN2InfrastructureClient *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -379,7 +395,7 @@ static int
 send_probe_handler(const String &in_s, Element *e, void *,
           ErrorHandler *errh)
 {
-  BRN2InfrastructureClient *infstr_client = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *infstr_client = reinterpret_cast<BRN2InfrastructureClient *>(e);
 
   String s = cp_uncomment(in_s);
 
@@ -396,7 +412,7 @@ static int
 send_auth_handler(const String &in_s, Element *e, void *,
           ErrorHandler *errh)
 {
-  BRN2InfrastructureClient *infstr_client = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *infstr_client = reinterpret_cast<BRN2InfrastructureClient *>(e);
 
   String s = cp_uncomment(in_s);
 
@@ -413,7 +429,7 @@ static int
 send_assoc_handler(const String &in_s, Element *e, void *,
           ErrorHandler *errh)
 {
-  BRN2InfrastructureClient *infstr_client = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *infstr_client = reinterpret_cast<BRN2InfrastructureClient *>(e);
 
   String s = cp_uncomment(in_s);
 
@@ -429,14 +445,14 @@ send_assoc_handler(const String &in_s, Element *e, void *,
 static int 
 send_disassoc_handler(const String &, Element *e, void *, ErrorHandler *)
 {
-  ((BRN2InfrastructureClient *)e)->send_disassoc_to_ap();
+  (reinterpret_cast<BRN2InfrastructureClient *>(e))->send_disassoc_to_ap();
   return 0;
 }
 
 static int 
 do_assoc_handler(const String &, Element *e, void *, ErrorHandler *)
 {
-  ((BRN2InfrastructureClient *)e)->start_assoc();
+  (reinterpret_cast<BRN2InfrastructureClient *>(e))->start_assoc();
   return 0;
 }
 
@@ -444,7 +460,7 @@ do_assoc_handler(const String &, Element *e, void *, ErrorHandler *)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2InfrastructureClient *de = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *de = reinterpret_cast<BRN2InfrastructureClient *>(e);
   return String(de->_debug) + "\n";
 }
 
@@ -452,7 +468,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
           ErrorHandler *errh)
 {
-  BRN2InfrastructureClient *de = (BRN2InfrastructureClient *)e;
+  BRN2InfrastructureClient *de = reinterpret_cast<BRN2InfrastructureClient *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

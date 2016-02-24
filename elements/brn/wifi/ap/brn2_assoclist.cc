@@ -63,7 +63,7 @@ BRN2AssocList::print_content() const
 
   sa << "<assoclist node=\"" << BRN_NODE_NAME << "\" stations=\"" << (uint32_t)_client_list->size() << "\" >\n";
 
-  for (ClientMap::iterator i = _client_list->begin(); i.live(); i++)
+  for (ClientMap::iterator i = _client_list->begin(); i.live();++i)
   {
     ClientInfo nfo = i.value();
     const char* state = " n/a ";
@@ -505,7 +505,7 @@ read_debug_param(Element *e, void *thunk)
 {
   UNREFERENCED_PARAMETER(thunk);
 
-  BRN2AssocList *al = (BRN2AssocList *)e;
+  BRN2AssocList *al = reinterpret_cast<BRN2AssocList *>(e);
   return String(al->_debug) + "\n";
 }
 
@@ -517,7 +517,7 @@ write_debug_param(const String &in_s, Element *e, void *vparam,
 {
   UNREFERENCED_PARAMETER(vparam);
 
-  BRN2AssocList *al = (BRN2AssocList *)e;
+  BRN2AssocList *al = reinterpret_cast<BRN2AssocList *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 
@@ -532,7 +532,7 @@ static String
 read_stations(Element *e, void *thunk)
 {
   UNREFERENCED_PARAMETER(thunk);
-  BRN2AssocList *al = (BRN2AssocList *)e;
+  BRN2AssocList *al = reinterpret_cast<BRN2AssocList *>(e);
 
   return (al->print_content());  
 }
@@ -548,7 +548,7 @@ static_insert(const String &arg, Element */*e*/, void *p, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(p);
 
- // BRN2AssocList *f = (BRN2AssocList *)e;
+ // BRN2AssocList *f = reinterpret_cast<BRN2AssocList *>(e);
 
   Vector<String> args;
   EtherAddress eth;

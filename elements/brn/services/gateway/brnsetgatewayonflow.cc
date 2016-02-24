@@ -53,7 +53,7 @@ CLICK_DECLS
 
 
 BRNSetGatewayOnFlow::BRNSetGatewayOnFlow()
-{
+:_gw(NULL),_routing_maintenance(NULL),_aggflows(NULL),_arp(NULL),_buffer(NULL){
   BRNElement::init();
 }
 
@@ -120,7 +120,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
 	// I should remember a list of best gateways
 
   // iterate over known gateways
-  for (BRNGatewayList::const_iterator i = list_of_gws->begin(); i.live(); i++) {
+  for (BRNGatewayList::const_iterator i = list_of_gws->begin(); i.live();++i) {
     // is connection to this gateway better or equal than a already found one
     // equal is added to ensure that the values are copied even, if the gateway is reachable with 0xFFFFFFFF
     // (which may mean, that we just don't know this node yet; but since it reaches the dht it must be reachable at all)
@@ -154,7 +154,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
 	    // packet for checking the route
   	  if (WritablePacket* p = Packet::make(sizeof(click_ether) + sizeof(click_brn) + sizeof(brn_gateway))) {
     		// set ether header
- 				click_ether *ether = (click_ether *) p->data();
+ 				click_ether *ether = reinterpret_cast<click_ether *>( p->data());
  				ether->ether_type = htons(ETHERTYPE_BRN);
 
  				memcpy(ether->ether_shost, _gw->_my_eth_addr.data(), 6);
@@ -164,7 +164,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
   			p->set_ether_header(ether);
 
   			// set brn header
-  			click_brn* brn = (click_brn*) (p->data() + sizeof(click_ether));
+  			click_brn* brn = reinterpret_cast<click_brn*>( (p->data() + sizeof(click_ether)));
 
   			brn->src_port = BRN_PORT_GATEWAY;
   			brn->dst_port = BRN_PORT_GATEWAY;
@@ -173,7 +173,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
   			brn->body_length = htons(sizeof(brn_gateway));
 
 				// set brn gateway header
-				//brn_gateway* brn_gw = (brn_gateway*) (p->data() + sizeof(click_ether) + sizeof(click_brn));
+				//brn_gateway* brn_gw = reinterpret_cast<brn_gateway*>( (p->data() + sizeof(click_ether) + sizeof(click_brn)));
 
 				// set failed to sent this packet to internet
 				//brn_gw->failed = 0;
@@ -213,7 +213,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 
   if (port == 0) {
 	  // checking headers
-	  click_ether* ether = (click_ether*) p->ether_header();
+	  const click_ether* ether = reinterpret_cast<const click_ether*>( p->ether_header());
 
 	  BRN_CHECK_EXPR_RETURN(ether == NULL,
 	              ("Ether header not available. Killing packet."), p->kill(); return;);
@@ -221,7 +221,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 	  BRN_CHECK_EXPR_RETURN(htons(ether->ether_type) != ETHERTYPE_IP,
 	              ("No IP packet. Killing it. I shouldn't get non-IP packets. Error in click configuration. But got 0x%x", htons(ether->ether_type)), p->kill(); return;);
 
-	  click_ip *ip = (click_ip *) p->ip_header();
+	  const click_ip *ip = reinterpret_cast<const click_ip *>( p->ip_header());
 
 	  BRN_CHECK_EXPR_RETURN(ip == NULL,
 	              ("No IP header found. Killing it."), p->kill(); return;);
@@ -295,7 +295,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
   else if (port == 1) {
     BRN_INFO("Getting handover packets");
 
-    /*click_brn_iapp*     pIapp  = (click_brn_iapp*)p->data();
+    /*click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>(p->data());
 
     BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_PAYLOAD_GATEWAY != pIapp->payload_type,
           ("got invalid iapp payload type %d", pIapp->payload_type), if (p) p->kill(); return;);
@@ -320,7 +320,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 
         BRN_DEBUG("Extracting flow information");
 
-        brn_gateway_handover* gw_handover = (brn_gateway_handover*) (pIapp + 1);
+        brn_gateway_handover* gw_handover = reinterpret_cast<brn_gateway_handover*>( (pIapp + 1));
 
         uint16_t length = ntohs(gw_handover->length);
         assert(length % 18 == 0);
@@ -365,9 +365,9 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
     // add gateway information
     BRN_DEBUG("Receiving handover reply from port 2");
 
-    /*click_ether*        pEther = (click_ether*)p->data();
-    click_brn*          pBrn   = (click_brn*)(pEther+1);
-    click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+    /*click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+    click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+    click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
     click_brn_iapp_ho*  pHo    = &pIapp->payload.ho;
 
     EtherAddress client(pHo->addr_sta);
@@ -385,19 +385,19 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
       if (WritablePacket* q = p->put(length + sizeof(length))) {
 
         IPFlowID flow;
-        click_ether*        pEther = (click_ether*)q->data();
-        click_brn*          pBrn   = (click_brn*)(pEther+1);
-        click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+        click_ether*        pEther = reinterpret_cast<click_ether*>(q->data());
+        click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+        click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
         pIapp->payload_type = CLICK_BRN_IAPP_PAYLOAD_GATEWAY;
 
-        brn_gateway_handover* gw_handover = (brn_gateway_handover*) (pIapp + 1);
+        brn_gateway_handover* gw_handover = reinterpret_cast<brn_gateway_handover*>( (pIapp + 1));
         gw_handover->length = htons(length);
 
         flow_gw* flowgw;
 
         int num_flow = 0;
 
-        for (FlowsHandover::const_iterator i = flows.begin(); i.live(); i++) {
+        for (FlowsHandover::const_iterator i = flows.begin(); i.live();++i) {
           flow = i.key();
 
           flowgw = &gw_handover->flows[num_flow];
@@ -443,7 +443,7 @@ BRNSetGatewayOnFlow::get_aggregate(const Packet *p) {
  */
 void
 BRNSetGatewayOnFlow::remove_flows_with_gw(EtherAddress eth) {
-  for (FlowGateways::const_iterator i = _flow2gw.begin(); i.live(); i++) {
+  for (FlowGateways::const_iterator i = _flow2gw.begin(); i.live();++i) {
     if (i.value() == eth) {
       _flow2gw.remove(i.key());
       _flow2agg.remove(_flows.find(i.key()));
@@ -465,7 +465,7 @@ BRNSetGatewayOnFlow::get_flows_from_client(EtherAddress eth) {
   FlowsHandover client_flows;
   IPFlowID flow;
 
-  for (Flows::const_iterator i = _flows.begin(); i.live(); i++) {
+  for (Flows::const_iterator i = _flows.begin(); i.live();++i) {
     flow = i.value();
     if (flow.saddr() == client) {
       client_flows.insert(flow, _flow2gw.find(i.key()));
@@ -496,7 +496,7 @@ void
 BRNSetGatewayOnFlow::remove_handover_flows_from_client(EtherAddress eth) {
   IPAddress client = _arp->reverse_lookup(eth);  // get client's IP address
 
-  for (FlowsHandover::const_iterator i = _flows_handover.begin(); i.live(); i++) {
+  for (FlowsHandover::const_iterator i = _flows_handover.begin(); i.live();++i) {
     if (i.key().saddr() == client) {
       _flows_handover.remove(i.key());
     }
@@ -600,7 +600,7 @@ BRNSetGatewayOnFlow::read_handler(Element *e, void *thunk) {
 	  StringAccum sa;
 	  sa << "Flow\t\t\t\tGateway\n";
 	  // iterate over all known gateways
-	  for (FlowGateways::const_iterator i = gws->_flow2gw.begin(); i.live(); i++) {
+	  for (FlowGateways::const_iterator i = gws->_flow2gw.begin(); i.live();++i) {
 	      uint32_t agg = i.key();
 	      IPFlowID flow = gws->_flows.find(agg);
 	      //assert(flow);
@@ -613,7 +613,7 @@ BRNSetGatewayOnFlow::read_handler(Element *e, void *thunk) {
 	  StringAccum sa;
 	  sa << "Flow\t\t\t\tGateway\n";
 	  // iterate over all known gateways
-	  for (FlowsHandover::const_iterator i = gws->_flows_handover.begin(); i.live(); i++) {
+	  for (FlowsHandover::const_iterator i = gws->_flows_handover.begin(); i.live();++i) {
 	      sa << i.key().unparse() << "\t" << i.value().unparse() << "\n";
 	  }
 	  sa << (uint32_t) gws->_flows_handover.size() << " connections are handed over.\n";

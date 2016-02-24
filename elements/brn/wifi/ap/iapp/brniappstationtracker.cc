@@ -144,7 +144,7 @@ BrnIappStationTracker::initialize(ErrorHandler *errh)
 void
 BrnIappStationTracker::static_timer_clear_stale(Timer *t, void *v)
 {
-  BrnIappStationTracker *as = (BrnIappStationTracker *)v;
+  BrnIappStationTracker *as = reinterpret_cast<BrnIappStationTracker *>(v);
   as->clear_stale();
   t->schedule_after_msec(5000);
 }
@@ -156,7 +156,7 @@ BrnIappStationTracker::clear_stale()
 {
 //  BRN_DEBUG("removing stale entries.");
 
-  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live(); i++)
+  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live();++i)
   {
     EtherAddress e = i.key();
     if ((unsigned) _stale_timeout.tv_sec < i.value().age())
@@ -188,7 +188,7 @@ BrnIappStationTracker::push(int, Packet* p)
   BRN_CHECK_EXPR_RETURN(NULL == p || p->length() < sizeof(struct click_wifi),
     ("invalid arguments"), if (p) p->kill();return;);
 
-  click_brn_iapp*     pIapp   = (click_brn_iapp*)p->data();
+  const click_brn_iapp*     pIapp   = reinterpret_cast<const click_brn_iapp*>(p->data());
   if (CLICK_BRN_IAPP_HEL == pIapp->type)
   {
     if (!_optimize)
@@ -196,7 +196,7 @@ BrnIappStationTracker::push(int, Packet* p)
       BRN_ERROR("optimization turned off, there should be no hellos.");
     }
 
-    click_brn_iapp_he*  pHe     = &pIapp->payload.he;
+    const click_brn_iapp_he*  pHe     = &pIapp->payload.he;
 
     EtherAddress sta(pHe->addr_sta);
     EtherAddress ap_curr(pHe->addr_ap_curr);
@@ -225,7 +225,7 @@ BrnIappStationTracker::push(int, Packet* p)
   }
   else
   {
-    click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
+    const click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
     EtherAddress client(pHo->addr_sta);
     EtherAddress apOld(pHo->addr_mold);
@@ -427,7 +427,7 @@ BrnIappStationTracker::filter_buffered_packet(
     return (p);
   }
 
-  click_ether *ether = (click_ether *)p->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->ether_header());
   BRN_CHECK_EXPR_RETURN(!ether,
     ("ether anno not available"), return (p););
 
@@ -547,7 +547,7 @@ BrnIappStationTracker::update_linktable(
 void 
 BrnIappStationTracker::disassoc_all(int reason)
 {
-  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live(); i++)
+  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live();++i)
   {
     EtherAddress e = i.key();
     if (BRN2AssocList::ASSOCIATED == i.value().get_state())
@@ -572,7 +572,7 @@ enum {H_DEBUG, H_OPTIMIZE, H_DISASSOC};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappStationTracker *td = (BrnIappStationTracker *)e;
+  BrnIappStationTracker *td = reinterpret_cast<BrnIappStationTracker *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -587,7 +587,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappStationTracker *f = (BrnIappStationTracker *)e;
+  BrnIappStationTracker *f = reinterpret_cast<BrnIappStationTracker *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

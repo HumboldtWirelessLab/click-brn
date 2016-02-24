@@ -42,11 +42,11 @@ void
 DSRStats::push( int port, Packet *packet )
 {
   if ( ( port == 0 ) && ( packet != NULL ) ) {
-    click_brn_dsr *brn_dsr = (click_brn_dsr *)(packet->data() + sizeof(click_brn));
+    const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>((packet->data() + sizeof(click_brn)));
 
     int hop_count = brn_dsr->dsr_hop_count;
 
-    click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
+    const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
 
     EtherAddress src(brn_dsr->dsr_src.data);
     EtherAddress dst(brn_dsr->dsr_dst.data);
@@ -78,7 +78,7 @@ DSRStats::push( int port, Packet *packet )
 }
 
 bool
-DSRStats::same_route(RouteInfo *ri, click_dsr_hop *dsr_hops, int hop_count)
+DSRStats::same_route(RouteInfo *ri, const click_dsr_hop *dsr_hops, int hop_count)
 {
   if ( hop_count != ri->route.size() ) return false;
 
@@ -97,7 +97,7 @@ DSRStats::read_stats()
 
   sa << "<dsr_route_stats id=\"" << BRN_NODE_NAME << "\" node_pairs=\"" << route_map.size() << "\" >\n";
 
-  for (RouteMapIter iter = route_map.begin(); iter.live(); iter++) {
+  for (RouteMapIter iter = route_map.begin(); iter.live(); ++iter) {
     RouteEntry *re = route_map.find(iter.key());
 
     sa << "\t<route_info src=\"" << re->src.unparse() << "\" dst=\"" << re->dst.unparse() << "\" >\n";
@@ -123,7 +123,7 @@ DSRStats::read_stats()
 void
 DSRStats::reset()
 {
-  for (RouteMapIter iter = route_map.begin(); iter.live(); iter++) {
+  for (RouteMapIter iter = route_map.begin(); iter.live(); ++iter) {
     RouteEntry *re = route_map.find(iter.key());
     delete re;
   }
@@ -135,7 +135,7 @@ static String
 DSRStats_read_param(Element *e, void *thunk)
 {
   StringAccum sa;
-  DSRStats *td = (DSRStats *)e;
+  DSRStats *td = reinterpret_cast<DSRStats *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return td->read_stats();
@@ -148,7 +148,7 @@ DSRStats_read_param(Element *e, void *thunk)
 static int 
 DSRStats_write_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  DSRStats *f = (DSRStats *)e;
+  DSRStats *f = reinterpret_cast<DSRStats *>(e);
 
   switch((intptr_t)vparam) {
     case H_RESET: {    //reset

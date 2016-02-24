@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 RtsCtsRandom::RtsCtsRandom()
+ :_prob(0)
 {
   _default_strategy = RTS_CTS_STRATEGY_RANDOM;
 }
@@ -21,7 +22,7 @@ void *
 RtsCtsRandom::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsRandom") == 0)
-    return (RtsCtsRandom *) this;
+    return dynamic_cast<RtsCtsRandom *>(this);
 
   return RtsCtsScheme::cast(name);
 }

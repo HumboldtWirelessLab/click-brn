@@ -11,7 +11,7 @@ CLICK_DECLS
 
 BrnRXCorrelationStats::BrnRXCorrelationStats()
   :_debug(BrnLogger::DEFAULT)
-{
+,_rxcorr(NULL),_note_lp(0){
 }
 
 BrnRXCorrelationStats::~BrnRXCorrelationStats()
@@ -38,20 +38,19 @@ BrnRXCorrelationStats::initialize(ErrorHandler *)
 {
   return 0;
 }
-
+/*
 int
 BrnRXCorrelationStats::calculatedPER(BrnRXCorrelation::NeighbourInfo *cand)
 {
   return cand->getBackwardPER(_rxcorr->getLPID());
 }
-
+*/
 int
 BrnRXCorrelationStats::calculatedPERPair(BrnRXCorrelation::NeighbourInfo *candA, BrnRXCorrelation::NeighbourInfo *candB)
 {
   uint32_t last_poss_lp = _rxcorr->getLPID();
   uint32_t min_lp;
   uint32_t recvlp;
-  bool ina, inb;
 
   int base_a, base_b, id_size_a, id_size_b;
 
@@ -68,8 +67,8 @@ BrnRXCorrelationStats::calculatedPERPair(BrnRXCorrelation::NeighbourInfo *candA,
   recvlp = 0;
 
   for ( uint32_t i = min_lp; i <= last_poss_lp; i++ ) {
-    ina = false;
-    inb = false;
+    bool ina = false;
+    bool inb = false;
     BRN_DEBUG("Search for: %d",i);
 
     for ( uint32_t a = base_a; a != candA->_my_ids_next; a = ( a + 1 ) % id_size_a ) {
@@ -141,11 +140,10 @@ BrnRXCorrelationStats::calculatedPERDependNeg(BrnRXCorrelation::NeighbourInfo *c
 String BrnRXCorrelationStats::printSinglePerInfo()
 {
   StringAccum sa;
-  BrnRXCorrelation::NeighbourInfo *_ni;
   int cni = _rxcorr->countNeighbours();
 
   for ( int i = 0; i < cni; i++ ) {
-    _ni = _rxcorr->getNeighbourInfo(i);
+    BrnRXCorrelation::NeighbourInfo *_ni = _rxcorr->getNeighbourInfo(i);
     sa << "Node (" << _ni->_addr.unparse() << ") -> Me (" << _rxcorr->_me.unparse() << "): " << _ni->getPER() << " Last Possible: " << _ni->get_last_possible_rcv_lp();
     sa << " (" << _ni->_ids[_ni->_ids_base] << "," << _ni->_ids_next << "," << _ni->_ids_base << ")";
     sa << "  Me (" << _rxcorr->_me.unparse() << ") -> Node (" << _ni->_addr.unparse() << "): " << _ni->getBackwardPER(_rxcorr->getLPID());
@@ -159,15 +157,13 @@ String BrnRXCorrelationStats::printSinglePerInfo()
 String BrnRXCorrelationStats::printPairPerInfo()
 {
   StringAccum sa;
-  BrnRXCorrelation::NeighbourInfo *_ni_1;
-  BrnRXCorrelation::NeighbourInfo *_ni_2;
   int cni = _rxcorr->countNeighbours();
 
   for ( int i = 0; i < cni-1; i++ ) {
-    _ni_1 = _rxcorr->getNeighbourInfo(i);
+    BrnRXCorrelation::NeighbourInfo *_ni_1 = _rxcorr->getNeighbourInfo(i);
 
     for ( int j = i+1; j < cni; j++ ) {
-      _ni_2 = _rxcorr->getNeighbourInfo(j);
+      BrnRXCorrelation::NeighbourInfo *_ni_2 = _rxcorr->getNeighbourInfo(j);
 
       sa << "Me (" << _rxcorr->_me.unparse() << ") -> Nodes (" << _ni_1->_addr.unparse() << ", " << _ni_2->_addr.unparse() << ") : ";
       sa << "PERPair: " << calculatedPERPair(_ni_1,_ni_2) << "  PERIndepentend: " << calculatedPERIndepend(_ni_1,_ni_2);
@@ -181,19 +177,19 @@ String BrnRXCorrelationStats::printPairPerInfo()
 static String
 read_handler_single_per(Element *e, void *)
 {
-  return ((BrnRXCorrelationStats*)e)->printSinglePerInfo();
+  return(reinterpret_cast<BrnRXCorrelationStats*>(e))->printSinglePerInfo();
 }
 
 static String
 read_handler_pair_per(Element *e, void *)
 {
-  return ((BrnRXCorrelationStats*)e)->printPairPerInfo();
+  return(reinterpret_cast<BrnRXCorrelationStats*>(e))->printPairPerInfo();
 }
 
 static int 
 write_handler_debug(const String &in_s, Element *e, void *,ErrorHandler *errh)
 {
-  BrnRXCorrelationStats *rxcs = (BrnRXCorrelationStats*)e;
+  BrnRXCorrelationStats *rxcs = reinterpret_cast<BrnRXCorrelationStats*>(e);
   String s = cp_uncomment(in_s);
 
   int debug;
@@ -215,7 +211,7 @@ write_handler_debug(const String &in_s, Element *e, void *,ErrorHandler *errh)
 static String
 read_handler_debug(Element *e, void *)
 {
-  BrnRXCorrelationStats *rxcs = (BrnRXCorrelationStats*)e;
+  BrnRXCorrelationStats *rxcs = reinterpret_cast<BrnRXCorrelationStats*>(e);
 
   return String(rxcs->_debug);
 }

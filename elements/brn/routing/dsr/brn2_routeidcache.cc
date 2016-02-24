@@ -131,7 +131,7 @@ BrnRouteIdCache::print_cache(void)
 static String
 read_cache_param(Element *e, void *)
 {
-  BrnRouteIdCache *ridc = (BrnRouteIdCache *)e;
+  BrnRouteIdCache *ridc = reinterpret_cast<BrnRouteIdCache *>(e);
   return ridc->print_cache();
 }
 

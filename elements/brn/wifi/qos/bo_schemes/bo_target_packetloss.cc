@@ -28,7 +28,7 @@ BoTargetPacketloss::BoTargetPacketloss()
 void * BoTargetPacketloss::cast(const char *name)
 {
   if (strcmp(name, "BoTargetPacketloss") == 0)
-    return (BoTargetPacketloss *) this;
+    return dynamic_cast<BoTargetPacketloss *>(this);
 
   return BackoffScheme::cast(name);
 }
@@ -48,7 +48,6 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) tos;
 
-  int32_t number_of_neighbours = 1;
   int32_t index_search_rate = -1;
   int32_t index_search_msdu_size = -1;
   int32_t index_search_likelihood_collision = -1;
@@ -60,7 +59,7 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 
   //Get Number of Neighbours from the Channelstats-Element (_cst)
   struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
-  number_of_neighbours = as->no_sources;
+  int32_t number_of_neighbours = as->no_sources;
   uint32_t busy = as->hw_busy;
 
   BRN_DEBUG("BoTargetPL.get_cwmin():\n");

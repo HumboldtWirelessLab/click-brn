@@ -29,6 +29,7 @@ CLICK_DECLS
 
 
 BrnAnnRate::BrnAnnRate()
+ :_linkstat(NULL),_hnd(NULL)
 {
   _default_strategy = RATESELECTION_ANN;
   String s(ANN_SPEC);
@@ -39,7 +40,7 @@ void *
 BrnAnnRate::cast(const char *name)
 {
 	if (strcmp(name, "BrnAnnRate") == 0)
-		return (BrnAnnRate *) this;
+		return dynamic_cast<BrnAnnRate *>(this);
 
 	return RateSelection::cast(name);
 }
@@ -52,7 +53,6 @@ BrnAnnRate::~BrnAnnRate()
 int
 BrnAnnRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	std::string str;
 	if (cp_va_kparse(conf, this, errh,
     "HIDDENNODE", cpkM, cpElement, &_hnd,
     "LINKSTAT", cpkM , cpElement, &_linkstat,
@@ -184,7 +184,7 @@ enum { H_STATS, H_TEST};
 static String
 BrnAnnRate_read_param(Element */*e*/, void *thunk)
 {
-  //BrnAnnRate *td = (BrnAnnRate *)e;
+  //BrnAnnRate *td = reinterpret_cast<BrnAnnRate *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return String();

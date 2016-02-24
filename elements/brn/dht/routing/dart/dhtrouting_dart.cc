@@ -42,9 +42,9 @@ void *
 DHTRoutingDart::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingDart") == 0)
-    return (DHTRoutingDart *) this;
+    return dynamic_cast<DHTRoutingDart *>(this);
   else if (strcmp(name, "DHTRouting") == 0)
-         return (DHTRouting *) this;
+         return dynamic_cast<DHTRouting *>(this);
        else
          return NULL;
 }
@@ -75,7 +75,7 @@ DHTRoutingDart::initialize(ErrorHandler *)
 void
 DHTRoutingDart::routingtable_callback_func(void *e, int status)
 {
-  DHTRoutingDart *s = (DHTRoutingDart *)e;
+  DHTRoutingDart *s = reinterpret_cast<DHTRoutingDart *>(e);
 
   if ( status == DART_UPDATE_ID)
     s->notify_callback(ROUTING_STATUS_NEW_NODE);
@@ -325,7 +325,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingDart *dht_dart = (DHTRoutingDart *)e;
+  DHTRoutingDart *dht_dart = reinterpret_cast<DHTRoutingDart *>(e);
 
   switch ((uintptr_t) thunk)
   {

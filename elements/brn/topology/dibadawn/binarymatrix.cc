@@ -34,6 +34,13 @@ BinaryMatrix::BinaryMatrix(size_t n)
   setZeroMatrix();
 }
 
+BinaryMatrix::BinaryMatrix(const BinaryMatrix &bm)
+{
+  dimension = bm.dimension;
+  matrix = new bool[dimension * dimension]; //TODO: copy matrix
+  setZeroMatrix();
+}
+
 BinaryMatrix::~BinaryMatrix()
 {
   delete[](matrix);

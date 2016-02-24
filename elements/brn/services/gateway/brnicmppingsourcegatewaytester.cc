@@ -43,9 +43,8 @@ CLICK_DECLS
  *
  */
 
-BRNICMPPingSourceGatewayTester::BRNICMPPingSourceGatewayTester() {
+BRNICMPPingSourceGatewayTester::BRNICMPPingSourceGatewayTester(): _gw(NULL), _old_metric(0) {
     // we have no connection at startup
-    _old_metric = 0;
 }
 
 BRNICMPPingSourceGatewayTester::~BRNICMPPingSourceGatewayTester() {}
@@ -74,9 +73,9 @@ BRNICMPPingSourceGatewayTester::configure(Vector<String> &conf, ErrorHandler *er
 
 void * BRNICMPPingSourceGatewayTester::cast(const char *name) {
     if (strcmp(name, "BRNICMPPingSourceGatewayTester") == 0)
-        return (BRNICMPPingSourceGatewayTester *) this;
+        return dynamic_cast<BRNICMPPingSourceGatewayTester *>(this);
     else if (strcmp(name, "ICMPPingSource") == 0)
-        return (ICMPPingSource *) this;
+        return dynamic_cast<ICMPPingSource *>(this);
     else
         return ICMPPingSource::cast(name);
 }
@@ -97,12 +96,14 @@ BRNICMPPingSourceGatewayTester::push(int port, Packet *p) {
     // A gateway metric is a value between 0 (worst) and 255 (best)
 
 
-
-    //int metric = (this->_receiver->time_sum / (this->_receiver->nreceived ? this->_receiver->nreceived : 1));
-    int metric = 0;
+    /*
+    int metric = (this->_receiver->time_sum / (this->_receiver->nreceived ? this->_receiver->nreceived : 1));
     // adjust metric to uint8_t
     if (metric > 1000000) // latency bigger than 1s
         metric = 1000000;
+    */
+
+    int metric = 0;
 
     // normalize metric to values between 0 and 255
     metric = 255 - metric / 3920;

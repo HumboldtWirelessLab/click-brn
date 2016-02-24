@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 RtsCtsFlooding::RtsCtsFlooding():
+  _me(NULL),
   _flooding(NULL),
   _fhelper(NULL),
   _flooding_db(NULL),
@@ -26,7 +27,7 @@ void *
 RtsCtsFlooding::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsFlooding") == 0)
-    return (RtsCtsFlooding *) this;
+    return dynamic_cast<RtsCtsFlooding *>(this);
 
   return RtsCtsScheme::cast(name);
 }
@@ -66,7 +67,7 @@ RtsCtsFlooding::set_rtscts(PacketInfo *pinfo)
   uint32_t last_nodes_size;
   last_nodes = _flooding_db->get_node_infos(bcast_src, bcast_id, &last_nodes_size);
 
-  for (Vector<EtherAddress>::const_iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ea_iter++) {
+  for (Vector<EtherAddress>::const_iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ++ea_iter) {
     BRN_DEBUG("HN: %s", ea_iter->unparse().c_str());
   }
 
@@ -76,7 +77,7 @@ RtsCtsFlooding::set_rtscts(PacketInfo *pinfo)
 
   uint16_t eff_hn = hiddennodes.size();
 
-  for (Vector<EtherAddress>::iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ea_iter++) {
+  for (Vector<EtherAddress>::iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ++ea_iter) {
     uint32_t j = 0;
     for (; j < last_nodes_size; j++ ) {
       if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) { // node doesn't have the packet

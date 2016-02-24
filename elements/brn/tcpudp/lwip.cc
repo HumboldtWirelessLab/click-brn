@@ -177,11 +177,11 @@ LwIP::client_add_flow(IPAddress dst_addr, uint32_t dst_port, int count)
 
   LwIPConnection *new_conn = new_connection(_interface, dst_addr, dst_port);
 
-  BRN_INFO("Client connection: %p", new_conn);
   if ( new_conn == NULL ) {
     BRN_ERROR("New connection failed");
   }
 
+  BRN_INFO("Client connection: %p", new_conn);
   new_conn->_flow_size = count;
 
   client_task();
@@ -290,7 +290,7 @@ click_lw_ip_if_output(struct netif *netif, struct pbuf *p, ip_addr* ip) //TODO: 
 
   WritablePacket *packet_out = WritablePacket::make(128, p->payload, p->len, 32);
 
-  const click_ip *iph = (click_ip *)packet_out->data();
+  const click_ip *iph = reinterpret_cast<click_ip *>(packet_out->data());
   IPAddress src_addr = IPAddress(iph->ip_src);
   IPAddress dst_addr = IPAddress(iph->ip_dst);
 
@@ -353,9 +353,9 @@ click_lw_ip_tcp_sent(void *arg, struct tcp_pcb */*tpcb*/, u16_t len)
 err_t
 click_lw_ip_tcp_recv(void */*arg*/, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
-  char foo[1024];
   if (err == ERR_OK ) {
     if (p != NULL) {
+      char foo[1024];
       click_chatter("Callback: received: %d bytes", p->tot_len);
       memcpy(foo,p->payload,p->tot_len);
       foo[p->tot_len+1]='\0';

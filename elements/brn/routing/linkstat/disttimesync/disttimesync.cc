@@ -21,11 +21,14 @@ CLICK_DECLS
 
 DistTimeSync::DistTimeSync() :
   _time_drift(DISTTIMESYNC_INIT),
+  _offset(0),
   _pkt_buf_size(PKT_BUF_SIZE),
   _pkt_buf_idx(DISTTIMESYNC_INIT),
+  _linkstat(NULL),
   node_id(-1)
 {
   BRNElement::init();
+  memset(pkt_buf,0,sizeof(pkt_buf));
 }
 
 DistTimeSync::~DistTimeSync()
@@ -63,7 +66,7 @@ tx_handler(void *element, const EtherAddress * ea, char *buffer, int size)
   /* unused parameter */
   (void) ea;
 
-  DistTimeSync *dts = (DistTimeSync *) element;
+  DistTimeSync *dts = reinterpret_cast<DistTimeSync *>( element);
   return dts->lpSendHandler(buffer, size);
 }
 
@@ -76,7 +79,7 @@ rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
   (void) fwd_rate;
   (void) rev_rate;
 
-  DistTimeSync *dts = (DistTimeSync *) element;
+  DistTimeSync *dts = reinterpret_cast<DistTimeSync *>( element);
   return dts->lpReceiveHandler(buffer, size, *ea);
 }
 
@@ -206,16 +209,13 @@ DistTimeSync::lpSendHandler(char *buf, int size)
 
   BRN_DEBUG("idx: %d buf_idx: %d\n", idx, _pkt_buf_idx);
 
-  uint32_t current_handle;
-  uint32_t p; /* packet indicator for manouvering in bundle/buf */
-
-  p = 0;
+  uint32_t p = 0; /* packet indicator for manouvering in bundle/buf */
   while (idx != ((int32_t) _pkt_buf_idx)) {
 
     if (max_pkts == 0)
       break;
 
-    current_handle = create_pkt_handle(pkt_buf[idx].seq_no,pkt_buf[idx].src);
+    uint32_t current_handle = create_pkt_handle(pkt_buf[idx].seq_no,pkt_buf[idx].src);
     BRN_DEBUG("txh: idx=%d, pkt_h=%d\n", idx, current_handle);
     BRN_DEBUG("txh: copy pkt with hst %lu to buf\n", pkt_buf[idx].host_time);
 
@@ -267,11 +267,8 @@ DistTimeSync::lpReceiveHandler(char *buf, int size, EtherAddress probe_src)
     );
   }
 
-  uint32_t packet_handle;
-  uint32_t idx;
-
   for (u_int8_t i = 0; i < rx_pkts; i++) { /* for each received packet */
-    packet_handle  = create_pkt_handle(bundle[i].seq_no, bundle[i].src);
+    uint32_t packet_handle  = create_pkt_handle(bundle[i].seq_no, bundle[i].src);
 
     BRN_DEBUG("rxh: rx'd pkt info:");
     BRN_DEBUG("rxh:\tsrc: %s seqno: %d hst: %lu\n",
@@ -284,7 +281,7 @@ DistTimeSync::lpReceiveHandler(char *buf, int size, EtherAddress probe_src)
       continue;
 
     if (pit.findp(packet_handle)) { /* valid packet + buffered */
-      idx = pit.find(packet_handle);
+      uint32_t idx = pit.find(packet_handle);
       BRN_DEBUG("rxh: buffered at index %d\n", idx);
 
       if (tbt.findp(probe_src)) { /* there's a tpl buf for the probing node */
@@ -410,7 +407,18 @@ String DistTimeSync::stats_handler()
   return sa.take_string();
 }
 
-static String DistTimeSync_read_stats(Element *e, void *thunk);
+static String DistTimeSync_read_stats(Element *e, void *thunk)
+{
+  static int i = 0;
+  ++i;
+  click_chatter("\nreadstats: %d\n\n", i);
+
+  /* unused parameter */
+  (void) thunk;
+
+  DistTimeSync *dstTs = reinterpret_cast<DistTimeSync *>( e);
+  return dstTs->stats_handler();
+}
 
 void DistTimeSync::add_handlers()
 {
@@ -433,6 +441,23 @@ HostTimeBuf::HostTimeBuf() :
   di.drift  = 0;
   di.offset = 0;
   di.ts     = 0;
+}
+
+HostTimeBuf::HostTimeBuf(const HostTimeBuf &htb) :
+  hst_idx(0),
+  entries(0)
+{
+  hst_tpls = new HostTimeTuple[HST_BUF_SIZE];
+
+  for (int i = 0; i < HST_BUF_SIZE; i++) {
+    hst_tpls[i].hst_me = htb.hst_tpls[i].hst_me;
+    hst_tpls[i].hst_nb = htb.hst_tpls[i].hst_nb;
+    hst_tpls[i].pkt_handle = htb.hst_tpls[i].pkt_handle;
+  }
+
+  di.drift  = htb.di.drift;
+  di.offset = htb.di.offset;
+  di.ts     = htb.di.ts;
 }
 
 HostTimeBuf::~HostTimeBuf()
@@ -513,19 +538,6 @@ static uint64_t apply_drift(uint64_t hst, int32_t off, int32_t td)
   return hst;
 }
 
-static String DistTimeSync_read_stats(Element *e, void *thunk)
-{
-  static int i = 0;
-  ++i;
-  click_chatter("\nreadstats: %d\n\n", i);
-
-  /* unused parameter */
-  (void) thunk;
-
-  DistTimeSync *dstTs = (DistTimeSync *) e;
-  return dstTs->stats_handler();
-}
-
 static uint32_t get_abs(int n)
 {
   return (n < 0) ? -(unsigned)n : n;
@@ -533,5 +545,4 @@ static uint32_t get_abs(int n)
 
 
 CLICK_ENDDECLS
-
 EXPORT_ELEMENT(DistTimeSync)

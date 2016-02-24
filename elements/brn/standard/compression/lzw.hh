@@ -33,6 +33,7 @@ class LZW
     // if maxBits1 < maxBits2. In order to specify only one max bitsize
     // leave maxBits2 to 0.
   LZW();
+  LZW(const LZW &lzw);
   ~LZW();
 
   int encode(unsigned char *input, int inputlen, unsigned char *encoded, int max_encodedlen);

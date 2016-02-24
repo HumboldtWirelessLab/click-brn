@@ -7,6 +7,7 @@
 CLICK_DECLS
 
 RoutingAlgorithm::RoutingAlgorithm()
+ : _min_link_metric_within_route(0)
 {
 }
 

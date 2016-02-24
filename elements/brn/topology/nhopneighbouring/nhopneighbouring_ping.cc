@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 NHopNeighbouringPing::NHopNeighbouringPing()
-  :_timer(this),
+  :_node_identity(NULL), nhop_info(NULL), _timer(this),
    _interval(DEFAULT_NHOPNEIGHBOURING_PING_INTERVAL),
    _active(true),
    _packet_id(0)

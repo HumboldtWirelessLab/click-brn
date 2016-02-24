@@ -37,11 +37,14 @@
 CLICK_DECLS
 
 DCluster::DCluster()
-  : _max_no_min_rounds(1),
+  : _max_distance(0),
+    _max_no_min_rounds(1),
     _max_no_max_rounds(1),
     _ac_min_round(0),
     _ac_max_round(0),
     _cluster_head(NULL),
+    _max_round(NULL),
+    _min_round(NULL),
     _delay(0)
 {
   Clustering::init();
@@ -72,14 +75,14 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
-  DCluster *dcl = (DCluster*)element;
+  DCluster *dcl = reinterpret_cast<DCluster*>(element);
   return dcl->lpSendHandler(buffer, size);
 }
 
 static int
 rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  DCluster *dcl = (DCluster*)element;
+  DCluster *dcl = reinterpret_cast<DCluster*>(element);
   return dcl->lpReceiveHandler(ea, buffer, size);
 }
 
@@ -299,7 +302,7 @@ DCluster::get_info()
 static String
 read_stats_param(Element *e, void *)
 {
-  DCluster *dc = (DCluster *)e;
+  DCluster *dc = reinterpret_cast<DCluster*>(e);
 
   return dc->get_info();
 }

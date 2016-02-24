@@ -10,6 +10,7 @@ CLICK_DECLS
 
 
 OLSRRARP::OLSRRARP()
+ : _arpQuerier(NULL)
 {
 }
 

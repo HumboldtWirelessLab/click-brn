@@ -46,8 +46,11 @@
 CLICK_DECLS
 
 BRN2DHCPServer::BRN2DHCPServer() :
+  _default_lease(0),
+  debug_count_dhcp_packet(0),
   _dhcpsubnetlist(NULL),
   _vlantable(NULL),
+  _dht_storage(NULL),
   _lease_table(NULL)
 {
   BRNElement::init();
@@ -107,7 +110,7 @@ BRN2DHCPServer::initialize(ErrorHandler *)
 
 static void callback_func(void *e, DHTOperation *op)
 {
-  BRN2DHCPServer *s = (BRN2DHCPServer *)e;
+  BRN2DHCPServer *s = reinterpret_cast<BRN2DHCPServer *>(e);
 
   BRN2DHCPServer::DHCPClientInfo *client_info = s->get_client_by_dht_id(op->get_id());
 
@@ -463,7 +466,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
 
   struct dhcp_packet *new_dhcp_packet = (struct dhcp_packet *)p_in->data();
 
-  client_info = (DHCPClientInfo *)get_client_by_mac(new_dhcp_packet->chaddr);
+  client_info = reinterpret_cast<DHCPClientInfo *>(get_client_by_mac(new_dhcp_packet->chaddr));
 
   if ( client_info == NULL )
   {
@@ -605,7 +608,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
 int
 BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
 {
-  WritablePacket *p_out = (WritablePacket *)client_info->_client_packet;
+  WritablePacket *p_out = reinterpret_cast<WritablePacket *>(client_info->_client_packet);
   struct dhcp_packet *dhcp_packet_out = (struct dhcp_packet *)p_out->data();
 
   uint8_t message_type;
@@ -662,7 +665,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
 
   struct dhcp_packet *new_dhcp_packet = (struct dhcp_packet *)p_in->data();
 
-  client_info = (DHCPClientInfo *)get_client_by_mac(new_dhcp_packet->chaddr);
+  client_info = reinterpret_cast<DHCPClientInfo *>(get_client_by_mac(new_dhcp_packet->chaddr));
 
   if ( client_info != NULL )
   {
@@ -803,7 +806,7 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
 {
   int result;
 
-  WritablePacket *p_out = (WritablePacket *)client_info->_client_packet;
+  WritablePacket *p_out = reinterpret_cast<WritablePacket *>(client_info->_client_packet);
   struct dhcp_packet *dhcp_packet_out = (struct dhcp_packet *)p_out->data();
 
   DHCPProtocol::set_dhcp_header(p_out, BOOTREPLY );
@@ -874,7 +877,7 @@ BRN2DHCPServer::handle_dhcp_release(Packet *p_in)
 
   DHCPClientInfo *client_info;
 
-  client_info = (DHCPClientInfo *)get_client_by_mac(dhcp_p->chaddr);
+  client_info = reinterpret_cast<DHCPClientInfo *>(get_client_by_mac(dhcp_p->chaddr));
 
   if ( client_info == NULL )
   {
@@ -1141,7 +1144,7 @@ BRN2DHCPServer::server_info(void)
 static String
 BRN2DHCPServer_read_param(Element *e, void *thunk)
 {
-  BRN2DHCPServer *dhcpd = (BRN2DHCPServer *)e;
+  BRN2DHCPServer *dhcpd = reinterpret_cast<BRN2DHCPServer *>(e);
 
   switch ((uintptr_t) thunk)
   {

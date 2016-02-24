@@ -118,8 +118,8 @@ BrnIappDataHandler::recv_handover_data(
   BRN_CHECK_EXPR_RETURN(p == NULL || p->length() < sizeof(struct click_brn_iapp),
     ("invalid argument (recv_handover_data)"), if (p) p->kill(); return;);
 
-  click_brn_iapp*     pIapp   = (click_brn_iapp*)p->data();
-  click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
+  const click_brn_iapp*     pIapp   = reinterpret_cast<const click_brn_iapp*>(p->data());
+  const click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
   BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_DAT != pIapp->type,
     ("got invalid iapp type %d", pIapp->type), if (p) p->kill(); return;);
@@ -136,7 +136,7 @@ BrnIappDataHandler::recv_handover_data(
     if (p) p->kill(); return;);
 
   // Get the ether header (NOTE needed for output(0).push(p))
-  const click_ether* ether = (const click_ether*) p->data();
+  const click_ether* ether = reinterpret_cast<const click_ether*>( p->data());
   p->set_ether_header(ether);
   BRN_CHECK_EXPR_RETURN(NULL == ether, 
     ("missing ether header"), p->kill();return;);
@@ -205,7 +205,7 @@ BrnIappDataHandler::recv_ether(Packet* p)
     if (p) p->kill(); return;);
 
   // Get ether header
-  const click_ether* ether = (const click_ether*) p->data();
+  const click_ether* ether = reinterpret_cast<const click_ether*>( p->data());
   p->set_ether_header(ether);
   BRN_CHECK_EXPR_RETURN(NULL == ether, ("missing ether header"), p->kill();return;);
 
@@ -286,7 +286,7 @@ BrnIappDataHandler::handle_handover_data(
     ("invalid arguments"), if (p) p->kill();return;);
 
   // Get the ether header
-  const click_ether *ether = (const click_ether *)p->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->ether_header());
   BRN_CHECK_EXPR_RETURN(NULL == ether,
     ("missing ether header"), p->kill();return;);
 
@@ -371,7 +371,7 @@ enum {H_DEBUG, H_OPTIMIZE};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappDataHandler *td = (BrnIappDataHandler *)e;
+  BrnIappDataHandler *td = reinterpret_cast<BrnIappDataHandler *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -386,7 +386,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappDataHandler *f = (BrnIappDataHandler *)e;
+  BrnIappDataHandler *f = reinterpret_cast<BrnIappDataHandler *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

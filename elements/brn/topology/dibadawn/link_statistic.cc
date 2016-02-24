@@ -50,7 +50,7 @@ void DibadawnLinkStatistic::increaseRxCounter(EtherAddress& addr)
 
 DibadawnLinkStatistic::NeighborLink* DibadawnLinkStatistic::getNeiborEntry(EtherAddress& addr)
 {
-  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); it++)
+  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); ++it)
   {
     NeighborLink *link = *it;
     if(link->addr == addr)
@@ -67,7 +67,7 @@ void DibadawnLinkStatistic::reset()
 {
   numTx = 0;  
   
-  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); it++)
+  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); ++it)
   {
     NeighborLink *link = *it;
     delete(link);
@@ -80,7 +80,7 @@ String DibadawnLinkStatistic::asString()
   StringAccum sa;
   sa << "  <tx num='" << numTx << "' />\n";
   
-  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); it++)
+  for(Vector<NeighborLink*>::iterator it = links.begin(); it != links.end(); ++it)
   {
     NeighborLink *link = *it;
     sa << "  <rx node='" << link->addr.unparse() << "' "<<"num='" << link->numRx << "' />\n";

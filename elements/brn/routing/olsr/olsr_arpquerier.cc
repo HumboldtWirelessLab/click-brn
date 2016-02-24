@@ -29,13 +29,16 @@
 CLICK_DECLS
 
 OLSRARPQuerier::OLSRARPQuerier()
-    : _age_head(0), _age_tail(0), _expire_timer(expire_hook, this)
+    : _age_head(0), _age_tail(0), _expire_timer(expire_hook, this), _capacity(0)
 {
     // input 0: IP packets
     // input 1: ARP responses
     // output 0: ether/IP and ether/ARP queries
-  for (int i = 0; i < NMAP; i++)
-    _map[i] = 0;
+  memset(_map, 0, sizeof(_map));
+  _cache_size = 0;
+  _arp_queries = 0;
+  _drops = 0;
+  _arp_responses = 0;
 }
 
 OLSRARPQuerier::~OLSRARPQuerier()
@@ -115,7 +118,7 @@ OLSRARPQuerier::clear_map()
       while (Packet *p = ae->head) {
 	  ae->head = p->next();
 	  p->kill();
-	  _drops++;
+	  ++_drops;
       }
       delete ae;
       ae = n;
@@ -128,7 +131,7 @@ OLSRARPQuerier::clear_map()
 void
 OLSRARPQuerier::take_state(Element *e, ErrorHandler *errh)
 {
-    OLSRARPQuerier *arpq = (OLSRARPQuerier *)e->cast("OLSRARPQuerier");
+    OLSRARPQuerier *arpq = reinterpret_cast<OLSRARPQuerier *>(e->cast("OLSRARPQuerier"));
     if (!arpq || _my_ip != arpq->_my_ip || _my_en != arpq->_my_en)
 	return;
     if (_arp_queries > 0) {
@@ -163,7 +166,7 @@ OLSRARPQuerier::expire_hook(Timer *timer, void *thunk)
 {
     // Expire any old entries, and make sure there's room for at least one
     // packet.
-    OLSRARPQuerier *arpq = (OLSRARPQuerier *)thunk;
+    OLSRARPQuerier *arpq = reinterpret_cast<OLSRARPQuerier *>(thunk);
     arpq->_lock.acquire_write();
     int jiff = click_jiffies();
     ARPEntry *ae;
@@ -181,8 +184,8 @@ OLSRARPQuerier::expire_hook(Timer *timer, void *thunk)
 	while (Packet *p = ae->head) {
 	    ae->head = p->next();
 	    p->kill();
-	    arpq->_cache_size--;
-	    arpq->_drops++;
+	    --arpq->_cache_size;
+	    ++arpq->_drops;
 	}
 
 	delete ae;
@@ -200,8 +203,8 @@ OLSRARPQuerier::expire_hook(Timer *timer, void *thunk)
 	    if (!(ae->head = p->next()))
 		ae->tail = 0;
 	    p->kill();
-	    arpq->_cache_size--;
-	    arpq->_drops++;
+	    --arpq->_cache_size;
+	    ++arpq->_drops;
 	}
 	ae = ae->age_next;
     }
@@ -221,13 +224,13 @@ OLSRARPQuerier::send_query_for(IPAddress want_ip)
   }
   memset(q->data(), '\0', q->length());
   
-  click_ether *e = (click_ether *) q->data();
+  click_ether *e = reinterpret_cast<click_ether *>( q->data());
   q->set_ether_header(e);
   memcpy(e->ether_dhost, "\xff\xff\xff\xff\xff\xff", 6);
   memcpy(e->ether_shost, _my_en.data(), 6);
   e->ether_type = htons(ETHERTYPE_ARP);
 
-  click_ether_arp *ea = (click_ether_arp *) (e + 1);
+  click_ether_arp *ea = reinterpret_cast<click_ether_arp *>( (e + 1));
   ea->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);
   ea->ea_hdr.ar_pro = htons(ETHERTYPE_IP);
   ea->ea_hdr.ar_hln = 6;
@@ -237,7 +240,7 @@ OLSRARPQuerier::send_query_for(IPAddress want_ip)
   memcpy(ea->arp_sha, _my_en.data(), 6);
   memcpy(ea->arp_spa, _my_ip.data(), 4);
 
-  _arp_queries++;
+  ++_arp_queries;
   output(noutputs()-1).push(q);
 }
 
@@ -254,7 +257,7 @@ OLSRARPQuerier::handle_ip(Packet *p)
     // delete packet if we are not configured
     if (!_my_ip) {
 	p->kill();
-	_drops++;
+	++_drops;
 	return;
     }
 
@@ -279,7 +282,7 @@ OLSRARPQuerier::handle_ip(Packet *p)
 	    _lock.release_read();
 	    output(0).push(q);
 	} else {
-	    _drops++;
+	    ++_drops;
 	    _lock.release_read();
 	}
 	if (was_polling)
@@ -295,7 +298,7 @@ OLSRARPQuerier::handle_ip(Packet *p)
 	    click_chatter("%s: would query for 0.0.0.0; missing dest IP addr annotation?", declaration().c_str());
 	    zero_warned = true;
 	}
-	_drops++;
+	++_drops;
 	p->kill();
 	return;
     } else if (ipa.addr() == 0xFFFFFFFFU || ipa == _bcast_addr) {
@@ -306,7 +309,7 @@ OLSRARPQuerier::handle_ip(Packet *p)
 	    e->ether_type = htons(ETHERTYPE_IP);
 	    output(0).push(q);
 	} else
-	    _drops++;
+	    ++_drops;
 	return;
     }
 
@@ -330,7 +333,7 @@ OLSRARPQuerier::handle_ip(Packet *p)
 	    ae->head = p;
 	ae->tail = p;
 	p->set_next(0);
-	_cache_size++;
+	++_cache_size;
     } else if ((ae = new ARPEntry)) {
 	ae->ip = ipa;
 	ae->ok = ae->polling = 0;
@@ -351,10 +354,10 @@ OLSRARPQuerier::handle_ip(Packet *p)
 	_age_tail = *ae->age_pprev = ae;
 	ae->age_next = 0;
 	
-	_cache_size++;
+	++_cache_size;
     } else {
 	p->kill();
-	_drops++;
+	++_drops;
 	_lock.release_write();
 	return;
     }
@@ -380,10 +383,10 @@ OLSRARPQuerier::handle_response(Packet *p)
   if (p->length() < sizeof(click_ether) + sizeof(click_ether_arp))
     return;
 
-  _arp_responses++;
+  ++_arp_responses;
   
-  click_ether *ethh = (click_ether *) p->data();
-  click_ether_arp *arph = (click_ether_arp *) (ethh + 1);
+  const click_ether *ethh = reinterpret_cast<const click_ether *>( p->data());
+  const click_ether_arp *arph = reinterpret_cast<const click_ether_arp *>( (ethh + 1));
   IPAddress ipa = IPAddress(arph->arp_spa);
   EtherAddress ena = EtherAddress(arph->arp_sha);
   if (ntohs(ethh->ether_type) == ETHERTYPE_ARP
@@ -425,7 +428,7 @@ OLSRARPQuerier::handle_response(Packet *p)
 	Packet *next = cached_packet->next();
 	handle_ip(cached_packet);
 	cached_packet = next;
-	_cache_size--;
+	--_cache_size;
     }
   }
 }
@@ -444,7 +447,7 @@ OLSRARPQuerier::push(int port, Packet *p)
 String
 OLSRARPQuerier::read_table(Element *e, void *)
 {
-  OLSRARPQuerier *q = (OLSRARPQuerier *)e;
+  OLSRARPQuerier *q = reinterpret_cast<OLSRARPQuerier *>(e);
   String s;
   for (int i = 0; i < NMAP; i++)
     for (ARPEntry *e = q->_map[i]; e; e = e->next) {
@@ -456,7 +459,7 @@ OLSRARPQuerier::read_table(Element *e, void *)
 String
 OLSRARPQuerier::read_stats(Element *e, void *thunk)
 {
-  OLSRARPQuerier *q = (OLSRARPQuerier *)e;
+  OLSRARPQuerier *q = reinterpret_cast<OLSRARPQuerier *>(e);
 
   switch ((uintptr_t) thunk) {
     case 0:

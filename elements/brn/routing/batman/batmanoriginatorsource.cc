@@ -40,7 +40,7 @@
 CLICK_DECLS
 
 BatmanOriginatorSource::BatmanOriginatorSource()
-  :  _send_timer(static_send_timer_hook,this)
+  :  _brt(NULL),_nodeid(NULL), _id(0),_interval(0), _send_timer(static_send_timer_hook,this)
 {
   BRNElement::init();
 }
@@ -85,8 +85,8 @@ void
 BatmanOriginatorSource::static_send_timer_hook(Timer *t, void *bos)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((BatmanOriginatorSource*)bos)->sendOriginator();
-  ((BatmanOriginatorSource*)bos)->set_send_timer();
+ (reinterpret_cast<BatmanOriginatorSource*>(bos))->sendOriginator();
+ (reinterpret_cast<BatmanOriginatorSource*>(bos))->set_send_timer();
 }
 
 void

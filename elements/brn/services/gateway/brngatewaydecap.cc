@@ -39,6 +39,7 @@
 CLICK_DECLS
 
 BRNGatewayDecap::BRNGatewayDecap()
+ : _gw(NULL)
 {
   BRNElement::init();
 }
@@ -76,7 +77,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
   UNREFERENCED_PARAMETER(port);
 
 	// get BRN header
-	click_brn *brn = (click_brn *) p->data();
+	const click_brn *brn = reinterpret_cast<const click_brn *>( p->data());
         
 	BRN_CHECK_EXPR_RETURN(brn->dst_port != BRN_PORT_GATEWAY || brn->src_port != BRN_PORT_GATEWAY,
 						  ("Got packet BRN packet not for GATEWAY. Killing it. Error in configuration."),
@@ -86,7 +87,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
 	
 	assert(sizeof(click_brn) + ntohs(brn->body_length) == p->length());
 	
-	brn_gateway *brn_gw = (brn_gateway *) (p->data() + sizeof(click_brn));
+	const brn_gateway *brn_gw = reinterpret_cast<const brn_gateway *>( (p->data() + sizeof(click_brn)));
   
   if (p->length() == sizeof(click_brn) + sizeof(brn_gateway)) {
     // just a fake packet to test for the route
@@ -98,7 +99,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
   
   
 	// ether header of packet sent to gw
-	click_ether *ether = (click_ether *) (p->data() + sizeof(click_brn) + sizeof(brn_gateway));
+	const click_ether *ether = reinterpret_cast<const click_ether *>( (p->data() + sizeof(click_brn) + sizeof(brn_gateway)));
 	
 	EtherAddress chosen_gw = EtherAddress(ether->ether_shost);
 	

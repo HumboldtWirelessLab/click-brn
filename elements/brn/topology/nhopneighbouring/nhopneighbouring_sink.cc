@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 NHopNeighbouringSink::NHopNeighbouringSink()
-{
+:nhop_info(NULL),_link_table(NULL){
   BRNElement::init();
 }
 

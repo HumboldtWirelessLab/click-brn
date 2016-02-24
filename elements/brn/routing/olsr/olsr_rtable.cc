@@ -14,8 +14,8 @@
 CLICK_DECLS
 
 OLSRRoutingTable::OLSRRoutingTable()
+ : _linkInfo(NULL),_neighborInfo(NULL),_interfaceInfo(NULL),_topologyInfo(NULL),_localIfaces(NULL),_associationInfo(NULL),_linearIPlookup(NULL),_visitorInfo(NULL),_errh(NULL)
 {
-	_visitorInfo = 0;
 }
 
 OLSRRoutingTable::~OLSRRoutingTable()
@@ -120,14 +120,14 @@ OLSRRoutingTable::compute_routing_table()
 
 
 	//step 2 - adding routes to symmetric neighbors
-	for ( HashMap<IPAddress, void*>::iterator iter = neighbor_set->begin(); iter != neighbor_set->end(); iter++ ) {
-		neighbor_data *neighbor = ( neighbor_data * ) iter.value();
+	for ( HashMap<IPAddress, void*>::iterator iter = neighbor_set->begin(); iter != neighbor_set->end(); ++iter ) {
+		neighbor_data *neighbor = reinterpret_cast<neighbor_data *>(iter.value());
 		if ( neighbor->N_status == OLSR_SYM_NEIGH ) {
 			link_data * link = 0;
 			link_data *lastlinktoneighbor = 0;
 			bool neigh_main_addr_added = false;
-			for ( HashMap<OLSRIPPair, void *>::iterator i = link_set->begin(); i != link_set->end(); i++ ) {
-				link = ( link_data * ) i.value();
+			for ( HashMap<OLSRIPPair, void *>::iterator i = link_set->begin(); i != link_set->end();++i ) {
+				link = reinterpret_cast<link_data *>(i.value());
 				IPAddress neigh_main_addr = _interfaceInfo->get_main_address( link->L_neigh_iface_addr );
 				if ( neigh_main_addr == neighbor->N_neigh_main_addr ) {
 					lastlinktoneighbor = link;
@@ -177,13 +177,13 @@ OLSRRoutingTable::compute_routing_table()
 #endif
 
 	//step 3 - adding routes to twohop neighbors
-	for ( HashMap<OLSRIPPair, void*>::iterator iter = twohop_set->begin(); iter != twohop_set->end(); iter++ ) {
-		twohop_data *twohop = ( twohop_data * ) iter.value();
+	for ( HashMap<OLSRIPPair, void*>::iterator iter = twohop_set->begin(); iter != twohop_set->end(); ++iter ) {
+		twohop_data *twohop = reinterpret_cast<twohop_data *>(iter.value());
 		if ( twohop->N_twohop_addr != _myIP ) {
 			//do not add neighbors, do not add twohop neighbors that have already been added
 			if ( !_linearIPlookup->lookup_iproute( twohop->N_twohop_addr ) ) {
 				if ( (iproute = _linearIPlookup->lookup_iproute( twohop->N_neigh_main_addr )) ) {
-					neighbor_data *neighbor = ( neighbor_data * ) neighbor_set->find( twohop->N_neigh_main_addr );
+					neighbor_data *neighbor = reinterpret_cast<neighbor_data *>(neighbor_set->find( twohop->N_neigh_main_addr ));
 					if ( neighbor->N_willingness > OLSR_WILL_NEVER ) {
 						newiproute.addr = twohop->N_twohop_addr;
 						newiproute.mask = netmask32;
@@ -213,8 +213,8 @@ OLSRRoutingTable::compute_routing_table()
 	//step 4 - adding nodes with distance greater than 2
 	for ( int h = 2; h >= 2; h++ ) {
 		bool route_added = false;
-		for ( HashMap<OLSRIPPair, void*>::iterator iter = topology_set->begin(); iter != topology_set->end(); iter++ ) {
-			topology_data *topology = ( topology_data * ) iter.value();
+		for ( HashMap<OLSRIPPair, void*>::iterator iter = topology_set->begin(); iter != topology_set->end(); ++iter ) {
+			topology_data *topology = reinterpret_cast<topology_data *>(iter.value());
 			//if (_routingTable->find(topology->T_dest_addr) == 0 ){
 			if ( ! _linearIPlookup->lookup_iproute( topology->T_dest_addr ) ) {
 				//there is no entry in the routing table for this address
@@ -252,9 +252,9 @@ OLSRRoutingTable::compute_routing_table()
 #endif
 
 	//step 5 - add routes to other nodes' interfaces that have not already been added
-	for ( HashMap<IPAddress, void *>::iterator iter = interface_set->begin(); iter != interface_set->end(); iter++ ) {
-		interface_data *interface = ( interface_data * ) iter.value();
-		//rtable_entry *entry = (rtable_entry *) _routingTable->find(interface->I_main_addr);
+	for ( HashMap<IPAddress, void *>::iterator iter = interface_set->begin(); iter != interface_set->end(); ++iter ) {
+		interface_data *interface = reinterpret_cast<interface_data *>(iter.value());
+		//rtable_entry *entry = reinterpret_cast<rtable_entry *>( _routingTable->find(interface->I_main_addr));
 		if ( _linearIPlookup->lookup_iproute( interface->I_main_addr )  ) {
 			if (! (iproute = _linearIPlookup->lookup_iproute( interface->I_iface_addr ) )) {
 
@@ -277,7 +277,7 @@ OLSRRoutingTable::compute_routing_table()
 	if ( _visitorInfo ) {
 		_visitorInfo->clear();
 		//	click_chatter ("%s | checking for new visitors!!!!\n",_myIP.unparse().c_str());
-		for ( OLSRLinearIPLookup::IPRouteTableIterator iter = _linearIPlookup->begin() ; iter != _linearIPlookup->end(); iter++ ) {
+		for ( OLSRLinearIPLookup::IPRouteTableIterator iter = _linearIPlookup->begin() ; iter != _linearIPlookup->end(); ++iter ) {
 			// click_chatter ("%s | CHECKING if node %s is visiting my network\n",_myIP.unparse().c_str(), _linearIPlookup->_t[index].addr.unparse().c_str());
 			if ( iter->mask == netmask32 && !iter->addr.matches_prefix( _myIP, _myMask ) ) { // check if this node is on my subnet
 				_visitorInfo->add_tuple( iter->gw, iter->addr, iter->mask, Timestamp( 0, 0 ).timeval() );
@@ -290,8 +290,8 @@ OLSRRoutingTable::compute_routing_table()
 
 	//step 6 - add routes to entries in the association table
 	/// @TODO I don't feel that this code is 100% compliant, this definitely needs to be looked at and possibly rewritten (see p. 54 of the RFC)
-	for ( HashMap<OLSRIPPair, void *>::iterator iter = association_set->begin(); iter != association_set->end(); iter++ ) {
-		association_data *association = ( association_data * ) iter.value();
+	for ( HashMap<OLSRIPPair, void *>::iterator iter = association_set->begin(); iter != association_set->end(); ++iter ) {
+		association_data *association = reinterpret_cast<association_data *>(iter.value());
 		if ( (iproute = _linearIPlookup->lookup_iproute( association->A_gateway_addr )) ) {
 			if ( !_linearIPlookup->lookup_iproute( association->A_network_addr ) /** @TODO This seems like a weird or. have to check this again!! || _linearIPlookup->lookup_iproute( association->A_network_addr )->gw != iproute->gw */) {
 				newiproute.addr = association->A_network_addr;

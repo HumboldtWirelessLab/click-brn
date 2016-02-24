@@ -67,11 +67,18 @@ CLICK_DECLS
 
 class StringTokenizer {
   public:
-    StringTokenizer(const String &s) {
+    explicit StringTokenizer(const String &s) {
       buf = new char[s.length()];
       memcpy(buf, s.data(), s.length());
       curr_ptr = buf;
       length = s.length();
+    }
+
+    StringTokenizer(const StringTokenizer &st) {
+      buf = new char[st.length];
+      memcpy(buf, st.buf, st.length);
+      curr_ptr = buf;
+      length = st.length;
     }
 
     bool hasMoreTokens() const {
@@ -109,7 +116,8 @@ class StringTokenizer {
 
 extern "C" {
   static inline int etheraddr_sorter(const void *va, const void *vb, void */*thunk*/) {
-    EtherAddress *a = (EtherAddress *)va, *b = (EtherAddress *)vb;
+    const EtherAddress *a = reinterpret_cast<const EtherAddress *>(va);
+    const EtherAddress *b = reinterpret_cast<const EtherAddress *>(vb);
 
     if (a == b) {
       return 0;

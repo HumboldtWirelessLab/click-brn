@@ -74,8 +74,8 @@ DartIDStore::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 DartIDStore::initialize(ErrorHandler */*errh*/)
 {
-  ((DartRoutingTable*)_drt)->setDartIDStorage(this);
-  ((DartRoutingTable*)_drt)->add_update_callback(routingtable_callback_func, this);
+  (reinterpret_cast<DartRoutingTable*>(_drt))->setDartIDStorage(this);
+  (reinterpret_cast<DartRoutingTable*>(_drt))->add_update_callback(routingtable_callback_func, this);
   return 0;
 }
 
@@ -91,7 +91,7 @@ DartIDStore::uninitialize()
 void
 DartIDStore::routingtable_callback_func(void *e, int /*status*/)
 {
-  DartIDStore *s = (DartIDStore *)e;
+  DartIDStore *s = reinterpret_cast<DartIDStore *>(e);
   s->store_nodeid();
 
 }
@@ -99,8 +99,8 @@ DartIDStore::routingtable_callback_func(void *e, int /*status*/)
 void DartIDStore::clear_storage()
 {
 BRN_DEBUG("clear DHT-storage");
-while( ((DHTStorageSimple*)_dht_storage)->_db->size() != 0){
-((DHTStorageSimple*)_dht_storage)->_db->delRow(0);
+while( (reinterpret_cast<DHTStorageSimple*>(_dht_storage))->_db->size() != 0){
+(reinterpret_cast<DHTStorageSimple*>(_dht_storage))->_db->delRow(0);
 
 }
 
@@ -115,8 +115,8 @@ DartIDStore::store_nodeid()
 
   struct dht_nodeid_entry id_entry;
 
-  id_entry._id_length = htonl(((DartRoutingTable*)_drt)->_me->_digest_length);
-  memcpy(id_entry._nodeid, ((DartRoutingTable*)_drt)->_me->_md5_digest, MAX_NODEID_LENTGH);
+  id_entry._id_length = htonl((reinterpret_cast<DartRoutingTable*>(_drt))->_me->_digest_length);
+  memcpy(id_entry._nodeid, (reinterpret_cast<DartRoutingTable*>(_drt))->_me->_md5_digest, MAX_NODEID_LENTGH);
 
   dhtop = new DHTOperation();
 
@@ -141,7 +141,7 @@ DartIDStore::store_nodeid()
 void
 DartIDStore::callback_func(void *e, DHTOperation *op)
 {
-  DartIDStore *s = (DartIDStore *)e;
+  DartIDStore *s = reinterpret_cast<DartIDStore *>(e);
   s->callback(op);
 }
 
@@ -176,7 +176,7 @@ enum {H_DEBUG};
 static String
 read_handler(Element *e, void * vparam)
 {
-  DartIDStore *rq = (DartIDStore *)e;
+  DartIDStore *rq = reinterpret_cast<DartIDStore *>(e);
 
   switch ((intptr_t)vparam) {
     case H_DEBUG: {
@@ -189,7 +189,7 @@ read_handler(Element *e, void * vparam)
 static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  DartIDStore *rq = (DartIDStore *)e;
+  DartIDStore *rq = reinterpret_cast<DartIDStore *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

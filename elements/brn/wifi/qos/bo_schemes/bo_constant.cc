@@ -30,7 +30,7 @@ BoConstant::~BoConstant()
 void * BoConstant::cast(const char *name)
 {
   if (strcmp(name, "BoConstant") == 0)
-    return (BoConstant *) this;
+    return dynamic_cast<BoConstant *>(this);
 
   return BackoffScheme::cast(name);
 }

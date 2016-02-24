@@ -36,7 +36,7 @@ CLICK_DECLS
 
 extern "C" {
   static int etheraddress_sorter(const void *va, const void *vb, void */*thunk*/) {
-    EtherAddress *a = (EtherAddress *)va, *b = (EtherAddress *)vb;
+    const EtherAddress *a = reinterpret_cast<const EtherAddress *>(va), *b = reinterpret_cast<const EtherAddress *>(vb);
 
     return memcmp(a->data(), b->data(), 6);
   }
@@ -82,7 +82,7 @@ uint32_t
 NHopNeighbouringInfo::count_neighbours(uint32_t hops)
 {
   uint32_t n = 0;
-  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); iter++)
+  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); ++iter)
     if ( iter.value()._hops == hops ) n++;
 
   return n;
@@ -92,7 +92,7 @@ uint32_t
 NHopNeighbouringInfo::count_neighbours_max_hops(uint32_t hops)
 {
   uint32_t n = 0;
-  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); iter++)
+  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); ++iter)
     if ( iter.value()._hops <= hops ) n++;
 
   return n;
@@ -130,7 +130,7 @@ NHopNeighbouringInfo::update_neighbour(EtherAddress *ea, uint8_t hops, uint8_t h
 void
 NHopNeighbouringInfo::get_neighbours(Vector<EtherAddress> *nhop_neighbours, uint8_t hops)
 {
-  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); iter++) {
+  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); ++iter) {
     if ( iter.value()._hops == hops ) {
       nhop_neighbours->push_back(iter.value()._ea);
     }
@@ -176,7 +176,7 @@ NHopNeighbouringInfo::print_stats()
 
   sa << "<nhopneighbour_info node=\"" << BRN_NODE_NAME << "\" hop_limit=\"" << (uint32_t)_hop_limit << "\" >\n";
   sa << "\t<neighbours count=\"" << _ntable.size() << "\" >\n";
-  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); iter++) {
+  for (NeighbourTableIter iter = _ntable.begin(); iter.live(); ++iter) {
     NeighbourInfo info = iter.value();
     sa << "\t\t<neighbour addr=\"" << info._ea.unparse() << "\" distance=\"" << (uint32_t)info._hops << "\"";
     sa << " last_seen=\"" << info._last_seen.unparse() << "\" />\n";
@@ -193,7 +193,7 @@ NHopNeighbouringInfo::print_neighbours_stats()
   StringAccum sa;
 
   sa << "<two_hop_nhopneighbour_info node=\"" << BRN_NODE_NAME << "\" hop_limit=\"" << (uint32_t)_hop_limit << "\" count=\"" << _foreign_ntable.size() << "\" >\n";
-  for (ForeignNeighbourTableIter fiter = _foreign_ntable.begin(); fiter.live(); fiter++) {
+  for (ForeignNeighbourTableIter fiter = _foreign_ntable.begin(); fiter.live(); ++fiter) {
     ForeignNeighbourInfo finfo = fiter.value();
     sa << "\t<one_hop_neighbour addr=\"" << finfo._ea.unparse() << "\" distance=\"";
     sa << (uint32_t)finfo._hops << "\" last_seen=\"" << finfo._last_seen.unparse() << "\" >\n";
@@ -220,13 +220,13 @@ NHopNeighbouringInfo::print_neighbours_stats()
 static String
 read_state_param(Element *e, void *)
 {
-  return ((NHopNeighbouringInfo *)e)->print_stats();
+  return(reinterpret_cast<NHopNeighbouringInfo *>(e))->print_stats();
 }
 
 static String
 read_neighbours_state_param(Element *e, void *)
 {
-  return ((NHopNeighbouringInfo *)e)->print_neighbours_stats();
+  return(reinterpret_cast<NHopNeighbouringInfo *>(e))->print_neighbours_stats();
 }
 
 void

@@ -53,6 +53,7 @@ BRN2LinkStat::BRN2LinkStat()
     _stale_timer(this),
     _ads_rs_index(0),
     _brn_rsp_packet_buf(NULL),
+    _brn_rsp_packet_buf_size(0),
     _rtable(0),
     _stale(LINKSTAT_DEFAULT_STALE)
 {
@@ -149,7 +150,7 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
    * and sync them up so the rates don't get
    * screwed up.
   */
-  BRN2LinkStat *q = (BRN2LinkStat *)e->cast("BRNLinkStat");
+  BRN2LinkStat *q = reinterpret_cast<BRN2LinkStat *>(e->cast("BRNLinkStat"));
   if (!q) {
     errh->error("Couldn't cast old BRNLinkStat");
     return;
@@ -430,8 +431,8 @@ BRN2LinkStat::simple_action(Packet *p)
   BRN_DEBUG(" * simple_action()");
 
   Timestamp now = Timestamp::now();
-  click_ether *eh = (click_ether *) p->ether_header();
-  click_brn *brn = (click_brn *) p->data();
+  const click_ether *eh = reinterpret_cast<const click_ether *>( p->ether_header());
+  const click_brn *brn = reinterpret_cast<const click_brn *>( p->data());
 
   /* best_xxx used to set fwd and rev for rx_handler (other elements) */
   uint8_t best_fwd = 0;
@@ -450,7 +451,7 @@ BRN2LinkStat::simple_action(Packet *p)
     return 0;
   }
 
-  link_probe *lp = (link_probe *)(p->data() + sizeof(click_brn));
+  const link_probe *lp = reinterpret_cast<const link_probe *>((p->data() + sizeof(click_brn)));
   if (lp->_version != LINKPROBE_VERSION) {
     static bool version_warning = false;
     _bad_table.insert(src_ea, lp->_version);
@@ -692,7 +693,7 @@ BRN2LinkStat::read_bcast_stats()
 
   Vector<EtherAddress> ether_addrs;
 
-  for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++)
+  for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live();++i)
     ether_addrs.push_back(i.key());
 
   //sort
@@ -749,7 +750,7 @@ BRN2LinkStat::bad_nodes() {
   sa << "<badnodes id='" << *(_dev->getEtherAddress()) << "'";
   sa << " time='" << now.unparse() << "'>\n";
 
-  for (BadTable::const_iterator i = _bad_table.begin(); i.live(); i++) {
+  for (BadTable::const_iterator i = _bad_table.begin(); i.live();++i) {
     uint8_t version = i.value();
     EtherAddress dst = i.key();
     sa << "<badnode id='" << dst.unparse().c_str() << "' version='" << (int) version << "' />\n";
@@ -772,7 +773,11 @@ BRN2LinkStat::clear_stale()
   for (int x = 0; x < _neighbors.size(); x++) {
     EtherAddress n = _neighbors[x];
     probe_list_t *l = _bcast_stats.findp(n);
-    if (!l || (now - l->_last_rx).msecval() > (2 * l->_tau)) {
+
+    if (l == NULL) {
+      BRN_DEBUG(" clearing stale neighbor %s age n/a(brn_0)", n.unparse().c_str());
+      _bcast_stats.remove(n);
+    } else if ((now - l->_last_rx).msecval() > (2 * l->_tau)) {
       BRN_DEBUG(" clearing stale neighbor %s age %d(brn_0)",
         n.unparse().c_str(), (int)((now - l->_last_rx).msecval() / 1000 ));
       _bcast_stats.remove(n);
@@ -850,8 +855,6 @@ BRN2LinkStat::update_probes(String probes)
     int8_t ht_rate = RATE_HT_NONE;
     uint8_t sgi = 0;
     uint8_t ht = 0;
-
-    ht_rate = RATE_HT_NONE;
 
     if (args[x] == "HT20") {
       ht_rate = RATE_HT20;
@@ -943,7 +946,7 @@ BRN2LinkStat::add_metric(String metric_str, ErrorHandler *errh)
     Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
       //click_chatter("El-Name: %s", new_element->class_name());
-      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      BRN2GenericMetric *gm = reinterpret_cast<BRN2GenericMetric *>(new_element->cast("BRN2GenericMetric"));
       if ( gm != NULL ) {
         _metrics[_metrics_size] = gm;
         _metrics_size++;
@@ -973,7 +976,7 @@ enum {
 static String
 BRNLinkStat_read_param(Element *e, void *thunk)
 {
-  BRN2LinkStat *td = (BRN2LinkStat *)e;
+  BRN2LinkStat *td = reinterpret_cast<BRN2LinkStat *>(e);
   Timestamp now = Timestamp::now();
   switch ((uintptr_t) thunk) {
     case H_BCAST_STATS: return td->read_bcast_stats(); //xml
@@ -1014,7 +1017,7 @@ BRNLinkStat_read_param(Element *e, void *thunk)
 static int
 BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BRN2LinkStat *f = (BRN2LinkStat *)e;
+  BRN2LinkStat *f = reinterpret_cast<BRN2LinkStat *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
     case H_RESET: {    //reset

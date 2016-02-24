@@ -49,7 +49,7 @@ BoMediumShare::~BoMediumShare()
 void * BoMediumShare::cast(const char *name)
 {
   if (strcmp(name, "BoMediumShare") == 0)
-    return (BoMediumShare *) this;
+    return dynamic_cast<BoMediumShare *>(this);
 
   return BackoffScheme::cast(name);
 }
@@ -60,7 +60,7 @@ int BoMediumShare::initialize(ErrorHandler *errh)
 
   if ((_cocst == NULL) && (_cocst_string != "")) {
     Element *e = cp_element(_cocst_string, this, errh);
-    _cocst = (CooperativeChannelStats*)e;
+    _cocst = reinterpret_cast<CooperativeChannelStats*>(e);
   }
 
   return 0;
@@ -174,7 +174,7 @@ void BoMediumShare::print_2hop_tx_dur(NodeChannelStats *ncst)
     NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
 
     /* for every 2hop nb get tx duration in percent */
-    for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); iter_m++) {
+    for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); ++iter_m) {
       EtherAddress n_ea = iter_m.key();
       struct neighbour_airtime_stats *n_nas = iter_m.value();
       double duration_percent = (double)n_nas->_duration / 1000000;
@@ -186,13 +186,13 @@ void BoMediumShare::print_2hop_tx_dur(NodeChannelStats *ncst)
 
 EtherAddress BoMediumShare::get_src_etheraddr(Packet *p)
 {
-    struct click_wifi *w = (struct click_wifi *) p->data();
+    const struct click_wifi *w = reinterpret_cast<const struct click_wifi *>(p->data());
     return EtherAddress(w->i_addr2);
 }
 
 EtherAddress BoMediumShare::get_dst_etheraddr(Packet *p)
 {
-    struct click_wifi *w = (struct click_wifi *) p->data();
+    const struct click_wifi *w = reinterpret_cast<const struct click_wifi *>(p->data());
     return EtherAddress(w->i_addr1);
 }
 

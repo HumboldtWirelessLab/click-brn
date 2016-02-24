@@ -41,7 +41,8 @@ Ath2Decap::Ath2Decap():
     _cst(NULL),
     _max_rssi(ATH2DECAP_DEFAULT_MAX_SNR),
     _rssi_reset(ATH2DECAP_DEFAULT_SNR_RESET_VALUE),
-    _fix_rssi(0)
+    _fix_rssi(0),
+    _athdecap(false)
 {
   BRNElement::init();
 }
@@ -53,10 +54,7 @@ Ath2Decap::~Ath2Decap()
 int
 Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  int ret;
-  _athdecap = false;
-
-  ret = cp_va_kparse(conf, this, errh,
+  int ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
                      "CHANNELSTATS", cpkP, cpElement, &_cst,
                      "RSSILIMIT", cpkP, cpInteger, &_max_rssi,

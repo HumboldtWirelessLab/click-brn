@@ -40,7 +40,7 @@
 CLICK_DECLS
 
 AlarmingForwarder::AlarmingForwarder():
-  alarm_id(0)
+  _as(NULL),_nodeid(NULL),alarm_id(0),_rssi_delay(false)
 {
   BRNElement::init();
 }
@@ -96,7 +96,7 @@ AlarmingForwarder::push( int port, Packet *p)
      * Mark already forwarded node
     */
     int no_nodes = AlarmingProtocol::get_count_nodes(p);
-    click_ether *ether_header = (click_ether *)p->ether_header();
+    const click_ether *ether_header = reinterpret_cast<const click_ether *>(p->ether_header());
     EtherAddress fwd_ea = EtherAddress(ether_header->ether_shost);
 
     for( int i = 0; i < no_nodes; i++ ) {

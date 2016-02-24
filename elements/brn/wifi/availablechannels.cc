@@ -12,6 +12,7 @@
 CLICK_DECLS
 
 AvailableChannels::AvailableChannels()
+ : _debug(false)
 {
 }
 
@@ -23,7 +24,7 @@ void *
 AvailableChannels::cast(const char *n)
 {
   if (strcmp(n, "AvailableChannels") == 0)
-    return (AvailableChannels *) this;
+    return dynamic_cast<AvailableChannels *>(this);
   else
     return 0;
 }
@@ -57,7 +58,7 @@ AvailableChannels::get(int i)
 void
 AvailableChannels::take_state(Element *e, ErrorHandler *)
 {
-  AvailableChannels *q = (AvailableChannels *)e->cast("AvailableChannels");
+  AvailableChannels *q = reinterpret_cast<AvailableChannels *>(e->cast("AvailableChannels"));
   if (!q) return;
 
 }
@@ -82,7 +83,7 @@ enum {H_DEBUG, H_INSERT, H_REMOVE, H_CHANNELS};
 static String
 AvailableChannels_read_param(Element *e, void *thunk)
 {
-  AvailableChannels *td = (AvailableChannels *)e;
+  AvailableChannels *td = reinterpret_cast<AvailableChannels *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -105,7 +106,7 @@ static int
 AvailableChannels_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  AvailableChannels *f = (AvailableChannels *)e;
+  AvailableChannels *f = reinterpret_cast<AvailableChannels *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {

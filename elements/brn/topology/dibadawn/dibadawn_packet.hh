@@ -34,7 +34,7 @@ class DibadawnPacket
 {
 public:
     DibadawnPacket();
-    DibadawnPacket(Packet &packet);
+    explicit DibadawnPacket(Packet &packet);
     DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward);
 
     void setVersion();

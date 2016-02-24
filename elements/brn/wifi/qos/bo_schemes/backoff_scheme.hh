@@ -37,6 +37,8 @@ public:
 
   void *cast(const char *name);
 
+  int configure_phase() { return CONFIGURE_PHASE_PRIVILEGED; }
+
   virtual int get_cwmin(Packet *p, uint8_t tos) = 0;
   virtual void handle_feedback(uint8_t retries);
 

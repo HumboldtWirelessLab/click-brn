@@ -3,7 +3,8 @@
 
 CLICK_DECLS
 
-DHTStorage::DHTStorage()
+DHTStorage::DHTStorage():
+  _dht_routing(NULL)
 {
 }
 

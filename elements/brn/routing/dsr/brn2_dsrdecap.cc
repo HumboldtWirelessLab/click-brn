@@ -75,7 +75,7 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, BRN2RouteQuerierRoute &r
   BRN_DEBUG(" * extract_request_route from dsr packet.");
 
   // address of the node originating the rreq
-  click_brn_dsr *dsr_rreq = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  const click_brn_dsr *dsr_rreq = reinterpret_cast<const click_brn_dsr *>((p_in->data() + sizeof(click_brn)));
   EtherAddress src_addr(dsr_rreq->dsr_src.data);
   EtherAddress dst_addr(dsr_rreq->dsr_dst.data);
 
@@ -100,7 +100,7 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, BRN2RouteQuerierRoute &r
    */
   route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, BRN_LT_MEMORY_MEDIUM_METRIC));
 
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_rreq);
+  const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_rreq);
   for (int i = 0; i < num_addr; i++) {
     click_dsr_hop hop = dsr_hops[i]; //dsr_rreq->addr[i];  //RobAt:DSR
     BRN_DEBUG(" * extract route %s with m=%d", EtherAddress(hop.hw.data).unparse().c_str(), ntohs(hop.metric));
@@ -122,15 +122,14 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, BRN2RouteQuerierRoute &r
 void
 BRN2DSRDecap::extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route)
 {
-
   BRN_DEBUG(" * extract_reply_route from dsr packet.");
 
   // constructed route
   //RouteQuerierRoute route;
 
   // get the right header
-  /*const*/ click_brn_dsr *dsr //RobAt:DSR
-      = (click_brn_dsr *)(p->data() + sizeof(click_brn));
+  const click_brn_dsr *dsr //RobAt:DSR
+      = reinterpret_cast<const click_brn_dsr *>((p->data() + sizeof(click_brn)));
   EtherAddress dest_ether(dsr->dsr_dst.data); //destination of route reply
   EtherAddress src_ether(dsr->dsr_src.data); // source of route reply
 
@@ -151,7 +150,7 @@ BRN2DSRDecap::extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route)
   route.push_back(BRN2RouteQuerierHop(src_ether, src_ip_addr, 0)); //metric value makes no sense here
 
   // we have to update all links between us and our neighbors used in route reply
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr);
+  const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr);
 
   for(int i = 0; i < hop_count; i++) { // collect all hops
     route.push_back(BRN2RouteQuerierHop(dsr_hops[i].hw, ntohs(dsr_hops[i].metric)));
@@ -171,8 +170,7 @@ BRN2DSRDecap::extract_source_route(const Packet *p_in, BRN2RouteQuerierRoute &ro
   BRN_DEBUG(" * extract_source_route from dsr packet.");
   // route is { dsr_src, addr[0], addr[1], ..., dsr_dst }
   //RouteQuerierRoute route;
-  /*const*/ click_brn_dsr *dsr //RobAt:DSR
-      = (/*const*/ click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  const click_brn_dsr *dsr = reinterpret_cast<const click_brn_dsr *>(p_in->data() + sizeof(click_brn));
 
   int num_addr = dsr->dsr_hop_count;
 
@@ -194,7 +192,7 @@ BRN2DSRDecap::extract_source_route(const Packet *p_in, BRN2RouteQuerierRoute &ro
   // put the originator of this rreq into dsr route
   route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, 0)); //TODO Metric not used
 
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr);//RobAt:DSR
+  const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr);//RobAt:DSR
 
   for (int i = 0; i < num_addr; i++) {
     click_dsr_hop hop = dsr_hops[i]; //dsr->addr[i];

@@ -78,9 +78,9 @@ void *
 Brn2LinkTable::cast(const char *n)
 {
   if (strcmp(n, "Brn2LinkTable") == 0)
-    return (Brn2LinkTable *) this;
+    return dynamic_cast<Brn2LinkTable *>(this);
   else
-    return 0;
+    return NULL;
 }
 
 int
@@ -118,9 +118,8 @@ Brn2LinkTable::initialize (ErrorHandler *)
 void
 Brn2LinkTable::take_state(Element *e, ErrorHandler *) {
 
-  Brn2LinkTable *q = (Brn2LinkTable *)e->cast("LinkTable");
+  Brn2LinkTable *q = reinterpret_cast<Brn2LinkTable *>(e->cast("Brn2LinkTable"));
   if (!q) return;
-
   _hosts = q->_hosts;
   _links = q->_links;
 
@@ -235,12 +234,12 @@ Brn2LinkTable::remove_node(const EtherAddress& node)
         nfo._from.unparse().c_str(), nfo._to.unparse().c_str() );
 
       LTable::iterator tmp = iter;
-      iter++;
+      ++iter;
       _links.remove(tmp.key());
       continue;
     }
 
-    iter++;
+    ++iter;
   }
 }
 
@@ -259,7 +258,7 @@ Brn2LinkTable::add_node(const EtherAddress& node)
 void
 Brn2LinkTable::get_hosts(Vector<EtherAddress> &v)
 {
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+  for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
     BrnHostInfo n = iter.value();
     v.push_back(n._ether);
   }
@@ -352,7 +351,7 @@ Brn2LinkTable::get_link_age(EtherAddress from, EtherAddress to)
 void
 Brn2LinkTable::get_inodes(Vector<EtherAddress> &ether_addrs)
 {
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+  for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
     if (! iter.value()._is_associated ) {
       ether_addrs.push_back(iter.key());
     } else {
@@ -376,19 +375,19 @@ Brn2LinkTable::clear_stale()
         nfo._from.unparse().c_str(), nfo._to.unparse().c_str() );
 
       LTable::iterator tmp = iter;
-      iter++;
+      ++iter;
       _links.remove(tmp.key());
       continue;
     }
 
-    iter++;
+    ++iter;
   }
 }
 
 void
 Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors)
 {
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+  for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
     BrnHostInfo *neighbor = _hosts.findp(iter.value()._ether);
     assert(neighbor);
     if (ether != neighbor->_ether) {
@@ -437,7 +436,7 @@ Brn2LinkTable::print_hosts()
   StringAccum sa;
   Vector<EtherAddress> ether_addrs;
 
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+  for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
     ether_addrs.push_back(iter.key());
   }
 
@@ -474,7 +473,7 @@ Brn2LinkTable::print_links()
 int
 Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh)
 {
-  Brn2LinkTable *n = (Brn2LinkTable *) e;
+  Brn2LinkTable *n = reinterpret_cast<Brn2LinkTable *>(e);
 
   Vector<String> args;
   EtherAddress from;
@@ -514,14 +513,14 @@ Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHa
 static String
 LinkTable_read_param(Element *e, void *thunk)
 {
-  Brn2LinkTable *td = (Brn2LinkTable *)e;
+  Brn2LinkTable *td = reinterpret_cast<Brn2LinkTable *>(e);
     switch ((uintptr_t) thunk) {
     case H_BLACKLIST: {
       StringAccum sa;
       typedef HashMap<EtherAddress, EtherAddress> EtherTable;
       typedef EtherTable::const_iterator EtherIter;
 
-      for (EtherIter iter = td->_blacklist.begin(); iter.live(); iter++) {
+      for (EtherIter iter = td->_blacklist.begin(); iter.live(); ++iter) {
         sa << iter.value() << " ";
       }
       return sa.take_string() + "\n";
@@ -539,7 +538,7 @@ LinkTable_read_param(Element *e, void *thunk)
 static int 
 LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Brn2LinkTable *f = (Brn2LinkTable *)e;
+  Brn2LinkTable *f = reinterpret_cast<Brn2LinkTable *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
   case H_BLACKLIST_CLEAR: {

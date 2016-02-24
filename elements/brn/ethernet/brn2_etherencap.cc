@@ -43,7 +43,8 @@ BRN2EtherEncap::BRN2EtherEncap()
    _ethertype(0),
    _use_anno(false),
    _set_src(false),
-   _set_dst(false)
+   _set_dst(false),
+   _set_fixed_values(false)
 {
   BRNElement::init();
 }
@@ -85,8 +86,8 @@ BRN2EtherEncap::smaction(Packet *p)
 
   if (_push_header) q = q->push(14);
 
-  click_ether *ether = (click_ether *) q->data();
-  click_ether *annotated_ether = (click_ether *)q->ether_header();
+  click_ether *ether = reinterpret_cast<click_ether *>(q->data());
+  click_ether *annotated_ether = reinterpret_cast<click_ether *>(q->ether_header());
 
   if (_set_fixed_values) {
 
@@ -151,7 +152,7 @@ BRN2EtherEncap::push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_
 {
   WritablePacket *q = p->push(14);
   if (q) {
-    click_ether *ether = (click_ether *) q->data();
+    click_ether *ether = reinterpret_cast<click_ether *>(q->data());
     memcpy(ether->ether_shost, src, 6);
     memcpy(ether->ether_dhost, dst, 6);
     ether->ether_type = htons(ethertype);
@@ -168,7 +169,7 @@ BRN2EtherEncap::push_ether_header(Packet *p, EtherAddress *src, EtherAddress *ds
 {
   WritablePacket *q = p->push(14);
   if (q) {
-    click_ether *ether = (click_ether *) q->data();
+    click_ether *ether = reinterpret_cast<click_ether *>(q->data());
     memcpy(ether->ether_shost, src->data(), 6);
     memcpy(ether->ether_dhost, dst->data(), 6);
     ether->ether_type = htons(ethertype);

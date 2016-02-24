@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 HawkRoutingtable::HawkRoutingtable():
+  _link_table(NULL),
   _lprh(NULL),
   _succ_maint(NULL),
   _rt_maint(NULL),
@@ -44,9 +45,9 @@ HawkRoutingtable::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 HawkRoutingtable::initialize(ErrorHandler *)
 {
-  ((FalconLinkProbeHandler*)_lprh)->setHawkRoutingTable(this);
-  ((FalconSuccessorMaintenance*)_succ_maint)->setHawkRoutingTable(this);
-  ((FalconRoutingTableMaintenance*)_rt_maint)->setHawkRoutingTable(this);
+  (reinterpret_cast<FalconLinkProbeHandler*>(_lprh))->setHawkRoutingTable(this);
+  (reinterpret_cast<FalconSuccessorMaintenance*>(_succ_maint))->setHawkRoutingTable(this);
+  (reinterpret_cast<FalconRoutingTableMaintenance*>(_rt_maint))->setHawkRoutingTable(this);
 
   return 0;
 }
@@ -231,10 +232,8 @@ HawkRoutingtable::getEntry(uint8_t *id, int id_len)
 void
 HawkRoutingtable::delEntry(EtherAddress *ea)
 {
-  RTEntry *entry;
-
   for(int i = 0; i < _rt.size(); i++) {
-    entry = _rt[i];
+    RTEntry *entry = _rt[i];
     if ( memcmp(entry->_dst.data(), ea->data(), 6) == 0 ) {
       delete entry;
       _rt.erase(_rt.begin() + i);
@@ -318,9 +317,8 @@ HawkRoutingtable::routingtable()
 
   sa << "<hawkroutingtable node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse() << "\" entries=\"" << _rt.size() << "\" >\n";
 
-  RTEntry *entry;
   for(int i = 0; i < _rt.size(); i++) {
-    entry = _rt[i];
+    RTEntry *entry = _rt[i];
 
     sa << "\t<entry node=\"" << entry->_dst.unparse() << "\" next_hop=\"" << entry->_next_phy_hop.unparse();
     sa << "\" next_overlay=\"" << entry->_next_hop.unparse() << "\" age=\"0\" />\n";
@@ -336,7 +334,7 @@ enum {H_RT};
 static String
 read_handler(Element *e, void * vparam)
 {
-  HawkRoutingtable *rq = (HawkRoutingtable *)e;
+  HawkRoutingtable *rq = reinterpret_cast<HawkRoutingtable *>(e);
 
   switch ((intptr_t)vparam) {
     case H_RT: {
@@ -349,7 +347,7 @@ read_handler(Element *e, void * vparam)
 /*static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  HawkRoutingtable *rq = (HawkRoutingtable *)e;
+  HawkRoutingtable *rq = reinterpret_cast<HawkRoutingtable *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

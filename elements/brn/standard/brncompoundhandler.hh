@@ -55,14 +55,18 @@ class BrnCompoundHandler : public BRNElement
     Timestamp *_rec_times;
     String *_rec;
 
-    HandlerRecord(): _rec_times(NULL), _rec(NULL) {
+    HandlerRecord(): _rec_max(0), _rec_index(0), _interval(0), _base_time(0), _rec_times(NULL), _rec(NULL) {
     }
 
-    HandlerRecord(int max_records, int interval): _rec_times(NULL), _rec(NULL) {
-      _rec_max = max_records;
-      _rec_index = 0;
-      _base_time = 0;
-      _interval = interval;
+    HandlerRecord(const HandlerRecord &hr) : _rec_max(hr._rec_max), _rec_index(hr._rec_index), _interval(hr._interval),
+                                             _base_time(hr._base_time)
+    {
+      _rec = new String[_rec_max];
+      _rec_times = new Timestamp[_rec_max];
+    }
+
+    HandlerRecord(int max_records, int interval): _rec_max(max_records), _rec_index(0), _interval(interval),
+                                                  _base_time(0), _rec_times(NULL), _rec(NULL) {
       _rec = new String[_rec_max];
       _rec_times = new Timestamp[_rec_max];
    }

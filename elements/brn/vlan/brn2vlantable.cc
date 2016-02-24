@@ -28,6 +28,7 @@ CLICK_DECLS
 
 
 BRN2VLANTable::BRN2VLANTable()
+ : _debug(0)
 {
 }
 
@@ -48,7 +49,7 @@ String
 BRN2VLANTable::all_vlans() {
 
   StringAccum sa;
-  for (VlanTable::const_iterator i = _vlans.begin(); i.live(); i++) {
+  for (VlanTable::const_iterator i = _vlans.begin(); i.live();++i) {
     uint16_t vlanid = i.value();
     EtherAddress ea = i.key();
     sa << this << " eth " << ea.unparse().c_str() << " vlanid " << (int) vlanid << "\n";
@@ -66,7 +67,7 @@ enum {
 static String
 BRN2VLANTable_read_param(Element *e, void *thunk)
 {
-  BRN2VLANTable *vt = (BRN2VLANTable *)e;
+  BRN2VLANTable *vt = reinterpret_cast<BRN2VLANTable *>(e);
   switch ((uintptr_t) thunk) {
     case H_DEBUG: {
       return String(vt->_debug) + "\n";
@@ -83,7 +84,7 @@ static int
 BRN2VLANTable_write_param(const String &in_s, Element *e, void *vparam,
                                       ErrorHandler *errh)
 {
-  BRN2VLANTable *f = (BRN2VLANTable *)e;
+  BRN2VLANTable *f = reinterpret_cast<BRN2VLANTable *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {

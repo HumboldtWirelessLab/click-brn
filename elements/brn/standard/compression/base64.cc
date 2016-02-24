@@ -40,7 +40,6 @@ Base64::encode(unsigned char *input, int inputlen, unsigned char *output, int ma
   if ( ((inputlen * 4) % 3) > max_outputlen ) return -1;
 
   int i = 0;
-  int j = 0;
   int input_index = 0, output_index = 0, remain_inlen = inputlen;
   unsigned char char_array_3[3];
   unsigned char char_array_4[4];
@@ -62,7 +61,7 @@ Base64::encode(unsigned char *input, int inputlen, unsigned char *output, int ma
 
   if (i)
   {
-    for(j = i; j < 3; j++)
+    for(int j = i; j < 3; j++)
       char_array_3[j] = '\0';
 
     char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
@@ -70,7 +69,7 @@ Base64::encode(unsigned char *input, int inputlen, unsigned char *output, int ma
     char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
     char_array_4[3] = char_array_3[2] & 0x3f;
 
-    for (j = 0; (j < i + 1); j++)
+    for (int j = 0; (j < i + 1); j++)
       output[output_index++] = base64_chars[char_array_4[j]];
 
     while((i++ < 3))
@@ -90,7 +89,6 @@ Base64::decode(unsigned char *input, int inputlen, unsigned char *output, int ma
 
   int input_index = 0, output_index = 0, remain_inlen = inputlen;
   int i = 0;
-  int j = 0;
   unsigned char char_array_4[4], char_array_3[3];
 
   while (remain_inlen-- && ( input[input_index] != '=') && is_base64(input[input_index])) {
@@ -113,10 +111,10 @@ Base64::decode(unsigned char *input, int inputlen, unsigned char *output, int ma
   }
 
   if (i) {
-    for (j = i; j <4; j++)
+    for (int j = i; j <4; j++)
       char_array_4[j] = 0;
 
-    for (j = 0; j <4; j++) {
+    for (int j = 0; j <4; j++) {
       if ( char_array_4[j] != 0 ) {
         unsigned char f = base64_chars_find(char_array_4[j]);
         if ( f == 255 ) click_chatter("Unknown char(remain): %d",(int)char_array_4[j]);
@@ -128,7 +126,7 @@ Base64::decode(unsigned char *input, int inputlen, unsigned char *output, int ma
     char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
     char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
 
-    for (j = 0; (j < i - 1); j++) output[output_index++] = char_array_3[j];
+    for (int j = 0; (j < i - 1); j++) output[output_index++] = char_array_3[j];
   }
 
   return output_index;

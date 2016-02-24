@@ -37,6 +37,7 @@
 CLICK_DECLS
 
 BatmanRouting::BatmanRouting():
+  _brt(NULL),_nodeid(NULL),
   _routeId(0),
   _hop_margin(0)
 {
@@ -69,7 +70,7 @@ BatmanRouting::initialize(ErrorHandler *)
 void
 BatmanRouting::push( int /*port*/, Packet *packet )
 {
-  click_ether *et = (click_ether*)packet->data();
+  const click_ether *et = reinterpret_cast<const click_ether*>(packet->data());
   EtherAddress dst = EtherAddress(et->ether_dhost);
 
   if ( _nodeid->isIdentical(&dst) ) {

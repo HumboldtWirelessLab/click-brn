@@ -32,7 +32,7 @@ BoFlooding::~BoFlooding()
 void * BoFlooding::cast(const char *name)
 {
   if (strcmp(name, "BoFlooding") == 0)
-    return (BoFlooding *) this;
+    return dynamic_cast<BoFlooding *>(this);
 
   return BackoffScheme::cast(name);
 }

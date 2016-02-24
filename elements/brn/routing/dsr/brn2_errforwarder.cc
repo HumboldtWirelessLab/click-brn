@@ -103,8 +103,8 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
 
     // source-routed packet whose transmission to the next hop failed
     // fetch some header
-    const click_ether *ether = (const click_ether *)p_in->ether_header();
-    const click_brn_dsr *dsr = (const click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+    const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->ether_header());
+    const click_brn_dsr *dsr = reinterpret_cast<const click_brn_dsr *>((p_in->data() + sizeof(click_brn)));
 
     EtherAddress bad_src(ether->ether_shost); // ether address of current node
     EtherAddress bad_dst(ether->ether_dhost);
@@ -214,8 +214,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
 
     BRN_DEBUG(" * receiving dsr rerr");
 
-    const click_brn_dsr *brn_dsr =
-          (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+    const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>(p_in->data() + sizeof(click_brn));
 
     // only handled type right now
     assert(brn_dsr->body.rerr.dsr_error == BRN_DSR_RERR_TYPE_NODE_UNREACHABLE);

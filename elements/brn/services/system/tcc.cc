@@ -50,10 +50,8 @@ TCC::simple_action(Packet *p)
 void
 TCC::set_simple_action_code(String code)
 {
-    int (*click_tcc_init)();
-    int (*click_tcc_close)();
-
     if ( _tcc_s != NULL ) {
+      int (*click_tcc_close)();
       click_tcc_close = (int(*)())tcc_get_symbol(_tcc_s, "click_tcc_close");
 
       if (click_tcc_close) click_tcc_close();
@@ -74,6 +72,7 @@ TCC::set_simple_action_code(String code)
     }
 
     /* get entry symbol */
+    int (*click_tcc_init)();
     click_tcc_init = (int(*)())tcc_get_symbol(_tcc_s, "click_tcc_init");
 
     if (!click_tcc_init) {
@@ -332,7 +331,7 @@ enum {H_CODE, H_ADD_PROCEDURE, H_DEL_PROCEDURE, H_COMPILE_PROCEDURE, H_CALL_PROC
 
 static String TCC_read_param(Element *e, void *thunk) {
   StringAccum sa;
-  TCC *tcc = (TCC *)e;
+  TCC *tcc = reinterpret_cast<TCC *>(e);
 
   switch((uintptr_t) thunk) {
     case H_CODE:   return tcc->stats();
@@ -345,7 +344,7 @@ static String TCC_read_param(Element *e, void *thunk) {
 
 static int TCC_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *) {
 
-  TCC *tcc = (TCC *)e;
+  TCC *tcc = reinterpret_cast<TCC *>(e);
   String s = cp_uncomment(in_s);
 
   switch((intptr_t)vparam) {
@@ -408,15 +407,15 @@ void *TCC::tcc_packet_resize(void *p, int /*h*/, int /*t*/) {
 }
 
 int TCC::tcc_packet_size(void *p) {
-  return ((Packet*)p)->length();
+  return(reinterpret_cast<Packet*>(p))->length();
 }
 
 const uint8_t *TCC::tcc_packet_data(void *p) {
-  return ((Packet*)p)->data();
+  return(reinterpret_cast<Packet*>(p))->data();
 }
 
 void TCC::tcc_packet_kill(void *p) {
-  return ((Packet*)p)->kill();
+  return(reinterpret_cast<Packet*>(p))->kill();
 }
 
 CLICK_ENDDECLS

@@ -23,7 +23,8 @@
 CLICK_DECLS
 
 BRN2Device::BRN2Device()
-  : device_number(0),
+  : device_type(0),
+    device_number(0),
     is_service_dev(false),
     is_master_dev(false),
     _routable(true),
@@ -38,6 +39,7 @@ BRN2Device::BRN2Device()
     _wireless_device_config_string(""),
     _wireless_availablerates(NULL),
     _wireless_availablechannels(NULL),
+    _rx_threshold(0),_cs_threshold(0),_cp_threshold(0),
     _wificonfig(NULL)
 {
   BRNElement::init();
@@ -70,9 +72,6 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
        cpEnd) < 0)
     return -1;
 
-  unsigned char en[6];
-  bool val;
-
   if ( ( device_type_string != STRING_WIRELESS ) &&
         ( device_type_string != STRING_WIRED ) &&
         ( device_type_string != STRING_VIRTUAL ) )
@@ -83,7 +82,8 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
   if( EtherAddress() != me ) {
     device_etheraddress = me;
   } else {
-    val = AddressInfo::query_ethernet(device_name + ":eth", en, this);
+    unsigned char en[6];
+    bool val = AddressInfo::query_ethernet(device_name + ":eth", en, this);
     if (val) {
       device_etheraddress = EtherAddress(en);
       BRN_DEBUG(" * ether address of device : %s", device_etheraddress.unparse().c_str());
@@ -108,9 +108,9 @@ BRN2Device::initialize(ErrorHandler *)
       Element* s_element = router()->find(wifi_cfg[i]);
       if ( s_element != NULL ) {
         if ( s_element->cast("BrnAvailableRates") != NULL ) {
-          _wireless_availablerates = (BrnAvailableRates*)s_element->cast("BrnAvailableRates");
+          _wireless_availablerates = reinterpret_cast<BrnAvailableRates*>(s_element->cast("BrnAvailableRates"));
         } else if ( s_element->cast("AvailableChannels") != NULL ) {
-          _wireless_availablechannels = (AvailableChannels*)s_element->cast("AvailableChannels");
+          _wireless_availablechannels = reinterpret_cast<AvailableChannels*>(s_element->cast("AvailableChannels"));
         } else {
           BRN_WARN("Unknown wifi_config: %s", wifi_cfg[i].c_str());
         }
@@ -472,14 +472,14 @@ BRN2Device::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
 static String
 read_device_info(Element *e, void *)
 {
-  BRN2Device *dev = (BRN2Device *)e;
+  BRN2Device *dev = reinterpret_cast<BRN2Device *>(e);
   return dev->device_info();
 }
 
 static int
 write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
-  BRN2Device *dev = (BRN2Device *)e;
+  BRN2Device *dev = reinterpret_cast<BRN2Device *>(e);
   dev->setEtherAddress(dev->getEtherAddressFix());
   return 0;
 }
@@ -487,7 +487,7 @@ write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*
 static int
 write_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  BRN2Device *dev = (BRN2Device *)e;
+  BRN2Device *dev = reinterpret_cast<BRN2Device *>(e);
 
   String s = cp_uncomment(in_s);
   EtherAddress new_ea;
@@ -502,7 +502,7 @@ write_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
 static int
 write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2Device *f = (BRN2Device *)e;
+  BRN2Device *f = reinterpret_cast<BRN2Device *>(e);
   String s = cp_uncomment(in_s);
   uint32_t power;
 
@@ -517,7 +517,7 @@ write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh
 static int
 write_channel(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2Device *f = (BRN2Device *)e;
+  BRN2Device *f = reinterpret_cast<BRN2Device *>(e);
   String s = cp_uncomment(in_s);
   uint32_t channel;
 
@@ -532,7 +532,7 @@ write_channel(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *er
 static int
 write_cca(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2Device *f = (BRN2Device *)e;
+  BRN2Device *f = reinterpret_cast<BRN2Device *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
@@ -550,7 +550,7 @@ write_cca(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 static int
 write_backoff(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2Device *f = (BRN2Device *)e;
+  BRN2Device *f = reinterpret_cast<BRN2Device *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);

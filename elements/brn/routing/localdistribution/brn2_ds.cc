@@ -33,7 +33,7 @@
 CLICK_DECLS
 
 BRN2DS::BRN2DS()
-  :_me(NULL)
+  : _debug(0), _me(NULL), countDevices(0)
 {
 }
 
@@ -73,13 +73,10 @@ BRN2DS::uninitialize()
 void
 BRN2DS::push(int /*port*/, Packet *p_in)
 {
-  EtherAddress ea;
-  int outputport = -1;
+  const click_ether *ether = reinterpret_cast<const click_ether *>( p_in->data());
 
-  click_ether *ether = (click_ether *) p_in->data();
-
-  ea = EtherAddress(ether->ether_shost);
-  outputport = _me->getDeviceNumber(&ea);
+  EtherAddress ea = EtherAddress(ether->ether_shost);
+  int outputport = _me->getDeviceNumber(&ea);
 
   if ( outputport >= 0 )
     output(outputport).push(p_in);
@@ -95,7 +92,7 @@ BRN2DS::push(int /*port*/, Packet *p_in)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2DS *ds = (BRN2DS *)e;
+  BRN2DS *ds = reinterpret_cast<BRN2DS *>(e);
   return String(ds->_debug) + "\n";
 }
 
@@ -103,7 +100,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
 		      ErrorHandler *errh)
 {
-  BRN2DS *ds = (BRN2DS *)e;
+  BRN2DS *ds = reinterpret_cast<BRN2DS *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

@@ -64,7 +64,7 @@ class DHTnode
     DHTnode();
     ~DHTnode() {};
 
-    DHTnode(EtherAddress addr);
+    explicit DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid, uint16_t digest_length);
 
@@ -92,9 +92,9 @@ class DHTnode
     String get_status_string();
 
     DHTnode *clone(void);
-    bool equals(DHTnode *);
-    bool equalsID(DHTnode *);
-    bool equalsEtherAddress(DHTnode *n);
+    bool equals(const DHTnode *) const;
+    bool equalsID(DHTnode *) const;
+    bool equalsEtherAddress(DHTnode *n) const;
 
 };
 

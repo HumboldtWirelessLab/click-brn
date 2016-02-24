@@ -39,6 +39,7 @@
 CLICK_DECLS
 
 GPSLinkprobeHandler::GPSLinkprobeHandler()
+ : _linkstat(NULL),_gps(NULL),_gpsmap(NULL)
 {
   BRNElement::init();
 }
@@ -63,14 +64,14 @@ GPSLinkprobeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress *ea, char *buffer, int size)
 {
-  GPSLinkprobeHandler *gpsh = (GPSLinkprobeHandler*)element;
+  GPSLinkprobeHandler *gpsh = reinterpret_cast<GPSLinkprobeHandler*>(element);
   return gpsh->lpSendHandler(buffer, size, ea);
 }
 
 static int
 rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  GPSLinkprobeHandler *gpsh = (GPSLinkprobeHandler*)element;
+  GPSLinkprobeHandler *gpsh = reinterpret_cast<GPSLinkprobeHandler*>(element);
   return gpsh->lpReceiveHandler(buffer, size, ea);
 }
 

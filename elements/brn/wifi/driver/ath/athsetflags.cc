@@ -12,6 +12,7 @@
 CLICK_DECLS
 
 AthSetFlags::AthSetFlags():
+   _debug(false),
    frame_len(INVALID_VALUE),
    reserved_12_15(INVALID_VALUE),
    rts_cts_enable(INVALID_VALUE),
@@ -114,7 +115,7 @@ enum {H_DEBUG};
 static String 
 AthSetFlags_read_param(Element *e, void *thunk)
 {
-  AthSetFlags *td = (AthSetFlags *)e;
+  AthSetFlags *td = reinterpret_cast<AthSetFlags *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
         return String(td->_debug) + "\n";
@@ -125,7 +126,7 @@ AthSetFlags_read_param(Element *e, void *thunk)
 static int 
 AthSetFlags_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  AthSetFlags *f = (AthSetFlags *)e;
+  AthSetFlags *f = reinterpret_cast<AthSetFlags *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

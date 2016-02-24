@@ -11,7 +11,7 @@
 CLICK_DECLS
 
 OLSRReceiveChecker::OLSRReceiveChecker()
-		:_timer(this), _period(15000)
+  :_timer(this), _neighborInfo(NULL), _period(15000)
 {
 }
 

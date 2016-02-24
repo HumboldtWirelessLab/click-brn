@@ -67,8 +67,8 @@ class HiddenNodeDetection : public BRNElement {
         NodeInfoTable _links_to;
         EtherTimestampMap _last_link_usage;
 
-        NodeInfo(): _neighbour(false),_exists(true) {
-          _last_notice_passive = _last_notice_active = Timestamp(0);
+        NodeInfo(): _last_notice_active(0), _last_notice_passive(0), _neighbour(false), _exists(true)
+        {
         }
 
         inline void add_link(EtherAddress ea, NodeInfo *ni, Timestamp *ts) {

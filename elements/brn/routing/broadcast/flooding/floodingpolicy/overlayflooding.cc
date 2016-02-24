@@ -12,10 +12,11 @@
 CLICK_DECLS
 
 OverlayFlooding::OverlayFlooding():
+  _me(NULL),_ovl(NULL),
   _opportunistic(false),
   _responsable4parents(false)
 {
-	BRNElement::init();
+  BRNElement::init();
 }
 
 OverlayFlooding::~OverlayFlooding()
@@ -26,9 +27,9 @@ void *
 OverlayFlooding::cast(const char *name)
 {
   if (strcmp(name, "OverlayFlooding") == 0)
-    return (OverlayFlooding *) this;
+    return dynamic_cast<OverlayFlooding *>(this);
   else if (strcmp(name, "FloodingPolicy") == 0)
-         return (FloodingPolicy *) this;
+         return dynamic_cast<FloodingPolicy *>(this);
        else
          return NULL;
 }

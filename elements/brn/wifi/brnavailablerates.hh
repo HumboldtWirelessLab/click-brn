@@ -67,19 +67,17 @@ class MCS {
     uint8_t _packed8;
     uint16_t _packed16;
 
-    MCS() : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+    MCS() : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX), _packed8(0), _packed16(0) {
     }
 
-    MCS(uint8_t rate) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
-      _rate = rate;
-      _data_rate = _rate * 5;
+    explicit MCS(uint8_t rate) : _data_rate(rate * 5), _rate(rate), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX), _packed8(0), _packed16(0) {
     }
 
-    MCS(uint8_t ridx, uint8_t ht40, uint8_t sgi) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+    MCS(uint8_t ridx, uint8_t ht40, uint8_t sgi) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX), _packed8(0), _packed16(0) {
       set(ridx, ht40, sgi);
     }
 
-    MCS(click_wifi_extra *ceh, int8_t idx) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+    MCS(click_wifi_extra *ceh, int8_t idx) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX), _packed8(0), _packed16(0) {
       getWifiRate(ceh,idx);
     }
 
@@ -222,7 +220,7 @@ class BrnAvailableRates : public BRNElement { public:
       _rates.clear();
     }
 
-    DstInfo(EtherAddress eth): _settime(Timestamp::now()), _eth(eth)  {
+    explicit DstInfo(EtherAddress eth): _settime(Timestamp::now()), _eth(eth)  {
       _rates.clear();
     }
 

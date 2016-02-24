@@ -160,7 +160,7 @@ enum { H_OK,
 static int
 WifiErrorClassifier_write_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  WifiErrorClassifier *f = (WifiErrorClassifier *)e;
+  WifiErrorClassifier *f = reinterpret_cast<WifiErrorClassifier *>(e);
   switch((intptr_t)vparam) {
     case H_RESET: {    //reset
       f->reset();
@@ -172,7 +172,7 @@ WifiErrorClassifier_write_param(const String &/*in_s*/, Element *e, void *vparam
 static String
 WifiErrorClassifier_read_param(Element *e, void *thunk)
 {
-  WifiErrorClassifier *td = (WifiErrorClassifier *)e;
+  WifiErrorClassifier *td = reinterpret_cast<WifiErrorClassifier *>(e);
   switch ((uintptr_t) thunk) {
   case H_OK:
     return String(td->_p_ok) + "\n";

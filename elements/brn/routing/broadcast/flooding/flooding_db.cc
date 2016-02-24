@@ -246,7 +246,7 @@ FloodingDB::reset()
     {
       BroadcastNode* bcn = iter.value();
       delete bcn;
-      iter++;
+      ++iter;
     }
 
     _bcast_map.clear();
@@ -355,7 +355,7 @@ FloodingDB::table()
 
     }
     sa << "\t</src>\n";
-    iter++;
+    ++iter;
   }
   sa << "</flooding_table>\n";
 
@@ -369,13 +369,13 @@ FloodingDB::table()
 static String
 read_table_param(Element *e, void *)
 {
-  return ((FloodingDB *)e)->table();
+  return(reinterpret_cast<FloodingDB *>(e))->table();
 }
 
 static int 
 write_reset_param(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
-  ((FloodingDB *)e)->reset();
+ (reinterpret_cast<FloodingDB *>(e))->reset();
 
   return 0;
 }

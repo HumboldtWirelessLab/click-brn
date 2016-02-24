@@ -31,9 +31,9 @@ DHTRoutingFalcon::~DHTRoutingFalcon()
 void *DHTRoutingFalcon::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingFalcon") == 0)
-    return (DHTRoutingFalcon *) this;
+    return dynamic_cast<DHTRoutingFalcon *>(this);
   else if (strcmp(name, "DHTRouting") == 0)
-         return (DHTRouting *) this;
+         return dynamic_cast<DHTRouting *>(this);
        else
          return NULL;
 }
@@ -57,7 +57,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 
 static void notify_callback_func(void *e, int status)
 {
-  DHTRoutingFalcon *f = (DHTRoutingFalcon *)e;
+  DHTRoutingFalcon *f = reinterpret_cast<DHTRoutingFalcon *>(e);
   f->handle_routing_update_callback(status);
 }
 
@@ -243,7 +243,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingFalcon *dhtf = (DHTRoutingFalcon *)e;
+  DHTRoutingFalcon *dhtf = reinterpret_cast<DHTRoutingFalcon *>(e);
 
   switch ((uintptr_t) thunk)
   {

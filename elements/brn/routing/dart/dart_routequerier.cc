@@ -39,6 +39,7 @@ CLICK_DECLS
 DartRouteQuerier::DartRouteQuerier() :
     _sendbuffer_timer(static_sendbuffer_timer_hook,(void*)this),
     _me(NULL),
+    _dht_storage(NULL),_idcache(NULL),_drt(NULL),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -93,7 +94,7 @@ DartRouteQuerier::uninitialize()
 void
 DartRouteQuerier::callback_func(void *e, DHTOperation *op)
 {
-  DartRouteQuerier *s = (DartRouteQuerier *)e;
+  DartRouteQuerier *s = reinterpret_cast<DartRouteQuerier *>(e);
   s->callback(op);
 }
 
@@ -142,7 +143,7 @@ DartRouteQuerier::push(int, Packet *p_in)
     return;
   }
 
-  click_ether *ether = (click_ether *)p_in->data();  //better to use this, since ether_header is not always set.it also can be overwriten
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());  //better to use this, since ether_header is not always set.it also can be overwriten
 
   EtherAddress dst_addr(ether->ether_dhost);
 
@@ -189,11 +190,10 @@ DartRouteQuerier::push(int, Packet *p_in)
 void
 DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *entry )
 {
-  PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
-    buffp = _packet_buffer.get(i);
+    PacketSendBuffer::BufferedPacket *buffp = _packet_buffer.get(i);
 
-    click_ether *ether = (click_ether *)buffp->_p->data();
+    const click_ether *ether = reinterpret_cast<const click_ether *>(buffp->_p->data());
 
     if ( memcmp(ether->ether_dhost, dst->data(),6) == 0 ) {
       WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length,_drt->_ident, buffp->_p);
@@ -216,10 +216,8 @@ DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *ent
 DartRouteQuerier::RequestAddress *
 DartRouteQuerier::requests_for_ea(EtherAddress *ea )
 {
-  DartRouteQuerier::RequestAddress *rea;
-
   for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
-    rea = _request_list[i];
+    DartRouteQuerier::RequestAddress *rea = _request_list[i];
     if ( memcmp(rea->_ea.data(), ea->data(),6) == 0 ) return rea;
   }
 
@@ -233,12 +231,10 @@ DartRouteQuerier::del_requests_for_ea(EtherAddress *ea)
 }
 
 void
-DartRouteQuerier::del_requests_for_ea(uint8_t *ea)
+DartRouteQuerier::del_requests_for_ea(const uint8_t *ea)
 {
-  DartRouteQuerier::RequestAddress *rea;
-
   for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
-    rea = _request_list[i];
+    DartRouteQuerier::RequestAddress *rea = _request_list[i];
     if ( memcmp(rea->_ea.data(), ea, 6) == 0 ) {
       delete rea;
       _request_list.erase(_request_list.begin() + i);
@@ -283,7 +279,7 @@ DartRouteQuerier::start_issuing_request(EtherAddress *dst)
 void
 DartRouteQuerier::static_sendbuffer_timer_hook(Timer *, void *v)
 {
-  DartRouteQuerier *rt = (DartRouteQuerier*)v;
+  DartRouteQuerier *rt = reinterpret_cast<DartRouteQuerier*>(v);
   rt->sendbuffer_timer_hook();
 }
 
@@ -292,13 +288,12 @@ DartRouteQuerier::sendbuffer_timer_hook()
 {
   BRN_DEBUG("Packet Timeout. Check for packets.");
 
-  PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
-    buffp = _packet_buffer.get(i);
+    PacketSendBuffer::BufferedPacket *buffp = _packet_buffer.get(i);
     if ( buffp->timeout() ) {
       BRN_DEBUG("Kill packet");
 
-      click_ether *ether = (click_ether *)buffp->_p->data();
+      const click_ether *ether = reinterpret_cast<const click_ether *>(buffp->_p->data());
       del_requests_for_ea(ether->ether_dhost);
 
       buffp->_p->kill();
@@ -318,7 +313,7 @@ enum {H_DEBUG, H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB};
 static String
 read_handler(Element *e, void * vparam)
 {
-  DartRouteQuerier *rq = (DartRouteQuerier *)e;
+  DartRouteQuerier *rq = reinterpret_cast<DartRouteQuerier *>(e);
 
   switch ((intptr_t)vparam) {
     case H_DEBUG: {
@@ -331,7 +326,7 @@ read_handler(Element *e, void * vparam)
 static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  DartRouteQuerier *rq = (DartRouteQuerier *)e;
+  DartRouteQuerier *rq = reinterpret_cast<DartRouteQuerier *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

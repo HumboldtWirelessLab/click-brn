@@ -39,8 +39,8 @@
 CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
-  : _debug(BrnLogger::DEFAULT),
-    _active(false)
+  : _linkstat(NULL), _seq(0), _debug(BrnLogger::DEFAULT),
+     known_links(NULL), known_timestamps(NULL), max_hosts(0), _active(false)
 {
 }
 
@@ -65,7 +65,7 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
-  LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
+  LPRLinkProbeHandler *lph = reinterpret_cast<LPRLinkProbeHandler*>(element);
 
   return lph->lpSendHandler(buffer, size);
 }
@@ -73,7 +73,7 @@ tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 static int
 rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
+  LPRLinkProbeHandler *lph = reinterpret_cast<LPRLinkProbeHandler*>(element);
 
   return lph->lpReceiveHandler(buffer, size);
 }
@@ -88,7 +88,7 @@ LPRLinkProbeHandler::initialize(ErrorHandler *errh)
     Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
       //click_chatter("El-Name: %s", new_element->class_name());
-      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      BRN2GenericMetric *gm = reinterpret_cast<BRN2GenericMetric *>(new_element->cast("BRN2GenericMetric"));
       if ( gm != NULL ) {
         _metrics.push_back(gm);
       }
@@ -316,7 +316,7 @@ LPRLinkProbeHandler::get_info()
 static String
 read_table_param(Element *e, void *)
 {
-  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  LPRLinkProbeHandler *fl = reinterpret_cast<LPRLinkProbeHandler *>(e);
 
   return fl->get_info();
 }
@@ -324,14 +324,14 @@ read_table_param(Element *e, void *)
 static String
 read_active_param(Element *e, void *)
 {
-  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  LPRLinkProbeHandler *fl = reinterpret_cast<LPRLinkProbeHandler *>(e);
   return String(fl->_active) + "\n";
 }
 
 static int 
 write_active_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  LPRLinkProbeHandler *fl = reinterpret_cast<LPRLinkProbeHandler *>(e);
   String s = cp_uncomment(in_s);
   bool active;
   if (!cp_bool(s, &active))
@@ -343,14 +343,14 @@ write_active_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 static String
 read_debug_param(Element *e, void *)
 {
-  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  LPRLinkProbeHandler *fl = reinterpret_cast<LPRLinkProbeHandler *>(e);
   return String(fl->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  LPRLinkProbeHandler *fl = reinterpret_cast<LPRLinkProbeHandler *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

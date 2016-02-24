@@ -60,6 +60,7 @@ ChannelStats::ChannelStats():
     _proc_timer(static_proc_timer_hook,this)
 {
   BRNElement::init();
+  memset(_small_stats,0,sizeof(_small_stats));
   _full_stats.last_update = Timestamp::now();
 }
 
@@ -147,7 +148,7 @@ void
 ChannelStats::static_proc_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((ChannelStats*)f)->proc_read();
+ (reinterpret_cast<ChannelStats*>(f))->proc_read();
 }
 
 void
@@ -666,7 +667,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab, RS
 
   if ( src_tab ) {
     BRN_ERROR("Clear SRCTAB");
-    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) delete iter.value();
+    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); ++iter) delete iter.value();
     src_tab->clear();
   }
   if ( rssi_tab ) rssi_tab->reset();
@@ -885,7 +886,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
 
     small_stats->no_sources = src_tab->size();
 
-    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++)
+    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); ++iter)
       iter.value()->calc_values();
 
   }
@@ -977,7 +978,7 @@ ChannelStats::stats_handler(int mode)
       sa << "\" rx_cycles=\"" << stats->hw_rx_cycles << "\" tx_cycles=\"" << stats->hw_tx_cycles;
 
       sa << "\" />\n\t<neighbourstats>\n";
-      for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
+      for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); ++iter) {
         SrcInfo *src = iter.value();
         EtherAddress ea = iter.key();
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src->_avg_rssi << "\" std_rssi=\"";
@@ -1037,7 +1038,7 @@ ChannelStats::stats_handler(int mode)
 static String
 ChannelStats_read_param(Element *e, void *thunk)
 {
-  ChannelStats *td = (ChannelStats *)e;
+  ChannelStats *td = reinterpret_cast<ChannelStats *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
     case H_STATS_XML:
@@ -1053,7 +1054,7 @@ ChannelStats_read_param(Element *e, void *thunk)
 static int
 ChannelStats_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  ChannelStats *f = (ChannelStats *)e;
+  ChannelStats *f = reinterpret_cast<ChannelStats *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_MAX_TIME: {

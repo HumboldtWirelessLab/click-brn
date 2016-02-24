@@ -47,14 +47,14 @@ void TopologyInfo::reset()
 {
   lock.acquire();
   
-  for (Vector<TopologyInfoEdge*>::const_iterator it = _bridges.begin(); it != _bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::const_iterator it = _bridges.begin(); it != _bridges.end(); ++it)
   {
     TopologyInfoEdge* elem = *it;
     delete(elem);
   }
   _bridges.clear();
   
-  for (Vector<TopologyInfoNode*>::const_iterator it = _artpoints.begin(); it != _artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::const_iterator it = _artpoints.begin(); it != _artpoints.end(); ++it)
   {
     TopologyInfoNode* elem = *it;
     delete(elem);
@@ -112,7 +112,7 @@ TopologyInfo::setBridges(Vector<TopologyInfoEdge*>& new_bridges)
 {
   lock.acquire();
   
-  for (Vector<TopologyInfoEdge*>::const_iterator it = new_bridges.begin(); it != new_bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::const_iterator it = new_bridges.begin(); it != new_bridges.end(); ++it)
   {
     TopologyInfoEdge *br = *it;
     nonthreadsafe_addBridge(*br);
@@ -126,7 +126,7 @@ TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
 {
   lock.acquire();
   
-  for (Vector<TopologyInfoEdge*>::iterator it = _bridges.begin(); it != _bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::iterator it = _bridges.begin(); it != _bridges.end(); ++it)
   {
     TopologyInfoEdge* elem = *it;
     if (elem->equals(a, b))
@@ -183,7 +183,7 @@ TopologyInfo::setArticulationPoints(Vector<TopologyInfoNode*>& new_artpoints)
 {
   lock.acquire();
   
-  for (Vector<TopologyInfoNode*>::const_iterator it = new_artpoints.begin(); it != new_artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::const_iterator it = new_artpoints.begin(); it != new_artpoints.end(); ++it)
   {
     TopologyInfoNode *ap = *it;
     nonthreadsafe_addArticulationPoint(*ap);
@@ -198,7 +198,7 @@ TopologyInfo::removeArticulationPoint(EtherAddress* a)
 {
   lock.acquire();
   
-  for (Vector<TopologyInfoNode*>::iterator it = _artpoints.begin(); it != _artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::iterator it = _artpoints.begin(); it != _artpoints.end(); ++it)
   {
     TopologyInfoNode* elem = *it;
     if (elem->equals(a))
@@ -291,7 +291,7 @@ enum
 static String
 read_param(Element *e, void *thunk)
 {
-  TopologyInfo *t_info = (TopologyInfo *) e;
+  TopologyInfo *t_info = reinterpret_cast<TopologyInfo *>( e);
 
   switch ((uintptr_t) thunk)
   {
@@ -303,7 +303,7 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  TopologyInfo *topoInfo = (TopologyInfo *) e;
+  TopologyInfo *topoInfo = reinterpret_cast<TopologyInfo *>( e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);

@@ -59,7 +59,8 @@ BRN2AssocResponder::BRN2AssocResponder() :
   _assoc_list(NULL),
   _dev(NULL),
   _winfolist(NULL),
-  _vlantable(NULL)
+  _vlantable(NULL),
+  _rtable(NULL)
 {
 }
 
@@ -537,7 +538,7 @@ BRN2AssocResponder::send_reassociation_response(
 void
 BRN2AssocResponder::static_response_timer_hook(Timer *, void *v)
 {
-  BRN2AssocResponder *rt = (BRN2AssocResponder*)v;
+  BRN2AssocResponder *rt = reinterpret_cast<BRN2AssocResponder*>(v);
   rt->response_timer_hook();
 }
 
@@ -617,7 +618,7 @@ enum {H_DEBUG, H_DELAY};
 static String
 read_debug_param(Element *e, void *vparam)
 {
-  BRN2AssocResponder *f = (BRN2AssocResponder *)e;
+  BRN2AssocResponder *f = reinterpret_cast<BRN2AssocResponder *>(e);
   switch((intptr_t)vparam) {
   case H_DEBUG:
     return String(f->_debug) + "\n";
@@ -633,7 +634,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BRN2AssocResponder *f = (BRN2AssocResponder *)e;
+  BRN2AssocResponder *f = reinterpret_cast<BRN2AssocResponder *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG:

@@ -21,11 +21,12 @@
 CLICK_DECLS
 
 FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
+  _frt(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
   _start(FALCON_DEFAULT_START_TIME),
   _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
-  _debug(BrnLogger::DEFAULT),
   _rounds_to_passive_monitoring(0),
+  _current_round2pm(0),
   _opti(FALCON_OPTIMAZATION_NONE),
   _rfrt(NULL)
 {
@@ -66,8 +67,8 @@ void
 FalconRoutingTableMaintenance::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((FalconRoutingTableMaintenance*)f)->table_maintenance();
-  ((FalconRoutingTableMaintenance*)f)->set_lookup_timer();
+  (reinterpret_cast<FalconRoutingTableMaintenance*>(f))->table_maintenance();
+  (reinterpret_cast<FalconRoutingTableMaintenance*>(f))->set_lookup_timer();
 }
 
 void
@@ -141,7 +142,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   /** Hawk-Routing stuff. TODO: this should move to extra funtion */
   if ( _rfrt != NULL ) {
-    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(packet->ether_header());
     //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
     if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Is neighbourhop. Not added to table.");
@@ -206,8 +207,6 @@ else {
 			pack->pull(sizeof(struct click_brn) + sizeof(click_ether));
 		
 		 	p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, &src,(_rfrt->getEntry(&(src._ether_addr)))->_metric, pack);  //recyl. packet
-
-	
 
 	}
 	else
@@ -325,7 +324,7 @@ else
     //don't add route to myself
     if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 ) {
        //TODO: whats with annos
-      //click_ether *annotated_ether = (click_ether *)packet->ether_header();
+      //click_ether *annotated_ether = reinterpret_cast<click_ether *>(packet->ether_header());
       //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,

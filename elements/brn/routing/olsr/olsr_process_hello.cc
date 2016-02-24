@@ -14,6 +14,7 @@
 CLICK_DECLS
 
 OLSRProcessHello::OLSRProcessHello()
+: _linkInfo(NULL),_neighborInfo(NULL),_interfaceInfo(NULL),_routingTable(NULL),_tcGenerator(NULL),_localIfInfoBase(NULL)
 {
 }
 
@@ -111,7 +112,7 @@ OLSRProcessHello::push(int, Packet *packet)
 			int interface_address_bytes_left = link_info.link_msg_size - sizeof(olsr_link_hdr);
 			do
 			{
-				in_addr *address = (in_addr *) (packet->data() + address_offset);
+				const in_addr *address = reinterpret_cast<const in_addr *>( (packet->data() + address_offset));
 				IPAddress neighbor_address = IPAddress(*address);
 
 				//from RFC 7.1.1 - 2
@@ -221,7 +222,7 @@ OLSRProcessHello::set_neighbor_hold_time_tv(int neighbor_hold_time)
 int
 OLSRProcessHello::set_neighbor_hold_time_tv_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	OLSRProcessHello* me = (OLSRProcessHello *) e;
+	OLSRProcessHello* me = reinterpret_cast<OLSRProcessHello *>( e);
 	int new_nbr_hold_time;
   int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, cpEnd );
 	if ( res < 0 )

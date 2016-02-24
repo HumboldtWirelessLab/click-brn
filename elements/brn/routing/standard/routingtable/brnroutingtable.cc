@@ -428,7 +428,7 @@ write_reset_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler
 {
   UNREFERENCED_PARAMETER(vparam);
 
-  BrnRoutingTable *rq = (BrnRoutingTable *)e;
+  BrnRoutingTable *rq = reinterpret_cast<BrnRoutingTable *>(e);
 
   rq->flush_cache();
 
@@ -441,7 +441,7 @@ read_active_param(Element *e, void *thunk)
 {
   UNREFERENCED_PARAMETER(thunk);
 
-  BrnRoutingTable *rq = (BrnRoutingTable *)e;
+  BrnRoutingTable *rq = reinterpret_cast<BrnRoutingTable *>(e);
   return String(rq->m_bActive) + "\n";
 }
 
@@ -451,7 +451,7 @@ write_active_param(const String &in_s, Element *e, void *vparam, ErrorHandler *e
 {
   UNREFERENCED_PARAMETER(vparam);
 
-  BrnRoutingTable *rq = (BrnRoutingTable *)e;
+  BrnRoutingTable *rq = reinterpret_cast<BrnRoutingTable *>(e);
   String s = cp_uncomment(in_s);
   bool active;
   if (!cp_bool(s, &active)) 

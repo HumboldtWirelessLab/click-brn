@@ -63,7 +63,7 @@ public:
 // Methods
 //------------------------------------------------------------------------------
 public:
-  Packet* create_handover_notify(
+  WritablePacket* create_handover_notify(
     EtherAddress  client, 
     EtherAddress  apNew, 
     EtherAddress  apOld, 

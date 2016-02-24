@@ -17,7 +17,7 @@
 CLICK_DECLS
 
 AODVWaitingForDiscovery::AODVWaitingForDiscovery()
-{
+:rreq(NULL),neighbour_table(NULL){
 }
 
 AODVWaitingForDiscovery::~AODVWaitingForDiscovery()
@@ -83,7 +83,7 @@ void AODVWaitingForDiscovery::runTask(const IPAddress & destination, TimerData* 
 }
 
 void AODVWaitingForDiscovery::handleTask(Timer* , void * data){
-	TimerData * timerdata = (TimerData*) data;
+	TimerData * timerdata = reinterpret_cast<TimerData*>( data);
 	assert(timerdata);
 	timerdata->waitingForDiscovery->runTask(timerdata->destination,timerdata);
 }
@@ -99,7 +99,7 @@ void AODVWaitingForDiscovery::newKnownDestination(const IPAddress & destination,
 		/*Robat	if (PAINT_ANNO(*iter) == 2){ // forwarding of RREP
 				const click_ip * ipheader = (*iter)->ip_header();
 				assert(ipheader);
-				aodv_rrep_header * rrep = (aodv_rrep_header*) ((*iter)->data() + aodv_headeroffset);
+				aodv_rrep_header * rrep = reinterpret_cast<aodv_rrep_header*>( ((*iter)->data() + aodv_headeroffset));
 								
 				// RFC 6.7 last paragraph: 
 				// destination contains next hop (towards destination)
@@ -178,7 +178,7 @@ void AODVWaitingForDiscovery::push (int port, Packet * packet){
 		}
 	} else { //RREP
 		assert(packet->ip_header());
-		//aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
+		//aodv_rrep_header * rrep = reinterpret_cast<aodv_rrep_header*>( (packet->data() + aodv_headeroffset));
 		
 		//click_chatter("RREP from %s at destination (%s)", IPAddress(rrep->destination).s().c_str(), IPAddress(rrep->originator).s().c_str());
 		

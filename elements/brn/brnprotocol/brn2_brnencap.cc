@@ -35,7 +35,11 @@
 CLICK_DECLS
 
 BRN2Encap::BRN2Encap()
-  : _debug(0)
+  :   _src_port(0),
+      _dst_port(0),
+      _ttl(0),
+      _tos(0),
+      _debug(0)
 {
 }
 
@@ -102,14 +106,14 @@ BRN2Encap::pull(int)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2Encap *be = (BRN2Encap *)e;
+  BRN2Encap *be = reinterpret_cast<BRN2Encap *>(e);
   return String(be->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  BRN2Encap *be = (BRN2Encap *)e;
+  BRN2Encap *be = reinterpret_cast<BRN2Encap *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

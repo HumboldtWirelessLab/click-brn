@@ -46,7 +46,6 @@ int BrnIappHelloHandler::_hello_trigger_interval_ms = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 BrnIappHelloHandler::BrnIappHelloHandler() :
-  _debug(BrnLogger::DEFAULT),
   _optimize(true),
   _timer(static_timer_trigger, this),
   _timer_hello(static_timer_hello_trigger, this),
@@ -141,8 +140,8 @@ BrnIappHelloHandler::push(int, Packet *p)
   BRN_CHECK_EXPR_RETURN(p == NULL || p->length() < sizeof(struct click_brn_iapp),
     ("invalid argument"), if (p) p->kill(); return;);
 
-  click_brn_iapp*     pIapp   = (click_brn_iapp*)p->data();
-  click_brn_iapp_he*  pHe     = &pIapp->payload.he;
+  const click_brn_iapp*     pIapp   = reinterpret_cast<const click_brn_iapp*>(p->data());
+  const click_brn_iapp_he*  pHe     = &pIapp->payload.he;
 
   BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_HEL != pIapp->type,
     ("got invalid iapp type %d", pIapp->type), if (p) p->kill(); return;);
@@ -262,7 +261,7 @@ void
 BrnIappHelloHandler::hello_trigger()
 {
   // Go through all clients 
-  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live(); i++)
+  for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live();++i)
   {
     BRN2AssocList::ClientInfo& nfo = i.value();
     if (BRN2AssocList::SEEN_BRN != nfo.get_state()
@@ -282,7 +281,7 @@ BrnIappHelloHandler::hello_trigger()
 void
 BrnIappHelloHandler::static_timer_trigger(Timer *t, void *v)
 {
-  BrnIappHelloHandler *as = (BrnIappHelloHandler *)v;
+  BrnIappHelloHandler *as = reinterpret_cast<BrnIappHelloHandler *>(v);
   as->hello_trigger();
   t->schedule_after_msec(_hello_trigger_interval_ms);
 }
@@ -292,7 +291,7 @@ BrnIappHelloHandler::static_timer_trigger(Timer *t, void *v)
 void
 BrnIappHelloHandler::static_timer_hello_trigger(Timer *, void *v)
 {
-  BrnIappHelloHandler *as = (BrnIappHelloHandler *)v;
+  BrnIappHelloHandler *as = reinterpret_cast<BrnIappHelloHandler *>(v);
   as->send_hello();
 }
 
@@ -303,7 +302,7 @@ enum {H_DEBUG, H_OPTIMIZE};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappHelloHandler *td = (BrnIappHelloHandler *)e;
+  BrnIappHelloHandler *td = reinterpret_cast<BrnIappHelloHandler *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -318,7 +317,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappHelloHandler *f = (BrnIappHelloHandler *)e;
+  BrnIappHelloHandler *f = reinterpret_cast<BrnIappHelloHandler *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

@@ -8,7 +8,7 @@
 CLICK_DECLS
 
 OLSRDuplicateSet::OLSRDuplicateSet()
-  : _timer(this)
+  : _duplicateSet(NULL), _timer(this), _packetSeqList(NULL)
 {
 }
 
@@ -46,7 +46,7 @@ OLSRDuplicateSet::find_duplicate_entry(IPAddress address, int seq_num)
 {
   if (! _duplicateSet->empty()){
     DuplicatePair pair = DuplicatePair(address, seq_num);
-    duplicate_data *data = (duplicate_data *) _duplicateSet->find(pair);
+    duplicate_data *data = reinterpret_cast<duplicate_data *>( _duplicateSet->find(pair));
     return data;
   }
   return 0;
@@ -57,9 +57,12 @@ duplicate_data *
 OLSRDuplicateSet::add_duplicate_entry(IPAddress address, int seq_num)
 {
   DuplicatePair pair = DuplicatePair(address, seq_num);
-  duplicate_data *data = new duplicate_data;		//new ok, freed en remove
+  duplicate_data *data = new duplicate_data;  //new ok, freed en remove
   data->D_addr = address;
   data->D_seq_num = seq_num;
+  data->D_retransmitted = 0;
+  data->D_iface_list = Vector<IPAddress>();
+  data->D_time = Timestamp::now().timeval();
 
   if (_duplicateSet->insert(pair, data))
     return data;
@@ -72,7 +75,7 @@ void
 OLSRDuplicateSet::remove_duplicate_entry(IPAddress address, int seq_num)
 {
   DuplicatePair pair = DuplicatePair(address, seq_num);
-  DuplicatePair *ptr = (DuplicatePair*) _duplicateSet->find(pair); //getting stored generic pointer, to release allocated memory 
+  DuplicatePair *ptr = reinterpret_cast<DuplicatePair*>( _duplicateSet->find(pair)); //getting stored generic pointer, to release allocated memory 
   _duplicateSet->remove(pair);
   delete ptr;
 }
@@ -110,8 +113,8 @@ OLSRDuplicateSet::run_timer(Timer *)
 
   //find expired duplicate entries and delete them
   if (! _duplicateSet->empty()){
-    for (DuplicateSet::iterator iter = _duplicateSet->begin(); iter != _duplicateSet->end(); iter++){
-      duplicate_data *entry = (duplicate_data *) iter.value();
+    for (DuplicateSet::iterator iter = _duplicateSet->begin(); iter != _duplicateSet->end(); ++iter){
+      duplicate_data *entry = reinterpret_cast<duplicate_data *>( iter.value());
       if (Timestamp(entry->D_time) <= Timestamp(now)){
 	remove_duplicate_entry(entry->D_addr, entry->D_seq_num);
       }
@@ -120,8 +123,8 @@ OLSRDuplicateSet::run_timer(Timer *)
 
   //find next duplicate entry to expire
   if (! _duplicateSet->empty()){
-    for (DuplicateSet::iterator iter = _duplicateSet->begin(); iter != _duplicateSet->end(); iter++){
-      duplicate_data *entry = (duplicate_data *) iter.value();
+    for (DuplicateSet::iterator iter = _duplicateSet->begin(); iter != _duplicateSet->end(); ++iter){
+      duplicate_data *entry = reinterpret_cast<duplicate_data *>( iter.value());
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = entry->D_time;
       if ( Timestamp(entry->D_time) < Timestamp(next_timeout) )

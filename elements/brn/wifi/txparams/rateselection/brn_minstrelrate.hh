@@ -27,7 +27,8 @@ class BrnMinstrelRate : public RateSelection
 
       //uint16_t best_eff_tp_index;
 
-      MinstrelNodeInfo() {
+      MinstrelNodeInfo(): best_eff_tp_raw(0), best_eff_tp_psr(0)
+      {
       }
     };
 

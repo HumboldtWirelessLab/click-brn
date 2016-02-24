@@ -120,11 +120,8 @@ class CachedNeighborsMetricList {
 
   Timestamp _last_update;
 
-  CachedNeighborsMetricList(EtherAddress ea, uint8_t metric) {
-    _node = ea;
+  CachedNeighborsMetricList(EtherAddress ea, uint8_t metric):_node(ea), _min_pdr_to_neighbor(metric), _metrics(NULL) {
     _neighbors.clear();
-    _metrics = NULL;
-    _min_pdr_to_neighbor = metric;
   }
 
   ~CachedNeighborsMetricList() {

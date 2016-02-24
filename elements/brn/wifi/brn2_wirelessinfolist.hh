@@ -34,16 +34,12 @@ class BRN2WirelessInfoList : public Element {
 
     Timestamp _send_last;
 
-    WifiInfo() {
+    WifiInfo(): _ssid(), _bssid(), _interval(0), _wep(false),  _protected(false), _vlan(0) {
     }
 
-    WifiInfo( String ssid, EtherAddress bssid, int interval, bool wep, uint8_t vlan) {
-      _ssid = ssid;
-      _bssid = bssid;
-      _interval = interval;
-      _wep = wep;
-      _vlan = vlan;
-      _protected = false;
+    WifiInfo( String ssid, EtherAddress bssid, int interval, bool wep, uint8_t vlan): _ssid(ssid), _bssid(bssid), _interval(interval),
+                                                                                      _wep(wep),  _protected(false), _vlan(vlan)
+    {
       updateTime();
     }
 

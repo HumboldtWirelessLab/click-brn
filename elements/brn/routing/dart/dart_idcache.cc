@@ -56,10 +56,8 @@ DartIDCache::getEntry(EtherAddress *ea)
 void
 DartIDCache::delEntry(EtherAddress *ea)
 {
-  IDCacheEntry *entry;
-
   for(int i = 0; i < _idcache.size(); i++) {
-    entry = _idcache[i];
+    IDCacheEntry *entry = _idcache[i];
     if ( memcmp(entry->_ea.data(), ea->data(), 6) == 0 ) {
       delete entry;
       _idcache.erase(_idcache.begin() + i);

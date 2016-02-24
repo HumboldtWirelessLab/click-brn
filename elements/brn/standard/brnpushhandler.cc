@@ -77,7 +77,7 @@ BrnPushHandler::initialize(ErrorHandler */*errh*/)
 void
 BrnPushHandler::static_push_handler_timer_hook(Timer *, void *f)
 {
-  ((BrnPushHandler*)f)->push_handler();
+ (reinterpret_cast<BrnPushHandler*>(f))->push_handler();
 }
 
 void
@@ -109,7 +109,7 @@ enum { H_PERIOD, H_HANDLER};
 static String
 BrnPushHandler_read_param(Element *e, void *vparam)
 {
-  BrnPushHandler *ph = (BrnPushHandler *)e;
+  BrnPushHandler *ph = reinterpret_cast<BrnPushHandler *>(e);
   StringAccum sa;
 
 
@@ -126,7 +126,7 @@ BrnPushHandler_read_param(Element *e, void *vparam)
 static int
 BrnPushHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  BrnPushHandler *ph = (BrnPushHandler *)e;
+  BrnPushHandler *ph = reinterpret_cast<BrnPushHandler *>(e);
 
   switch((intptr_t)vparam) {
     case H_PERIOD: {

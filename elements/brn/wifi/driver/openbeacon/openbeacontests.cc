@@ -17,7 +17,7 @@ CLICK_DECLS
 
 OpenBeaconTests::OpenBeaconTests()
   :_debug(BrnLogger::DEFAULT)
-{
+,_mode(0),_count(0){
 	
 }
 
@@ -53,13 +53,12 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 
   void OpenBeaconTests::push(int port, Packet *p)
 {
-	uint32_t edata_length = 0;
 	WritablePacket* wP = p->uniqueify();
 	
 	if( wP && wP->has_mac_header() )  {
 		if(port==0) {
 			// Send Testpacket
-			edata_length = p->length() - sizeof( struct click_ether );
+			uint32_t edata_length = p->length() - sizeof( struct click_ether );
 					
 			// set space for data
 			if(  (sizeof(HW_rxtx_Test)-OPENBEACON_MACSIZE-sizeof(uint16_t)) > edata_length ) {

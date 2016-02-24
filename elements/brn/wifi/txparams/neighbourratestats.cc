@@ -5,6 +5,7 @@
 CLICK_DECLS
 
 NeighbourRateStats::NeighbourRateStats()
+ : no_timeslots(0),curr_timeslot(0),last_timeslot(0),cnt_updates(0)
 {
 
 }

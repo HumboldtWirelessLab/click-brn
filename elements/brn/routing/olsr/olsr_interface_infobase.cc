@@ -10,7 +10,7 @@
 CLICK_DECLS
 
 OLSRInterfaceInfoBase::OLSRInterfaceInfoBase()
-  : _timer(this)
+  : _interfaceSet(NULL),_localIfInfoBase(NULL),_routingTable(NULL), _timer(this)
 {
 }
 
@@ -69,7 +69,7 @@ OLSRInterfaceInfoBase::find_interface(IPAddress iface_addr)
 {
   if (! _interfaceSet->empty() ) {
     interface_data *data;
-    data = (interface_data*) _interfaceSet->find(iface_addr);
+    data = reinterpret_cast<interface_data*>( _interfaceSet->find(iface_addr));
 
     if (!(data == 0))
       return data;
@@ -81,7 +81,7 @@ OLSRInterfaceInfoBase::find_interface(IPAddress iface_addr)
 void
 OLSRInterfaceInfoBase::remove_interface(IPAddress iface_addr)
 {
-	interface_data *ptr=(interface_data *) _interfaceSet->find (iface_addr);
+	interface_data *ptr=reinterpret_cast<interface_data *>( _interfaceSet->find (iface_addr));
   _interfaceSet->remove(iface_addr);
  delete ptr;
 }
@@ -95,8 +95,8 @@ OLSRInterfaceInfoBase::remove_interfaces_from(IPAddress neigh_addr)
 	if (!_interfaceSet->empty()) {
 		IPAddress main_addr = get_main_address(neigh_addr);
 		
-		for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); iter++) {
-			interface_data *tuple = (interface_data *) iter.value();
+		for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); ++iter) {
+			interface_data *tuple = reinterpret_cast<interface_data *>( iter.value());
 			if (tuple->I_main_addr == main_addr) {
 				remove_interface(tuple->I_iface_addr);
 				interface_removed = true;
@@ -157,8 +157,8 @@ OLSRInterfaceInfoBase::run_timer(Timer *)
   
   //find expired interface tuples
   if (!_interfaceSet->empty()){
-    for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); iter++){
-      interface_data *tuple = (interface_data *) iter.value();
+    for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); ++iter){
+      interface_data *tuple = reinterpret_cast<interface_data *>( iter.value());
 //       if (tuple->I_time <= now) {
       if (Timestamp(tuple->I_time) <= Timestamp(now)) {
 	remove_interface(tuple->I_iface_addr);
@@ -169,8 +169,8 @@ OLSRInterfaceInfoBase::run_timer(Timer *)
 
   //find next interface to expire
   if (! _interfaceSet->empty()){
-    for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); iter++){
-      interface_data *tuple = (interface_data *) iter.value();
+    for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); ++iter){
+      interface_data *tuple = reinterpret_cast<interface_data *>( iter.value());
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->I_time;
       if ( Timestamp(tuple->I_time) < Timestamp(next_timeout) )
@@ -186,8 +186,8 @@ OLSRInterfaceInfoBase::run_timer(Timer *)
 void OLSRInterfaceInfoBase::print_interfaces()
 {
  click_chatter ("Interface Infobase: #%d\n",_interfaceSet->size());
- for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); iter++){
-      interface_data *tuple = (interface_data *) iter.value();
+ for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); ++iter){
+      interface_data *tuple = reinterpret_cast<interface_data *>( iter.value());
       click_chatter ("\tIface_addr=%s\tMain_addr=%s\t\n",tuple->I_iface_addr.unparse().c_str(),tuple->I_main_addr.unparse().c_str());
       }
  }

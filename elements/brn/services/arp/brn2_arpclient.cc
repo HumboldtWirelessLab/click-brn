@@ -39,7 +39,11 @@
 CLICK_DECLS
 
 BRN2ARPClient::BRN2ARPClient() :
-  _request_timer(static_request_timer_hook,this)
+  _range(0),_range_index(0),
+  _count_request(0),_count_reply(0),_count_timeout(0),
+  _request_timer(static_request_timer_hook,this),
+  _client_start(0),_client_interval(0),_count(0),
+  _requests_at_once(0),_timeout(0),_active(false)
 {
   BRNElement::init();
 }
@@ -115,13 +119,12 @@ void
 BRN2ARPClient::static_request_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((BRN2ARPClient*)f)->request_timer_func();
+  (reinterpret_cast<BRN2ARPClient*>(f))->request_timer_func();
 }
 
 void
 BRN2ARPClient::request_timer_func()
 {
-  long time_diff;
   //BRN_DEBUG("BRN2ARPClient: Timer");
   Timestamp _time_now = Timestamp::now();
 
@@ -129,7 +132,7 @@ BRN2ARPClient::request_timer_func()
 
   for ( i = 0; i < _request_queue.size(); i++ )
   {
-    time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
+    long time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
     if ( time_diff > _timeout )
     {
        _count_timeout++;
@@ -208,18 +211,15 @@ BRN2ARPClient::push( int port, Packet *packet )
 int
 BRN2ARPClient::arp_reply(Packet *p)
 {
-  long time_diff;
-
   BRN_DEBUG("BRN2ARPClient: Packet\n");
 
-  Timestamp _time_now = Timestamp::now();
-
-  click_ether *ethp = (click_ether *) p->data();                  //etherhaeder rausholen
-  click_ether_arp *arpp = (click_ether_arp *) (ethp + 1);         //arpheader rausholen
+  const click_ether *ethp = reinterpret_cast<const click_ether *>( p->data());                  //etherhaeder rausholen
+  const click_ether_arp *arpp = reinterpret_cast<const click_ether_arp *>( (ethp + 1));         //arpheader rausholen
 
   if ( ntohs(arpp->ea_hdr.ar_op) == ARPOP_REPLY )
   {
     BRN_DEBUG("BRN2ARPClient: Packet ist ARP-Reply\n");
+    Timestamp _time_now = Timestamp::now();
 
     IPAddress ip_add(arpp->arp_spa);
     EtherAddress eth_add(arpp->arp_sha);
@@ -228,7 +228,7 @@ BRN2ARPClient::arp_reply(Packet *p)
     {
       if ( _request_queue[i].ip_add == ip_add )
       {
-        time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
+        long time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
         BRN_DEBUG("BRN2ARPClient: TIME: %d",time_diff);
         _count_reply++;
         _request_queue.erase( _request_queue.begin() + i );
@@ -259,8 +259,8 @@ BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
   p->set_mac_header(p->data(), 14);
   memset(p->data(), '\0', p->length());
 
-  e = (click_ether *) p->data();	                               //pointer auf Ether-header holen
-  ea = (click_ether_arp *) (e + 1);                              //Pointer auf BRN2ARPClient-Header holen
+  e = reinterpret_cast<click_ether *>( p->data());	                               //pointer auf Ether-header holen
+  ea = reinterpret_cast<click_ether_arp *>( (e + 1));                              //Pointer auf BRN2ARPClient-Header holen
 
   memcpy(e->ether_dhost, brn_ethernet_broadcast, 6);             //alte Quelle ist neues Ziel des Etherframes
   memcpy(e->ether_shost, _client_ethernet.data(), 6);
@@ -319,7 +319,7 @@ enum {
 static String 
 read_param(Element *e, void *thunk)
 {
-  BRN2ARPClient *td = (BRN2ARPClient *)e;
+  BRN2ARPClient *td = reinterpret_cast<BRN2ARPClient *>(e);
   switch ((uintptr_t) thunk) {
   case H_STATS:
     return td->print_stats();
@@ -352,7 +352,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BRN2ARPClient *f = (BRN2ARPClient *)e;
+  BRN2ARPClient *f = reinterpret_cast<BRN2ARPClient *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_CLIENT_IP:

@@ -43,7 +43,7 @@ BRN2Decap::~BRN2Decap()
 Packet *
 BRN2Decap::simple_action(Packet *p)
 {
-  click_brn *brnh = (click_brn*)p->data();
+  const click_brn *brnh = reinterpret_cast<const click_brn*>(p->data());
 
   BRNPacketAnno::set_ttl_anno(p, brnh->ttl);
 

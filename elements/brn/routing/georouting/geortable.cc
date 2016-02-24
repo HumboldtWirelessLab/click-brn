@@ -35,7 +35,7 @@
 CLICK_DECLS
 
 GeorTable::GeorTable()
-{
+:_gps_map(NULL),_lt(NULL),_gps(NULL){
   BRNElement::init();
 }
 
@@ -79,7 +79,7 @@ GeorTable::getClosest(struct gps_position *pos, EtherAddress *ea)
   GPSPosition *gpspos;
   GPSPosition finpos = GPSPosition(pos);
 
-  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live(); i++) {
+  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live();++i) {
     if ( first ) {
       best = i.key();
       gpspos = _gps_map->lookup(best);
@@ -106,11 +106,9 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
 {
   Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
 
-  GPSPosition *gpspos;
   GPSPosition finpos = GPSPosition(pos);
 
   int best;
-  int min_dist = -1;
 
   BRN_INFO("Search next hop for neighbor %s",finpos.unparse_coord().c_str());
 
@@ -119,9 +117,10 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
   if ( neighbors.size() > 0 ) {
     //find the first neighbour
     int i = 0;
+    int min_dist = -1;
     for (;i < neighbors.size(); i++) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
-        gpspos = _gps_map->lookup(neighbors[i]);
+        GPSPosition *gpspos = _gps_map->lookup(neighbors[i]);
         if ( gpspos == NULL ) continue;
         best = i;
         min_dist = finpos.getDistance(gpspos);
@@ -134,7 +133,7 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
 
     for( ; i < neighbors.size(); i++ ) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
-        gpspos = _gps_map->lookup(neighbors[i]);
+        GPSPosition *gpspos = _gps_map->lookup(neighbors[i]);
         if ( gpspos == NULL ) continue;
         BRN_INFO("Check distance to %s: %d",neighbors[i].unparse().c_str(),finpos.getDistance(gpspos));
         if ( finpos.getDistance(gpspos) < min_dist ) {
@@ -189,14 +188,12 @@ String
 GeorTable::get_routing_table()
 {
   StringAccum sa;
-  GPSPosition *gpspos;
-  EtherAddress ea;
 
   sa << "Local:\t" << getLocalPosition()->_x << " " << getLocalPosition()->_y << " " << getLocalPosition()->_z << "\n";
 
-  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live(); i++) {
-    ea = i.key();
-    gpspos = _gps_map->lookup(ea);
+  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live();++i) {
+    EtherAddress ea = i.key();
+    GPSPosition *gpspos = _gps_map->lookup(ea);
 
     sa << ea.unparse() << "\t" << gpspos->_x << " " << gpspos->_y << " " << gpspos->_z << "\n";
   }
@@ -212,7 +209,7 @@ static int
 write_addentry_param(const String &in_s, Element *e, void */*vparam*/,
                         ErrorHandler */*errh*/)
 {
-  GeorTable *gt = (GeorTable *)e;
+  GeorTable *gt = reinterpret_cast<GeorTable *>(e);
   EtherAddress ea;
   struct gps_position pos;
 
@@ -234,21 +231,21 @@ write_addentry_param(const String &in_s, Element *e, void */*vparam*/,
 static String
 read_table_param(Element *e, void *)
 {
-  GeorTable *gt = (GeorTable *)e;
+  GeorTable *gt = reinterpret_cast<GeorTable *>(e);
   return gt->get_routing_table();
 }
 
 static String
 read_debug_param(Element *e, void *)
 {
-  GeorTable *fl = (GeorTable *)e;
+  GeorTable *fl = reinterpret_cast<GeorTable *>(e);
   return String(fl->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  GeorTable *fl = (GeorTable *)e;
+  GeorTable *fl = reinterpret_cast<GeorTable *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

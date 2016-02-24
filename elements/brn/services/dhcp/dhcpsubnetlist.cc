@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 BRN2DHCPSubnetList::BRN2DHCPSubnetList()
+ : _debug(0)
 {
 }
 
@@ -34,7 +35,8 @@ BRN2DHCPSubnetList::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 BRN2DHCPSubnetList::DHCPSubnet *
-BRN2DHCPSubnetList::getSubnet(int index) {
+BRN2DHCPSubnetList::getSubnet(int index)
+{
   if ( index < _subnet_list.size() )
     return &(_subnet_list[index]);
 
@@ -42,13 +44,12 @@ BRN2DHCPSubnetList::getSubnet(int index) {
 }
 
 BRN2DHCPSubnetList::DHCPSubnet *
-BRN2DHCPSubnetList::getSubnetByVlanID(int id) {
-  BRN2DHCPSubnetList::DHCPSubnet *sn;
-
+BRN2DHCPSubnetList::getSubnetByVlanID(int id)
+{
   BRN_DEBUG("Size of SubnetList: %d",_subnet_list.size());
 
   for ( int i = 0; i < _subnet_list.size(); i++ ) {
-    sn = &(_subnet_list[i]);
+    BRN2DHCPSubnetList::DHCPSubnet *sn = &(_subnet_list[i]);
 
     BRN_DEBUG("ID: %d",sn->_vlan);
 
@@ -68,7 +69,7 @@ enum {
 static String
 BRN2DHCPSubnetList_read_param(Element *e, void *thunk)
 {
-  BRN2DHCPSubnetList *snl = (BRN2DHCPSubnetList *)e;
+  BRN2DHCPSubnetList *snl = reinterpret_cast<BRN2DHCPSubnetList *>(e);
   switch ((uintptr_t) thunk) {
     case H_DEBUG: {
       return String(snl->_debug) + "\n";
@@ -97,7 +98,7 @@ static int
 BRN2DHCPSubnetList_write_param(const String &in_s, Element *e, void *vparam,
                                  ErrorHandler *errh)
 {
-  BRN2DHCPSubnetList *f = (BRN2DHCPSubnetList *)e;
+  BRN2DHCPSubnetList *f = reinterpret_cast<BRN2DHCPSubnetList *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {

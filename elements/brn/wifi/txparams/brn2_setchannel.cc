@@ -39,12 +39,11 @@ Packet *
 BRN2SetChannel::simple_action(Packet *p_in)
 {
 //  uint8_t operation;
-  uint8_t set_channel;
 
   if ( p_in != NULL )
   {
 //    operation = BRNPacketAnno::operation_anno(p_in);
-    set_channel = BRNPacketAnno::channel_anno(p_in);
+    uint8_t set_channel = BRNPacketAnno::channel_anno(p_in);
     BRN_DEBUG("Channel: %d",set_channel);
 
     if ( ( set_channel == 0 ) && ( _channel != 0 ) )
@@ -112,7 +111,7 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
 static int
 channel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2SetChannel *sc = (BRN2SetChannel *)e;
+  BRN2SetChannel *sc = reinterpret_cast<BRN2SetChannel *>(e);
   String s = cp_uncomment(in_s);
   int channel;
   if (!cp_integer(s, &channel))
@@ -128,7 +127,7 @@ channel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandl
 static int 
 setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2SetChannel *sc = (BRN2SetChannel *)e;
+  BRN2SetChannel *sc = reinterpret_cast<BRN2SetChannel *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
@@ -174,7 +173,7 @@ BRN2SetChannel::get_info()
 static String 
 BRN2SetChannel_channel_read_param(Element *e, void */*thunk*/)
 {
-  BRN2SetChannel *sc = (BRN2SetChannel *)e;
+  BRN2SetChannel *sc = reinterpret_cast<BRN2SetChannel *>(e);
 
   return sc->get_info();
 }

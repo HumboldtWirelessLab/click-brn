@@ -147,7 +147,7 @@ enum {H_DEBUG, H_SIGNAL};
 static String 
 read_param(Element *e, void *thunk)
 {
-  Signal *td = (Signal *)e;
+  Signal *td = reinterpret_cast<Signal *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -162,7 +162,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  Signal *f = (Signal *)e;
+  Signal *f = reinterpret_cast<Signal *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

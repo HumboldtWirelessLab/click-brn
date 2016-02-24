@@ -33,9 +33,10 @@
 CLICK_DECLS
 
 KeyManagement::KeyManagement()
-	: _debug(false)
+ : seed(NULL), key_timeout(0), BACKBONE_AVAIL(false)
 {
 	BRNElement::init();
+	memset(&ctrl_data,0,sizeof(ctrl_data));
 }
 
 KeyManagement::~KeyManagement() {
@@ -117,7 +118,7 @@ data_t *KeyManagement::get_seed() {
 	return seed;
 }
 
-bool KeyManagement::set_ctrl_data(crypto_ctrl_data *data) {
+bool KeyManagement::set_ctrl_data(const crypto_ctrl_data *data) {
 	// Plausibility check
 	if (data &&
 		data->cardinality > 0 &&
@@ -180,7 +181,7 @@ void KeyManagement::gen_seeded_keylist() {
 void KeyManagement::install_keylist_cli_driv(data_t *_seed) {
 	keylist.clear();
 
-	data_t *curr_key = (data_t *)_seed;
+	data_t *curr_key = reinterpret_cast<data_t *>(_seed);
 
 	for(int i=0; i < ctrl_data.cardinality; i++) {
 		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);

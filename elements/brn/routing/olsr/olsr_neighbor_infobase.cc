@@ -13,9 +13,20 @@
 //#define OLSR_DEBUG
 CLICK_DECLS
 
-OLSRNeighborInfoBase::OLSRNeighborInfoBase()
-		: _twohop_timer(twohop_expiry_hook, this),
-		_mpr_selector_timer(mpr_selector_expiry_hook, this)
+OLSRNeighborInfoBase::OLSRNeighborInfoBase() :
+  _neighborSet(NULL),
+  _twohopSet(NULL),
+  _mprSelectorSet(NULL),
+  _mprSet(NULL),
+  _routingTable(NULL),
+  _tcGenerator(NULL),
+  _helloGenerator(NULL),
+  _linkInfoBase(NULL),
+  _interfaceInfoBase(NULL),
+  _twohop_timer(twohop_expiry_hook, this),
+  _mpr_selector_timer(mpr_selector_expiry_hook, this),
+  _additional_hello_message(false),
+  _additional_mprs(false)
 {
 }
 
@@ -77,7 +88,7 @@ void OLSRNeighborInfoBase::uninitialize()
 void
 OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 {
-	OLSRNeighborInfoBase *nib = (OLSRNeighborInfoBase *) thunk;
+	OLSRNeighborInfoBase *nib = reinterpret_cast<OLSRNeighborInfoBase *>( thunk);
 	bool mpr_selector_removed = false;
 	struct timeval now, next_timeout;
 	now = Timestamp::now().timeval();
@@ -86,9 +97,9 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 	//find expired MPR selectors and delete them
 	if (! nib->_mprSelectorSet->empty())
 	{
-		for (MPRSelectorSet::iterator iter = nib->_mprSelectorSet->begin(); iter != nib->_mprSelectorSet->end(); iter++)
+		for (MPRSelectorSet::iterator iter = nib->_mprSelectorSet->begin(); iter != nib->_mprSelectorSet->end(); ++iter)
 		{
-			mpr_selector_data *mpr_selector = (mpr_selector_data *) iter.value();
+			mpr_selector_data *mpr_selector = reinterpret_cast<mpr_selector_data *>( iter.value());
 			if (Timestamp(mpr_selector->MS_time) <= Timestamp(now))
 			{
 				//s        click_chatter ("node %s: MPR_Selector %s has expired, about to delete it\n",nib->_myMainIP.unparse().c_str(),mpr_selector->MS_main_addr.unparse().c_str());
@@ -101,9 +112,9 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 	//find next MPR selector to expire
 	if (! nib->_mprSelectorSet->empty())
 	{
-		for (MPRSelectorSet::iterator iter = nib->_mprSelectorSet->begin(); iter != nib->_mprSelectorSet->end(); iter++)
+		for (MPRSelectorSet::iterator iter = nib->_mprSelectorSet->begin(); iter != nib->_mprSelectorSet->end(); ++iter)
 		{
-			mpr_selector_data *mpr_selector = (mpr_selector_data *) iter.value();
+			mpr_selector_data *mpr_selector = reinterpret_cast<mpr_selector_data *>( iter.value());
 			if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 				next_timeout = mpr_selector->MS_time;
 			else if ( Timestamp(mpr_selector->MS_time) < Timestamp(next_timeout) )
@@ -123,7 +134,7 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 void
 OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 {
-	OLSRNeighborInfoBase *nib = (OLSRNeighborInfoBase *) thunk;
+	OLSRNeighborInfoBase *nib = reinterpret_cast<OLSRNeighborInfoBase *>( thunk);
 	struct timeval now, next_timeout;
 	bool twohop_removed = false;;
 	now = Timestamp::now().timeval();
@@ -132,9 +143,9 @@ OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 	//find expired twohop neighbors and delete them
 	if (! nib->_twohopSet->empty())
 	{
-		for (TwoHopSet::iterator iter = nib->_twohopSet->begin(); iter != nib->_twohopSet->end(); iter++)
+		for (TwoHopSet::iterator iter = nib->_twohopSet->begin(); iter != nib->_twohopSet->end(); ++iter)
 		{
-			twohop_data *twohop = (twohop_data *) iter.value();
+			twohop_data *twohop = reinterpret_cast<twohop_data *>( iter.value());
 			if (Timestamp(twohop->N_time) <= Timestamp(now))
 			{
 				nib->remove_twohop_neighbor(twohop->N_neigh_main_addr, twohop->N_twohop_addr);
@@ -146,9 +157,9 @@ OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 	//find next twohop neighbor to expire
 	if (! nib->_twohopSet->empty())
 	{
-		for (TwoHopSet::iterator iter = nib->_twohopSet->begin(); iter != nib->_twohopSet->end(); iter++)
+		for (TwoHopSet::iterator iter = nib->_twohopSet->begin(); iter != nib->_twohopSet->end(); ++iter)
 		{
-			twohop_data *twohop = (twohop_data *) iter.value();
+			twohop_data *twohop = reinterpret_cast<twohop_data *>( iter.value());
 			if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 				next_timeout = twohop->N_time;
 			else if ( Timestamp(twohop->N_time) < Timestamp(next_timeout) )
@@ -174,6 +185,9 @@ OLSRNeighborInfoBase::add_neighbor(IPAddress neigh_addr)
 	data = new struct neighbor_data;		//freed in remove
 
 	data->N_neigh_main_addr = neigh_addr;
+	data->N_status = 0;
+	data->N_willingness = 0;
+
 	if (_neighborSet->insert(neigh_addr, data) )
 		return data;
 	return 0;
@@ -190,7 +204,7 @@ OLSRNeighborInfoBase::find_neighbor(IPAddress neigh_addr)
 
 		if (!(pair == 0))
 		{
-			neighbor_data *data = (neighbor_data *) pair->value;
+			neighbor_data *data = reinterpret_cast<neighbor_data *>( pair->value);
 			return data;
 		}
 	}
@@ -220,9 +234,9 @@ OLSRNeighborInfoBase::remove_neighbor(IPAddress neigh_addr)
 	_neighborSet->remove(neigh_addr);
 	if (! _twohopSet->empty())
 	{
-		for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); iter++)
+		for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); ++iter)
 		{
-			twohop_data *twohop = (twohop_data *) iter.value();
+			twohop_data *twohop = reinterpret_cast<twohop_data *>( iter.value());
 			if (twohop->N_neigh_main_addr == neigh_addr)
 				remove_twohop_neighbor(twohop->N_neigh_main_addr, twohop->N_twohop_addr);
 		}
@@ -235,9 +249,9 @@ OLSRNeighborInfoBase::print_neighbor_set()
 {
 	if (! _neighborSet->empty())
 	{
-		for (NeighborSet::iterator iter = _neighborSet->begin(); iter != _neighborSet->end(); iter++)
+		for (NeighborSet::iterator iter = _neighborSet->begin(); iter != _neighborSet->end(); ++iter)
 		{
-			neighbor_data *data = (neighbor_data *) iter.value();
+			neighbor_data *data = reinterpret_cast<neighbor_data *>( iter.value());
 			click_chatter("neighbor: %s\n", data->N_neigh_main_addr.unparse().c_str());
 			click_chatter("\tstatus: %d\n", data->N_status );
 			click_chatter("\twillingness: %d\n", data->N_willingness );
@@ -294,7 +308,7 @@ OLSRNeighborInfoBase::find_twohop_neighbor(IPAddress neigh_addr, IPAddress twoho
 
 		if (!(pair == 0))
 		{
-			twohop_data *data = (twohop_data *)pair->value;
+			twohop_data *data = reinterpret_cast<twohop_data *>(pair->value);
 			return data;
 		}
 	}
@@ -317,9 +331,9 @@ OLSRNeighborInfoBase::print_twohop_set()
 {
 	if (! _twohopSet->empty() )
 	{
-		for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); iter++)
+		for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); ++iter)
 		{
-			twohop_data *data = (twohop_data *) iter.value();
+			twohop_data *data = reinterpret_cast<twohop_data *>( iter.value());
 			click_chatter("twohop neighbor: %s\n", data->N_twohop_addr.unparse().c_str());
 			click_chatter("\tN_neigh_main_addr: %s\n", data->N_neigh_main_addr.unparse().c_str());
 			click_chatter("\tN_time: %d\n", data->N_time.tv_sec );
@@ -367,7 +381,7 @@ OLSRNeighborInfoBase::find_mpr_selector(IPAddress ms_addr)
 {
 	if (! _mprSelectorSet->empty() )
 	{
-		mpr_selector_data *data = (mpr_selector_data *) _mprSelectorSet->find(ms_addr);
+		mpr_selector_data *data = reinterpret_cast<mpr_selector_data *>( _mprSelectorSet->find(ms_addr));
 
 		if (!(data == 0))
 			return data;
@@ -406,9 +420,9 @@ OLSRNeighborInfoBase::print_mpr_selector_set()
 {
 	if (! _mprSelectorSet->empty() )
 	{
-		for (MPRSelectorSet::iterator iter = _mprSelectorSet->begin(); iter != _mprSelectorSet->end(); iter++)
+		for (MPRSelectorSet::iterator iter = _mprSelectorSet->begin(); iter != _mprSelectorSet->end(); ++iter)
 		{
-			mpr_selector_data *data = (mpr_selector_data *) iter.value();
+			mpr_selector_data *data = reinterpret_cast<mpr_selector_data *>( iter.value());
 			click_chatter("MPR Selector: %s\n", data->MS_main_addr.unparse().c_str());
 		}
 	}
@@ -454,9 +468,9 @@ OLSRNeighborInfoBase::compute_mprset()
 
 
 	Vector <IPAddress> * IP_Vector_ptr;
-	for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); iter++)
+	for (TwoHopSet::iterator iter = _twohopSet->begin(); iter != _twohopSet->end(); ++iter)
 	{
-		twohop_data *twohop = (twohop_data *) iter.value();
+		twohop_data *twohop = reinterpret_cast<twohop_data *>( iter.value());
 
 		if ((IP_Vector_ptr = coverage.findp(twohop->N_neigh_main_addr)))
 			IP_Vector_ptr->push_back (twohop->N_twohop_addr);
@@ -481,7 +495,7 @@ OLSRNeighborInfoBase::compute_mprset()
 	//though this is not performance optimized it is the first shot at multiple interfaces
 	if (! linkSet->empty() )
 	{
-		for (HashMap<OLSRIPPair, void*>::iterator iter = linkSet->begin(); iter != linkSet->end(); iter++)
+		for (HashMap<OLSRIPPair, void*>::iterator iter = linkSet->begin(); iter != linkSet->end(); ++iter)
 		{ 	//for all links
 			link_data *data = (link_data *)iter.value();			//get link data
 			IPAddress main_address=_interfaceInfoBase->get_main_address(data->L_neigh_iface_addr); //get main address of other
@@ -595,15 +609,15 @@ OLSRNeighborInfoBase::compute_mprset()
 	//print_twohop_set();
 	click_chatter ("coverage\n");
 
-	for (HashMap<IPAddress, Vector <IPAddress> >::iterator iter=coverage.begin(); iter != coverage.end(); iter++)
+	for (HashMap<IPAddress, Vector <IPAddress> >::iterator iter=coverage.begin(); iter != coverage.end(); ++iter)
 	{
 		click_chatter ("\tneighbor \t%s\n",iter.key().unparse().c_str());
-		for (int i =0; i<iter.value().size(); i++)
+		for (int i =0; i<iter.value().size(); ++i)
 			click_chatter ("\t\t reaches \t%s\n",iter.value()[i].unparse().c_str());
 	}
 
 
-	for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it; it++) //for over all Neighborsets for the local Interfaces
+	for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it; ++it) //for over all Neighborsets for the local Interfaces
 	{
 		click_chatter ("local Interface: %s\n",it.key().unparse().c_str());
 		N = &(it.value()); // Neighborset for this interface
@@ -613,9 +627,9 @@ OLSRNeighborInfoBase::compute_mprset()
 		click_chatter ("\tNeighborset\t\n");
 		if (! N->empty())
 		{
-			for (NeighborSet::iterator iter = N->begin(); iter != N->end(); iter++)
+			for (NeighborSet::iterator iter = N->begin(); iter != N->end(); ++iter)
 			{
-				neighbor_data *data = (neighbor_data *) iter.value();
+				neighbor_data *data = reinterpret_cast<neighbor_data *>( iter.value());
 				click_chatter("\tneighbor: %s\n", data->N_neigh_main_addr.unparse().c_str());
 				click_chatter("\t\tstatus: %d\n", data->N_status );
 				click_chatter("\t\twillingness: %d\n", data->N_willingness );
@@ -628,9 +642,9 @@ OLSRNeighborInfoBase::compute_mprset()
 		click_chatter ("\ttwohoset\t\n");
 		if (! twohopset->empty() )
 		{
-			for (TwoHopSet::iterator iter = twohopset->begin(); iter != twohopSet->end(); iter++)
+			for (TwoHopSet::iterator iter = twohopset->begin(); iter != twohopSet->end(); ++iter)
 			{
-				twohop_data *data = (twohop_data *) iter.value();
+				twohop_data *data = reinterpret_cast<twohop_data *>( iter.value());
 				click_chatter("\ttwohop neighbor: %s\n", data->N_twohop_addr.unparse().c_str());
 				click_chatter("\t\tN_neigh_main_addr: %s\n", data->N_neigh_main_addr.unparse().c_str());
 				click_chatter("\t\tN_time: %d\n", data->N_time.tv_sec );
@@ -641,15 +655,15 @@ OLSRNeighborInfoBase::compute_mprset()
 			click_chatter("\tTwohop Set empty\n");
 		}
 		click_chatter ("\tN2\t\n");
-		for (HashMap<IPAddress, Vector <IPAddress> >::iterator iter=N2->begin(); iter != N2->end(); iter++)
+		for (HashMap<IPAddress, Vector <IPAddress> >::iterator iter=N2->begin(); iter != N2->end(); ++iter)
 		{
 			click_chatter ("\tn2 member \t%s\n",iter.key().unparse().c_str());
-			for (int i =0; i<iter.value().size(); i++)
+			for (int i =0; i<iter.value().size(); ++i)
 				click_chatter ("\t\t reachable through \t%s\n",iter.value()[i].unparse().c_str());
 		}
 	}
 #endif
-	for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it != N_set.end(); it++) //for over all Neighborsets for the local Interfaces
+	for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it != N_set.end(); ++it) //for over all Neighborsets for the local Interfaces
 	{
 
 
@@ -671,9 +685,9 @@ OLSRNeighborInfoBase::compute_mprset()
 
 		if (!_mprSet->empty())
 		{
-			for (MPRSet::iterator iter=_mprSet->begin(); iter != _mprSet->end(); iter++)
+			for (MPRSet::iterator iter=_mprSet->begin(); iter != _mprSet->end(); ++iter)
 				//for all mprs already elected
-				for (HashMap <IPAddress, void *> ::iterator iterat = interfaceSet->begin(); iterat != interfaceSet->end(); iterat++)
+				for (HashMap <IPAddress, void *> ::iterator iterat = interfaceSet->begin(); iterat != interfaceSet->end(); ++iterat)
 				{ 	//for all interface
 					interface_data *tuple = (interface_data *) iterat.value();			//addresses that match
 					if (tuple->I_main_addr==iter.key())
@@ -696,9 +710,9 @@ OLSRNeighborInfoBase::compute_mprset()
 		///@TODO step 1 RFC 3626 §8.3.1
 
 		//step 2 and d_y
-		for ( NeighborSet::iterator iter = N->begin(); iter != N->end(); iter++)
+		for ( NeighborSet::iterator iter = N->begin(); iter != N->end(); ++iter)
 		{
-			neighbor_data *neighbor = (neighbor_data *)iter.value();
+			neighbor_data *neighbor = reinterpret_cast<neighbor_data *>(iter.value());
 			if (neighbor->N_willingness == OLSR_WILL_ALWAYS) //step 1 of the proposed heuristic in RFC, add all neighbors with willingness WILL_ALWAYS
 			{
 
@@ -722,7 +736,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		}
 
 		//step 3
-		for(HashMap<IPAddress, Vector <IPAddress> >::iterator iter = N2->begin();iter != N2->end();iter++)
+		for(HashMap<IPAddress, Vector <IPAddress> >::iterator iter = N2->begin();iter != N2->end(); ++iter)
 		{
 			if (iter.value().size()==1)
 			{
@@ -750,11 +764,11 @@ OLSRNeighborInfoBase::compute_mprset()
 			int best_mpr_reachability = 0;
 			int best_mpr_d_y = 0;
 			IPAddress best_mpr;
-			for (NeighborSet::iterator iter = N->begin(); iter != N->end(); iter++)
+			for (NeighborSet::iterator iter = N->begin(); iter != N->end(); ++iter)
 			{
 				if (!mprset.findp(iter.key()))
 				{
-					neighbor_data* n_member = (neighbor_data *) iter.value();
+					neighbor_data* n_member = reinterpret_cast<neighbor_data *>( iter.value());
 
 					int reaches = 0;
 					if ((IP_Vector_ptr=coverage.findp(n_member->N_neigh_main_addr)))
@@ -809,7 +823,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		}
 
 
-		for (MPRSet::iterator iter=mprset.begin(); iter != mprset.end(); iter++)
+		for (MPRSet::iterator iter=mprset.begin(); iter != mprset.end(); ++iter)
 		{
 			if (!_mprSet->findp(iter.key())) _mprSet->insert(iter.key(),iter.key());
 		}
@@ -848,15 +862,15 @@ OLSRNeighborInfoBase::compute_mprset()
 				break;
 			}
 			// this code is not optimized for multiple interfaces
-			for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it != N_set.end(); it++) //for over all Neighborsets for the local Interfaces
+			for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it != N_set.end(); ++it) //for over all Neighborsets for the local Interfaces
 			{
 				N = &(it.value()); // Neighborset for this interface
 				N2=n2_set.findp(it.key());
 				twohopset=twohop_set.findp(it.key());
 				// loop over all the neighbors that we can reach through that interface
-				for (NeighborSet::iterator iter=N->begin(); iter != N->end(); iter++)
+				for (NeighborSet::iterator iter=N->begin(); iter != N->end(); ++iter)
 				{
-					neighbor_data* n_member = (neighbor_data *) iter.value();
+					neighbor_data* n_member = reinterpret_cast<neighbor_data *>( iter.value());
 					// we will only choose those nodes that are not yet MPR
 					if (!_mprSet->findp(n_member->N_neigh_main_addr))
 					{
@@ -883,7 +897,7 @@ OLSRNeighborInfoBase::compute_mprset()
 				break;
 			}
 		}
-		for (MPRSet::iterator iter=mprset.begin(); iter != mprset.end(); iter++)
+		for (MPRSet::iterator iter=mprset.begin(); iter != mprset.end(); ++iter)
 		{
 			if (!_mprSet->findp(iter.key())) _mprSet->insert(iter.key(),iter.key());
 		}
@@ -900,7 +914,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		bool mpr_changed=false;
 		if (_mprSet->size()!=old_mprset.size()) mpr_changed=true;
 		else
-			for (MPRSet::iterator iter=_mprSet->begin();iter != _mprSet->end(); iter++)
+			for (MPRSet::iterator iter=_mprSet->begin();iter != _mprSet->end(); ++iter)
 			if (!old_mprset.findp(iter.key())) {mpr_changed=true;break;}
 		if (mpr_changed) _helloGenerator->notify_mpr_change(); //triggers reschedule of sending a hello message now!
 	}
@@ -935,7 +949,7 @@ OLSRNeighborInfoBase::print_mpr_set()
 {
 	if (! _mprSet->empty() )
 	{
-		for (MPRSet::iterator iter = _mprSet->begin(); iter != _mprSet->end(); iter++)
+		for (MPRSet::iterator iter = _mprSet->begin(); iter != _mprSet->end(); ++iter)
 		{
 			IPAddress mpr = iter.value();
 			click_chatter("MPR: %s\n", mpr.unparse().c_str());
@@ -978,7 +992,7 @@ OLSRNeighborInfoBase::additional_mprs_is_enabled(bool in)
 int
 OLSRNeighborInfoBase::additional_mprs_is_enabled_handler(const String &conf, Element *e, void *, ErrorHandler *)
 {
-	OLSRNeighborInfoBase* me = (OLSRNeighborInfoBase *) e;
+	OLSRNeighborInfoBase* me = reinterpret_cast<OLSRNeighborInfoBase *>( e);
 	bool in;
 	if (conf == "TRUE")
 	{

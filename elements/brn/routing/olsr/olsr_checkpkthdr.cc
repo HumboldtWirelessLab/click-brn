@@ -9,8 +9,8 @@
 CLICK_DECLS
 
 
-OLSRCheckPacketHeader::OLSRCheckPacketHeader()
-{
+OLSRCheckPacketHeader::OLSRCheckPacketHeader(): 
+  _duplicateSet(NULL){
 }
 
 

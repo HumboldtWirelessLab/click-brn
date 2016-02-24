@@ -260,19 +260,17 @@ MultiFlowDispatcher::configure(Vector<String> &conf, ErrorHandler *errh __attrib
 	_empty_note.initialize(Notifier::EMPTY_NOTIFIER, router()); 
 	// parse out the verbosity paramater as passed to the element on click
 	// invocation
-	if (cp_va_kparse(conf, this, errh, 
-			"VERBOSITY", 0, cpUnsigned, &(_verbosity), 
+	if (cp_va_kparse(conf, this, errh,
+			"VERBOSITY", 0, cpUnsigned, &(_verbosity),
 			cpIgnoreRest,	
 			cpEnd) < 0) 
 		return -1;
 
-	// following conditional fixes compiler unused var warnings
-	if (&conf == NULL && errh == NULL) { errh = NULL; }
-	return 0; 
+	return 0;
 }
 
 int 
-MultiFlowDispatcher::initialize(ErrorHandler * errh ) { 
+MultiFlowDispatcher::initialize(ErrorHandler * errh ) {
 
     Element::initialize(errh); 
     ElementNeighborhoodTracker tracker(router());
@@ -303,7 +301,7 @@ MultiFlowDispatcher::initialize(ErrorHandler * errh ) {
 	    _input_port_dispatch[i] = MFD_DISPATCH_ELEMENT; 
 	    _input_port_neighbors[i] = NULL; 
 	} else {  
-	    if (( neighbor = (MultiFlowDispatcher *) neighbors[0]->cast("MultiFlowDispatcher")) ){ 
+	    if (( neighbor = reinterpret_cast<MultiFlowDispatcher *>(neighbors[0]->cast("MultiFlowDispatcher"))) ) {
 		_input_port_dispatch[i] = MFD_DISPATCH_MFD_DIRECT; 
 	        _input_port_neighbors[i] = neighbor;  
 		
@@ -337,7 +335,7 @@ MultiFlowDispatcher::initialize(ErrorHandler * errh ) {
 	    _output_port_dispatch[i] = MFD_DISPATCH_ELEMENT; 
 	    _output_port_neighbors[i] = NULL; 
 	} else {  
-	    if ( (neighbor = (MultiFlowDispatcher *)neighbors[0]->cast("MultiFlowDispatcher")) ){ 
+	    if ( (neighbor = reinterpret_cast<MultiFlowDispatcher *>(neighbors[0]->cast("MultiFlowDispatcher"))) ){ 
 		_output_port_dispatch[i] = MFD_DISPATCH_MFD_DIRECT; 
 		_output_port_neighbors[i] = neighbor; 
 	    } else { 

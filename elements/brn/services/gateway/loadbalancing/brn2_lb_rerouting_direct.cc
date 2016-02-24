@@ -37,9 +37,9 @@ LoadbalancingReroutingDirect::~LoadbalancingReroutingDirect()
 void *LoadbalancingReroutingDirect::cast(const char *name)
 {
   if (strcmp(name, "LoadbalancingReroutingDirect") == 0)
-    return (LoadbalancingReroutingDirect *) this;
+    return dynamic_cast<LoadbalancingReroutingDirect *>(this);
   else if (strcmp(name, "LoadbalancingRerouting") == 0)
-    return (LoadbalancingRerouting *) this;
+    return dynamic_cast<LoadbalancingRerouting *>(this);
   else
     return NULL;
 }

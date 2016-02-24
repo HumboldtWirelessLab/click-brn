@@ -63,7 +63,7 @@ private:
       public:
       Packet *_p;
 
-      BufferedPacket(Packet *p) {
+      explicit BufferedPacket(Packet *p) {
         assert(p);
         _p=p;
       }
@@ -88,11 +88,11 @@ private:
         _bucket = bucket;
       }
       
-      Timer* get_timer() {
+      Timer* get_timer() const {
         return _t;
       }
       
-      uint32_t get_bucket() {
+      uint32_t get_bucket() const {
         return _bucket;
       }
       

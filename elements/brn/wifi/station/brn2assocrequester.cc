@@ -50,9 +50,8 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////////////
 
 BRN2AssocRequester::BRN2AssocRequester() :
-  _debug(BrnLogger::DEFAULT), _bssid()
-{
-	_debug = false;
+  _debug(BrnLogger::DEFAULT), _bssid(),
+  _rtable(NULL) {
 	_associated = false;
 }
 
@@ -691,7 +690,7 @@ BRN2AssocRequester_write_param(const String &in_s, Element *e, void *vparam,
 {
   UNREFERENCED_PARAMETER(errh);
 
-  BRN2AssocRequester *f = (BRN2AssocRequester *)e;
+  BRN2AssocRequester *f = reinterpret_cast<BRN2AssocRequester *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_SEND_REASSOC_REQ: {
@@ -707,7 +706,7 @@ BRN2AssocRequester_write_param(const String &in_s, Element *e, void *vparam,
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2AssocRequester *f = (BRN2AssocRequester *)e;
+  BRN2AssocRequester *f = reinterpret_cast<BRN2AssocRequester *>(e);
   return String(f->_debug) + "\n";
 }
 
@@ -715,16 +714,16 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
 		      ErrorHandler *errh)
 {
-  BRN2AssocRequester *f = (BRN2AssocRequester *)e;
+  BRN2AssocRequester *f = reinterpret_cast<BRN2AssocRequester *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 
     return errh->error("debug parameter must be an integer value between 0 and 4");
   f->_debug = debug;
   if (f->_debug >= BrnLogger::INFO)
-    ((AssociationRequester*)f)->_debug=true;
+   (reinterpret_cast<AssociationRequester*>(f))->_debug=true;
   else
-    ((AssociationRequester*)f)->_debug=false;
+   (reinterpret_cast<AssociationRequester*>(f))->_debug=false;
   return 0;
 }
 

@@ -56,9 +56,9 @@ void *
 SeismoDetectionLongShortAvg::cast(const char *n)
 {
   if (strcmp(n, "SeismoDetectionLongShortAvg") == 0)
-    return (SeismoDetectionLongShortAvg *) this;
+    return dynamic_cast<SeismoDetectionLongShortAvg *>(this);
   else if (strcmp(n, "SeismoDetectionAlgorithm") == 0)
-    return (SeismoDetectionAlgorithm *) this;
+    return dynamic_cast<SeismoDetectionAlgorithm *>(this);
   else
     return 0;
 }
@@ -139,7 +139,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
             //if we have no alarm or if the last already end and is to far then add
             //a new one
             if ( (sal.size() == 0) ||
-                 ((((SeismoAlarmLTASTAInfo*)(sal[sal.size()-1]->_detection_info))->_mode == ALARM_MODE_END) &&
+                 (((reinterpret_cast<SeismoAlarmLTASTAInfo*>(sal[sal.size()-1]->_detection_info))->_mode == ALARM_MODE_END) &&
                   (sal[sal.size()-1]->_start.msecval()+_alarm_dist <= timenow_ms)) ) {
               sal.push_back(new SeismoAlarm());
 
@@ -151,12 +151,12 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
 
               sa_info->_sampletime = sib->_time[_index_in_block]/1000000; //sampletime is ns but we want sec
               sa_info->_mode = ALARM_MODE_START;
-              sal[sal.size()-1]->_detection_info = (void*)sa_info;
+              sal[sal.size()-1]->_detection_info = reinterpret_cast<void*>(sa_info);
               sal[sal.size()-1]->_id = _alarm_id++;
 
               if ( (uint32_t)sal.size() > _max_alarm_count ) {
                 SeismoAlarmLTASTAInfo *sa_info;
-                sa_info = (SeismoAlarmLTASTAInfo *)sal[0]->_detection_info;
+                sa_info = reinterpret_cast<SeismoAlarmLTASTAInfo *>(sal[0]->_detection_info);
                 delete sa_info;
                 delete sal[0];
                 sal.erase(sal.begin());
@@ -166,9 +166,9 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
             }*/
           } else {
             if ( (sal.size() != 0) &&
-                 (((SeismoAlarmLTASTAInfo*)(sal[sal.size()-1]->_detection_info))->_mode == ALARM_MODE_START) ) {
+                 ((reinterpret_cast<SeismoAlarmLTASTAInfo*>(sal[sal.size()-1]->_detection_info))->_mode == ALARM_MODE_START) ) {
              SeismoAlarmLTASTAInfo *sa_info;
-             sa_info = (SeismoAlarmLTASTAInfo *)sal[sal.size()-1]->_detection_info;
+             sa_info = reinterpret_cast<SeismoAlarmLTASTAInfo *>(sal[sal.size()-1]->_detection_info);
              sa_info->end_alarm();
              sal[sal.size()-1]->end_alarm();
 	   }
@@ -226,7 +226,7 @@ SeismoDetectionLongShortAvg::stats()
 
   for ( int i = 0; i < sal.size(); i++) {
     SeismoAlarm *salarm = sal[i];
-    SeismoAlarmLTASTAInfo *sainfo = (SeismoAlarmLTASTAInfo*)salarm->_detection_info;
+    SeismoAlarmLTASTAInfo *sainfo = reinterpret_cast<SeismoAlarmLTASTAInfo*>(salarm->_detection_info);
 
     short_long_ratio=(sainfo->_avg_long==0)?0:(short_term_avg_norm * sainfo->_avg_short)/sainfo->_avg_long;
 

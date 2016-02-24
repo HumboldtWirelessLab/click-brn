@@ -82,9 +82,9 @@ class MD5 {
   {
     md5_state_t state;
 
-    MD5::init(&state);
-    MD5::append(&state, (const md5_byte_t *)msg, msg_len); //strlen()
-    MD5::finish(&state, digest);
+    init(&state);
+    append(&state, (const md5_byte_t *)msg, msg_len); //strlen()
+    finish(&state, digest);
 
   }
 
@@ -114,7 +114,7 @@ class MD5 {
   {
     char ac_dig[3];
     ac_dig[2] = '\0';
-    int ac_int_dig;
+    uint ac_int_dig;
 
     for (int di = 0; di < 16; di++) {
       memcpy(ac_dig,&(hex_input[di << 1]),2);

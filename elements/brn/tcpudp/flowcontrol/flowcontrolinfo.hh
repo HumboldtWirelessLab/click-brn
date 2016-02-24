@@ -16,7 +16,8 @@ class FlowControlInfo {
   public:
 
     FlowControlInfo();
-    FlowControlInfo(uint16_t flowid);
+    FlowControlInfo(const FlowControlInfo &);
+    explicit FlowControlInfo(uint16_t flowid);
     FlowControlInfo(uint16_t flowid, uint16_t max_window_size);
     ~FlowControlInfo();
 

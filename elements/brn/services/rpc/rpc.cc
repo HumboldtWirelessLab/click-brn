@@ -47,6 +47,7 @@ RPC::RPC()
 : _node_identity(),
   _tcc_check_timer(this),
   _tcc_check_interval(RPC_TCC_DFLT_CHECK_TIMER_INTERVAL),
+  _tcc(NULL),
   _dht_storage(NULL)
 {
   _known_tcc_function.clear();
@@ -111,6 +112,7 @@ RPC::run_timer(Timer *t)
       uint8_t *dht_data = tcc2dht(name, &dht_data_size);
 
       req->insert((uint8_t*)name.data(), name.length(), dht_data, dht_data_size);
+      delete[] dht_data;
 
       dht_request(req);
 
@@ -120,7 +122,7 @@ RPC::run_timer(Timer *t)
 
 static void callback_func(void *e, DHTOperation *op)
 {
-  RPC *s = (RPC *)e;
+  RPC *s = reinterpret_cast<RPC *>(e);
   s->handle_dht_reply(op);
 }
 
@@ -251,7 +253,9 @@ RPC::dht2tcc(String fname, uint8_t *data, int /*data_size*/)
   code = String(&(result_type_list[rpcdhth->args_count]),rpcdhth->code_size);
 
   res = _tcc->add_function(fname, result, args);
-  res = _tcc->add_code(fname, code);
+  if ( res == 0 ) {
+    res = _tcc->add_code(fname, code);
+  }
 
   return res;
 }
@@ -271,8 +275,6 @@ RPC::call_function(String params)
   String function = args[0];
   args.erase(args.begin());
 
-  int pending_params = 0;
-
   if ( _tcc->_func_map.findp(function) == NULL ) {
 
     BRN_DEBUG("Function not found in tcc. Use DHT to get sourcecode.");
@@ -287,6 +289,7 @@ RPC::call_function(String params)
 
   } else { //TODO: send request for functions and params parallel
     Vector<String> finished_params;
+    int pending_params = 0;
 
     /* check each arg */
     for (int i = 0; i < args.size(); i++) {
@@ -452,7 +455,7 @@ RPC::get_handler_value(String full_handler_name)
 }
 
 void
-RPC::request_data(const EtherAddress ea, String handler)
+RPC::request_data(const EtherAddress &ea, String handler)
 {
   BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
   WritablePacket *p = WritablePacket::make( 256, NULL,
@@ -536,7 +539,7 @@ RPC::handle_reply_data(Packet *p)
 }
 
 void
-RPC::request_function(const EtherAddress ea, String handler)
+RPC::request_function(const EtherAddress &ea, String handler)
 {
   BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
   WritablePacket *p = WritablePacket::make( 256, NULL,
@@ -575,7 +578,7 @@ RPC::handle_request_function(Packet *p)
 }
 
 void
-RPC::send_reply_function(const EtherAddress ea, String handler,String result)
+RPC::send_reply_function(const EtherAddress &ea, String handler, String result)
 {
   BRN_DEBUG("Request: %s:%s (%d)",ea.unparse().c_str(), handler.c_str(), handler.length());
   WritablePacket *p = WritablePacket::make( 256, NULL,
@@ -643,7 +646,7 @@ RPC::stats()
 enum { H_STATS, H_CALL_PROCEDURE, H_CALL_REMOTEPROCEDURE, H_RESULT };
 
 static String RPC_read_param(Element *e, void *thunk) {
-  RPC *rpc = (RPC *)e;
+  RPC *rpc = reinterpret_cast<RPC *>(e);
 
   switch((uintptr_t) thunk) {
     case H_RESULT: return rpc->get_result();
@@ -656,7 +659,7 @@ static String RPC_read_param(Element *e, void *thunk) {
 
 static int RPC_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *) {
 
-  RPC *rpc = (RPC *)e;
+  RPC *rpc = reinterpret_cast<RPC *>(e);
   String s = cp_uncomment(in_s);
 
   switch((intptr_t)vparam) {

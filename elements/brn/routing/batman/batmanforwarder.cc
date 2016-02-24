@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 BatmanForwarder::BatmanForwarder()
-{
+:_brt(NULL),_nodeid(NULL){
   BRNElement::init();
 }
 

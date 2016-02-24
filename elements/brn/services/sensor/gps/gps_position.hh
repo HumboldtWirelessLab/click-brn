@@ -41,14 +41,14 @@ class GPSPosition {
 
   GPSPosition();
 
-  GPSPosition(struct gps_position *pos) {
-    _z=pos->z; _x=pos->x; _y=pos->y;
+  explicit GPSPosition(struct gps_position *pos):
+    _latitude(FixPointNumber()), _longitude(FixPointNumber()), _altitude(FixPointNumber()), _speed(FixPointNumber()), _x(pos->x),_y(pos->y),_z(pos->z)
+  {
   }
 
-  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {
-    _latitude = lat;
-    _longitude = lon;
-    _altitude = alt;
+  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt):
+    _latitude(lat),_longitude(lon),_altitude(alt), _speed(FixPointNumber()), _x(0),_y(0),_z(0)
+  {
   }
 
   void setGPS(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {

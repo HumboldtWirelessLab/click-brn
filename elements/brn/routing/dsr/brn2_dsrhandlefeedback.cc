@@ -46,7 +46,7 @@ int DSRHandleFeedback::initialize(ErrorHandler *)
 void
 DSRHandleFeedback::push( int port, Packet *packet )
 {
-  click_brn_dsr *brn_dsr = (click_brn_dsr *)(packet->data() + sizeof(click_brn));
+  const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>((packet->data() + sizeof(click_brn)));
 
   if ( brn_dsr->dsr_type != BRN_DSR_SRC ) {
     if ( port == 1 ) output(0).push(packet);
@@ -103,7 +103,7 @@ static String
 DSRHandleFeedback_read_param(Element *e, void *thunk)
 {
   StringAccum sa;
-  DSRHandleFeedback *td = (DSRHandleFeedback *)e;
+  DSRHandleFeedback *td = reinterpret_cast<DSRHandleFeedback *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return td->read_stats();

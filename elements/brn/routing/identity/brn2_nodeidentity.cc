@@ -16,16 +16,21 @@
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _node_devices_size(0),
+  : _node_devices(NULL),
+    _node_devices_size(0),
     _node_id_32(0),
+    _master_device(NULL),
     _master_device_id(-1),
+    _service_device(NULL),
     _service_device_id(-1),
     _instance_id("n/a"),
     _instance_owner("n/a"),
     _instance_group("n/a")
 {
   BRNElement::init();
-  _master_device = NULL;
+  memset(_node_id,0,sizeof(_node_id));
+  memset(_click_binary_id,0,sizeof(_click_binary_id));
+  memset(_click_script_id,0,sizeof(_click_script_id));
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -60,7 +65,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 
   for (int slot = 0; slot < devices.size(); slot++) {
     Element *e = cp_element(devices[slot], this, errh);
-    BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
+    BRN2Device *brn_device = reinterpret_cast<BRN2Device *>(e->cast("BRN2Device"));
     if (!brn_device) {
       return errh->error("element is not an BRN2Device");
     } else {
@@ -139,7 +144,7 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
 
 /* returns true if the given ethernet address belongs to this node (e.g. wlan-dev)*/
 bool
-BRN2NodeIdentity::isIdentical(EtherAddress *e)
+BRN2NodeIdentity::isIdentical(const EtherAddress *e)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(e->data(), _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
@@ -148,7 +153,7 @@ BRN2NodeIdentity::isIdentical(EtherAddress *e)
 }
 
 bool
-BRN2NodeIdentity::isIdentical(uint8_t *data)
+BRN2NodeIdentity::isIdentical(const uint8_t *data)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(data, _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
@@ -204,12 +209,11 @@ static String
 read_devinfo_param(Element *e, void *)
 {
   StringAccum sa;
-  BRN2Device *dev;
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  BRN2NodeIdentity *id = reinterpret_cast<BRN2NodeIdentity *>(e);
 
   sa << "<nodeidentity name=\"" << id->_nodename << "\">\n";
   for ( uint32_t i = 0; i < id->_node_devices_size; i++ ) {
-    dev = id->_node_devices[i];
+    BRN2Device *dev = id->_node_devices[i];
     sa << "\t<device index=\"" << i << "\" name=\"" << dev->getDeviceName().c_str();
     sa << "\" ethernet_address=\"" << dev->getEtherAddress()->unparse().c_str();
     sa << "\" ip_address=\"" << dev->getIPAddress()->unparse().c_str();
@@ -224,7 +228,7 @@ static String
 read_version_param(Element *e, void *)
 {
   StringAccum sa;
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  BRN2NodeIdentity *id = reinterpret_cast<BRN2NodeIdentity *>(e);
 
   char click_binary_digest[16*2 + 1];
   char click_script_digest[16*2 + 1];
@@ -260,7 +264,7 @@ read_version_param(Element *e, void *)
 static int
 write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  BRN2NodeIdentity *id = reinterpret_cast<BRN2NodeIdentity *>(e);
   String s = cp_uncomment(in_s);
   String nodename;
   if (!cp_string(s, &nodename))
@@ -272,7 +276,7 @@ write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 static int
 write_instance_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  BRN2NodeIdentity *id = reinterpret_cast<BRN2NodeIdentity *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
@@ -288,7 +292,7 @@ write_instance_param(const String &in_s, Element *e, void *, ErrorHandler */*err
 static int
 write_version_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  BRN2NodeIdentity *id = reinterpret_cast<BRN2NodeIdentity *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);

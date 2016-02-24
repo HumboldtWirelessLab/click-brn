@@ -26,7 +26,7 @@ DSRPeek::~DSRPeek()
 uint32_t
 DSRPeek::get_all_header_len(Packet *packet)
 {
-  click_brn_dsr *dsr_src = (click_brn_dsr *)(packet->data() + sizeof(click_brn));
+  const click_brn_dsr *dsr_src = reinterpret_cast<const click_brn_dsr *>((packet->data() + sizeof(click_brn)));
   return (sizeof(click_brn) + DSRProtocol::header_length(dsr_src));
 }
 

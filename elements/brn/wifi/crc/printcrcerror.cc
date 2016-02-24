@@ -46,29 +46,26 @@ Packet *
 PrintCRCError::simple_action(Packet *p_in)
 {
   uint8_t *packet_data = (uint8_t*)p_in->data();
-  uint8_t next_byte;
-  uint32_t seq_num, bit_pos, crc_count;
-
   StringAccum sa;
-
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *)WIFI_EXTRA_ANNO(p_in);
 
   if ( 1/*ceh->flags & WIFI_EXTRA_RX_CRC_ERR*/  ) {
 
     if ( _label != "" ) {
+      uint32_t seq_num;
+      struct click_wifi_extra *ceh = (struct click_wifi_extra *)WIFI_EXTRA_ANNO(p_in);
       memcpy(&seq_num, &(packet_data[2]), sizeof(seq_num));
       seq_num=ntohl(seq_num);
 
       sa << _label << ": " << (uint32_t)ceh->rate << " " << seq_num << " " << p_in->length() << " : ";
     }
 
-    crc_count = 0;
-    bit_pos = 0;
+    uint32_t crc_count = 0;
+    uint32_t bit_pos = 0;
 
     uint32_t i;
     for ( i = _offset; i < p_in->length(); i++) {
       //OMG: This code is pretty ugly.
-      next_byte = packet_data[i];
+      uint8_t next_byte = packet_data[i];
       if ( next_byte != 0 ) {
         crc_count++;
 

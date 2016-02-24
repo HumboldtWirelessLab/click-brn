@@ -42,9 +42,8 @@ DHTProtocolKlibs::new_packet(EtherAddress *src, EtherAddress */*dst*/, uint8_t p
   header->version = KLIBS_VERSION;
   header->entries = dhtlist->size();
 
-  DHTnode *n;
   for ( int i = 0; i < dhtlist->size(); i++ ) {
-    n = dhtlist->get_dhtnode(i);
+    DHTnode *n = dhtlist->get_dhtnode(i);
     memcpy((uint8_t*)rt_entries[i].etheraddr, n->_ether_addr.data(), 6 );
     rt_entries[i].age = htonl(n->get_age_s());
   }
@@ -63,11 +62,9 @@ DHTProtocolKlibs::get_dhtnodes(Packet *p,uint8_t */*ptype*/, DHTnodelist *dhtlis
   int entries = (int)header->entries;
 //  uint8_t version = header->version;
 
-  DHTnode *node;
-
   for ( int i = 0; i < entries; i++ )
   {
-    node = new DHTnode(EtherAddress(rt_entries[i].etheraddr));
+    DHTnode *node = new DHTnode(EtherAddress(rt_entries[i].etheraddr));
     node->_age = Timestamp::now() - Timestamp(ntohl(rt_entries[i].age));
     dhtlist->add_dhtnode(node);
   }

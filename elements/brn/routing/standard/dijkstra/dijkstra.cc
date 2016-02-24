@@ -43,6 +43,7 @@ static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNo
 
 Dijkstra::Dijkstra()
   : _node_identity(),
+    _lt(NULL),
     _dni_array(NULL),
     _dni_array_max_size(0),
     _max_graph_age(0)
@@ -59,7 +60,7 @@ void *
 Dijkstra::cast(const char *n)
 {
   if (strcmp(n, "Dijkstra") == 0)
-    return (Dijkstra *) this;
+    return dynamic_cast<Dijkstra *>(this);
   else
     return 0;
 }
@@ -91,7 +92,7 @@ Dijkstra::initialize (ErrorHandler *)
 
 void
 Dijkstra::take_state(Element *e, ErrorHandler *) {
-  Dijkstra *q = (Dijkstra *)e->cast("LinkTable");
+  Dijkstra *q = reinterpret_cast<Dijkstra *>(e->cast("LinkTable"));
   if (!q) return;
 }
 
@@ -271,7 +272,7 @@ Dijkstra::dijkstra(int graph_index)
 
   uint32_t dni_array_i = 0;
 
-  for (DNITIter i = _dni_table.begin(); i.live(); i++) {
+  for (DNITIter i = _dni_table.begin(); i.live();++i) {
     /* clear them all initially */
     DijkstraNodeInfo *dni = i.value();
     dni->clear(graph_index);
@@ -471,7 +472,7 @@ enum { H_DIJKSTRA,
 static String
 Dijkstra_read_param(Element *e, void *thunk)
 {
-  Dijkstra *td = (Dijkstra *)e;
+  Dijkstra *td = reinterpret_cast<Dijkstra *>(e);
     switch ((uintptr_t) thunk) {
     case H_DIJKSTRA_TIME: {
       StringAccum sa;
@@ -489,7 +490,7 @@ Dijkstra_read_param(Element *e, void *thunk)
 static int
 Dijkstra_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Dijkstra *f = (Dijkstra *)e;
+  Dijkstra *f = reinterpret_cast<Dijkstra *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
     case H_DIJKSTRA_TO:

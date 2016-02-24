@@ -1,2 +1,5 @@
 -Check correct usages of Timestamp
 -Use Timestamp instead of struct timeval
+
+c-cast to reinterpret
+for i in `find . -name \*.hh`; do echo $i; sed -i -r "s/=[[:space:]]\(([a-zA-Z_]*[[:space:]]\*)\)(.*);$/= reinterpret_cast<\1>\(\2\);/g" $i; done

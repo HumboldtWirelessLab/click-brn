@@ -18,6 +18,8 @@
 CLICK_DECLS
 
 FalconClustering::FalconClustering():
+  _frt(NULL),
+  _clustering(NULL),
   _lookup_timer(static_lookup_timer_hook,this)
 {
   BRNElement::init();

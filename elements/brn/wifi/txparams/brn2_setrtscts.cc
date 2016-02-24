@@ -16,7 +16,7 @@
 CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
-  _scheme(NULL),
+  _scheme(NULL), /*_pinfo(0),*/
   _rts_cts_mixed_strategy(RTS_CTS_MIXED_STRATEGY_NONE),
   _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
   _header(HEADER_WIFI),
@@ -24,6 +24,8 @@ Brn2_SetRTSCTS::Brn2_SetRTSCTS():
   rts_on(0)
 {
   memset(&nstats_dummy,0,sizeof(struct rtscts_neighbour_statistics));
+  memset(&_bcast_nstats,0,sizeof(_bcast_nstats));
+  memset(&_pinfo,0,sizeof(_pinfo));
   _scheme_list = SchemeList(String("RtsCtsScheme"));
 }
 
@@ -83,7 +85,7 @@ int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
 RtsCtsScheme *
 Brn2_SetRTSCTS::get_rtscts_scheme(uint32_t rts_cts_strategy)
 {
-  return (RtsCtsScheme *)_scheme_list.get_scheme(rts_cts_strategy);
+  return reinterpret_cast<RtsCtsScheme *>(_scheme_list.get_scheme(rts_cts_strategy));
 }
 
 Packet *
@@ -93,7 +95,7 @@ Brn2_SetRTSCTS::simple_action(Packet *p)
     bool set_rtscts = false;
     switch (_header) {
       case HEADER_ETHER:
-        _pinfo._dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
+        _pinfo._dst = EtherAddress((reinterpret_cast<const click_ether*>(p->data()))->ether_dhost);
         break;
       case HEADER_ANNO:
         _pinfo._dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
@@ -184,10 +186,10 @@ Brn2_SetRTSCTS::stats()
   sa << "\t\t<scheme name=\"RtsCtsAllwaysOn\" id=\"" << (int)RTS_CTS_STRATEGY_ALWAYS_ON << "\" active=\"";
   sa << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_ON)?1:0) << "\" />\n";
   for (uint16_t i = 0; i <= _scheme_list._max_scheme_id; i++) {
-    Element *e = (Element *)_scheme_list.get_scheme(i);
+    Element *e = reinterpret_cast<Element *>(_scheme_list.get_scheme(i));
     if ( e == NULL ) continue;
     sa << "\t\t<scheme name=\"" << e->class_name() << "\" id=\"" << i;
-    sa << "\" active=\"" << (int)(((Scheme *)e->cast("Scheme"))->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
+    sa << "\" active=\"" << (int)((reinterpret_cast<Scheme *>(e->cast("Scheme")))->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
   }
   sa << "\t</schemes>\n";
 
@@ -216,7 +218,7 @@ enum {H_RTSCTS_STATS, H_RTSCTS_RESET, H_RTSCTS_STRATEGY};
 
 static String SetRTSCTS_read_param(Element *e, void *thunk)
 {
-  Brn2_SetRTSCTS *f = (Brn2_SetRTSCTS *)e;
+  Brn2_SetRTSCTS *f = reinterpret_cast<Brn2_SetRTSCTS *>(e);
   switch ((uintptr_t) thunk) {
     case H_RTSCTS_STATS:
       return  f->stats(); 
@@ -230,7 +232,7 @@ static String SetRTSCTS_read_param(Element *e, void *thunk)
 
 static int SetRTSCTS_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler * /*errh*/)
 {
-  Brn2_SetRTSCTS *f = (Brn2_SetRTSCTS *)e;
+  Brn2_SetRTSCTS *f = reinterpret_cast<Brn2_SetRTSCTS *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

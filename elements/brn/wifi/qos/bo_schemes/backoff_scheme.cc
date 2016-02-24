@@ -17,9 +17,9 @@ void *
 BackoffScheme::cast(const char *name)
 {
   if (strcmp(name, "BackoffScheme") == 0)
-    return (BackoffScheme *) this;
+    return dynamic_cast<BackoffScheme *>(this);
   else if (strcmp(name, "Scheme") == 0)
-    return (Scheme *) this;
+    return dynamic_cast<Scheme *>(this);
   else
     return NULL;
 }

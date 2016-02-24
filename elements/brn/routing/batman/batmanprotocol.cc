@@ -15,10 +15,9 @@ WritablePacket *
 BatmanProtocol::add_batman_header(Packet *p, uint8_t type, uint8_t hops)
 {
   WritablePacket *q;
-  struct batman_header *bh;
 
   if ( (q = p->push(sizeof(struct batman_header))) != NULL ) {
-    bh = (struct batman_header *)q->data();
+    struct batman_header *bh = (struct batman_header *)q->data();
     bh->flags = 0;
     bh->type  = type;
     bh->hops  = hops;
@@ -113,10 +112,9 @@ WritablePacket *
     BatmanProtocol::add_batman_routing(Packet *p, uint16_t flag, uint16_t id)
 {
   WritablePacket *q;
-  struct batman_routing *br;
 
   if ( (q = p->push(sizeof(struct batman_routing))) != NULL ) {
-    br = (struct batman_routing *)q->data();
+    struct batman_routing *br = (struct batman_routing *)q->data();
     br->flag = flag;
     br->id = htons(id);
     return q;
@@ -158,10 +156,9 @@ WritablePacket *
 BatmanProtocol::add_batman_error(Packet *p, uint8_t code, EtherAddress *src)
 {
   WritablePacket *q;
-  struct batman_routing_error *bre;
 
   if ( (q = p->push(sizeof(struct batman_routing_error))) != NULL ) {
-    bre = (struct batman_routing_error *)q->data();
+    struct batman_routing_error *bre = (struct batman_routing_error *)q->data();
     bre->error_code = code;
     bre->packet_info = BATMAN_ERROR_PACKET_FULL;
     memcpy(bre->error_src, src->data(), 6);

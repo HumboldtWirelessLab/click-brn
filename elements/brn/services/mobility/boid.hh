@@ -86,7 +86,7 @@ class Boid : public BRNElement {
   GPSMap *_gpsmap;
 
   BoidBehavior *_behavior;
-  
+
   int _interval;
 
   bool _active;

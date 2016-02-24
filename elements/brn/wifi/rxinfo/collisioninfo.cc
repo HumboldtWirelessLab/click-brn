@@ -114,7 +114,7 @@ CollisionInfo::stats_handler(int /*mode*/)
   StringAccum sa;
 
   sa << "<collisioninfo node=\"" << BRN_NODE_NAME << "\" >\n";
-  for (RetryStatsTableIter iter = rs_tab.begin(); iter.live(); iter++) {
+  for (RetryStatsTableIter iter = rs_tab.begin(); iter.live(); ++iter) {
     RetryStats *rs = iter.value();
     EtherAddress ea = iter.key();
 
@@ -142,7 +142,7 @@ CollisionInfo::stats_handler(int /*mode*/)
 static String
 CollisionInfo_read_param(Element *e, void *thunk)
 {
-  CollisionInfo *td = (CollisionInfo *)e;
+  CollisionInfo *td = reinterpret_cast<CollisionInfo *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return td->stats_handler((uintptr_t) thunk);

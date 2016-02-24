@@ -33,28 +33,47 @@
 
 CLICK_DECLS
 
-DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge, uint8_t hops)
-:   hops(hops),
-    cycle(id, nodeA, nodeB)
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &_id, EtherAddress &nodeA, EtherAddress &nodeB, bool _isBridge, uint8_t _hops)
+:   isBridge(_isBridge),
+    hops(_hops),
+    cycle(_id, nodeA, nodeB)
 {
-  this->isBridge = isBridge;
   mayInconsistentlyData = new uint8_t[length];
 }
 
-DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle)
-: cycle(cycle)
+DibadawnPayloadElement::DibadawnPayloadElement(const DibadawnPayloadElement &dple) : isBridge(dple.isBridge), hops(dple.hops), cycle(dple.cycle)
 {
+  mayInconsistentlyData = new uint8_t[length];
+  memcpy(mayInconsistentlyData,dple.mayInconsistentlyData,length*sizeof(uint8_t));
+}
+
+DibadawnPayloadElement::DibadawnPayloadElement(const DibadawnCycle& c)
+: isBridge(false),
+  hops(1),
+  cycle(c)
+{
+  mayInconsistentlyData = new uint8_t[length];
+}
+
+DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p) :
+  isBridge(false),
+  hops(1),
+  cycle()
+{
+  if ( p != NULL ) {
+    isBridge = *p == 1;
+    hops = (uint8_t)*(p + 1);
+    cycle.setData(p + 2);
+  }
+  mayInconsistentlyData = new uint8_t[length];
+}
+
+void
+DibadawnPayloadElement::setCycle(DibadawnCycle& c)
+{
+  cycle = c;
   isBridge = false;
   hops = 1;
-  mayInconsistentlyData = new uint8_t[length];
-}
-
-DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)
-{
-  isBridge = *p == 1;
-  hops = (uint8_t)*(p + 1);
-  cycle.setData(p + 2);
-  mayInconsistentlyData = new uint8_t[length];
 }
 
 uint8_t* DibadawnPayloadElement::getData()

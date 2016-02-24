@@ -59,12 +59,13 @@ public:
     Packet *_p;
     struct timeval _time_added;
 
-    BufferedPacket(Packet *p) {
+    explicit BufferedPacket(Packet *p): _p(p), _time_added(Timestamp::now().timeval())
+    {
       assert(p);
-      _p=p;
-      _time_added = Timestamp::now().timeval();
     }
+
     void check() const { assert(_p); }
+    void update() { _time_added = Timestamp::now().timeval(); }
   };
 
 #define BRN_DSR_SENDBUFFER_MAX_LENGTH    20     // maximum number of packets to buffer per destination
@@ -97,6 +98,8 @@ public:
   public:
     timeval _time_updated;
     int _status;
+
+    BlacklistEntry() : _time_updated(Timestamp::now().timeval()), _status(0) {}
 
     void check() const {
       assert(_time_updated.tv_usec > 0);
@@ -152,17 +155,12 @@ public:
 #define BRN_DSR_RREQ_ISSUE_TIMER_INTERVAL 500 // how often to check if its time to issue a new request (ms)
 //#define BRN_DSR_RREQ_ISSUE_TIMER_INTERVAL 10000 // how often to check if its time to issue a new request (ms)
 
-    InitiatedReq(EtherAddress targ, IPAddress targ_ip, EtherAddress sarg, IPAddress sarg_ip) {
-      _target = targ;
-      _target_ip = targ_ip;
-      _source = sarg;
-      _source_ip = sarg_ip;
-      _ttl = BRN_DSR_RREQ_TTL1;
-      _times_issued = 1;
-      _backoff_interval = BRN_DSR_RREQ_DELAY1;
-
-      _time_last_issued = Timestamp::now().timeval();
-
+    InitiatedReq(EtherAddress targ, IPAddress targ_ip, EtherAddress sarg, IPAddress sarg_ip) : _target(targ),
+                                                                                              _target_ip(targ_ip), _source(sarg),
+                                                                                              _source_ip(sarg_ip), _ttl(BRN_DSR_RREQ_TTL1), _time_last_issued(Timestamp::now().timeval()),
+                                                                                              _times_issued(1),
+                                                                                              _backoff_interval(BRN_DSR_RREQ_DELAY1)
+    {
       check();
     }
     InitiatedReq() {

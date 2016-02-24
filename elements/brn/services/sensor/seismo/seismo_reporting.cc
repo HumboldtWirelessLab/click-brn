@@ -34,6 +34,7 @@ CLICK_DECLS
 
 SeismoReporting::SeismoReporting():
   _reporting_timer(this),
+  _seismo(NULL),
   _next_block_id(0),
   _interval(SEISMO_REPORT_DEFAULT_INTERVAL)
 {
@@ -69,8 +70,7 @@ SeismoReporting::initialize(ErrorHandler *errh)
     Element *new_element = cp_element(algo_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
       click_chatter("El-Name: %s", new_element->class_name());
-      SeismoDetectionAlgorithm *sda =
-        (SeismoDetectionAlgorithm *)new_element->cast("SeismoDetectionAlgorithm");
+      SeismoDetectionAlgorithm *sda =  reinterpret_cast<SeismoDetectionAlgorithm *>(new_element->cast("SeismoDetectionAlgorithm"));
       if ( sda != NULL ) {
         BRN_DEBUG("Add");
         _sdal.push_back(sda);
@@ -150,14 +150,14 @@ SeismoReporting::print_alarm()
 /*static String
 read_stats_handler(Element *e, void *thunk)
 {
-  SeismoReporting *sr = (SeismoReporting*)e;
+  SeismoReporting *sr = reinterpret_cast<SeismoReporting*>(e);
   return sr->print_stats();
 }
 */
 static String
 read_alarm_handler(Element *e, void */*thunk*/)
 {
-  SeismoReporting *sr = (SeismoReporting*)e;
+  SeismoReporting *sr = reinterpret_cast<SeismoReporting*>(e);
   return sr->print_alarm();
 }
 

@@ -11,10 +11,8 @@
 
 CLICK_DECLS
 
-IPRangeQuery::IPRangeQuery(IPAddress net, IPAddress mask)
+IPRangeQuery::IPRangeQuery(IPAddress net, IPAddress mask): _net(net), _mask(mask)
 {
-  _net = net;
-  _mask = mask;
 }
 
 IPAddress

@@ -47,18 +47,9 @@ class BrnRouteIdCache : public BRNElement {
 
     Timestamp _insert_time;
 
-    RouteIdEntry(EtherAddress src, EtherAddress dst, EtherAddress last_hop, EtherAddress next_hop, uint32_t id) {
-      _src = src;
-      _dst = dst;
-      _last_hop = last_hop;
-      _next_hop = next_hop;
-
-      _id = id;
-
-      _used = 0;
-
-      _insert_time = Timestamp::now();
-    }
+    RouteIdEntry(EtherAddress src, EtherAddress dst, EtherAddress last_hop, EtherAddress next_hop, uint32_t id): _src(src), _dst(dst), _last_hop(last_hop),
+                                                                                                                 _next_hop(next_hop), _id(id), _used(0), _insert_time(Timestamp::now())
+    { }
 
     void update_data(EtherAddress *src, EtherAddress *dst, EtherAddress *last_hop, EtherAddress *next_hop, uint32_t id) {
       memcpy(_src.data(),src->data(),6);

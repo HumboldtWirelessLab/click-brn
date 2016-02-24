@@ -51,7 +51,7 @@ public:
 	void set_seedlen(int);
 
 	// Useful for installation of complete ctrl_data
-	bool set_ctrl_data(crypto_ctrl_data *);
+	bool set_ctrl_data(const crypto_ctrl_data *);
 	crypto_ctrl_data *get_ctrl_data();
 
 	Vector<String> get_keylist();
@@ -71,8 +71,6 @@ public:
 	// This method uses the list to set the adequate key on phy layer
 	bool install_key_on_phy(Element *_wepencap, Element *_wepdecap);
 private:
-	int _debug;
-
 	crypto_ctrl_data ctrl_data;
 	data_t *seed;
 	Vector<String> keylist;

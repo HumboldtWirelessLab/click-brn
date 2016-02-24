@@ -41,7 +41,10 @@
 CLICK_DECLS
 
 BRN2DNSClient::BRN2DNSClient()
-  : _timer(this),
+  : _interval(0),
+    _start_time(0),
+    _timer(this),
+    transid(0),_active(false),
     _running_request(false),
     _no_requests(0),
     _no_replies(0),
@@ -163,7 +166,7 @@ enum {
 static String 
 read_param(Element *e, void *thunk)
 {
-  BRN2DNSClient *td = (BRN2DNSClient *)e;
+  BRN2DNSClient *td = reinterpret_cast<BRN2DNSClient *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return td->print_stats();
@@ -178,7 +181,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BRN2DNSClient *f = (BRN2DNSClient *)e;
+  BRN2DNSClient *f = reinterpret_cast<BRN2DNSClient *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_ACTIVE:

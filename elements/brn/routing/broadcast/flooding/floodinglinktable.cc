@@ -111,7 +111,7 @@ FloodingLinktable::get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &ne
 }
 
 uint32_t
-FloodingLinktable::get_link_metric(const EtherAddress from, const EtherAddress to)
+FloodingLinktable::get_link_metric(const EtherAddress &from, const EtherAddress &to)
 {
   if (_etxlinktable) return _etxlinktable->get_link_metric(from, to);
   return BRN_LT_INVALID_LINK_METRIC;
@@ -154,7 +154,7 @@ FloodingLinktable::get_link_pdr(const EtherAddress &src, const EtherAddress &dst
 }
 
 void
-FloodingLinktable::print_all_metrics(const EtherAddress src, const EtherAddress dst)
+FloodingLinktable::print_all_metrics(const EtherAddress &src, const EtherAddress &dst)
 {
   if (_locallinktable) BRN_DEBUG("LOCAL: %d", _locallinktable->get_link_metric(src, dst));
   if (_pdrlinktable) BRN_DEBUG("PDR: %d", _pdrlinktable->get_link_metric(src, dst));

@@ -59,6 +59,7 @@ public:
   struct DriftInfo di; /* most recent timedrift and offset + timestamp */
 
   HostTimeBuf();
+  HostTimeBuf(const HostTimeBuf &htb);
   ~HostTimeBuf();
 
   int has_pkt(uint32_t packet_handle);

@@ -145,7 +145,6 @@ DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAdd
 {
   WritablePacket *big_p = NULL;
   struct click_brn brn_header;
-  click_ether *ether_header = NULL;
   int payload_len = p->length();
 
   big_p = p->push(sizeof(struct click_brn) + sizeof(click_ether));
@@ -155,7 +154,7 @@ DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAdd
   }
   else
   {
-    ether_header = (click_ether *)big_p->data();
+    click_ether *ether_header = reinterpret_cast<click_ether *>(big_p->data());
     memcpy( ether_header->ether_dhost,dst->data(),6);
     memcpy( ether_header->ether_shost,src->data(),6);
     ether_header->ether_type = htons(ETHERTYPE_BRN);

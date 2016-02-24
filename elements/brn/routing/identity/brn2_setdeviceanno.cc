@@ -34,7 +34,7 @@
 CLICK_DECLS
 
 BRN2SetDeviceAnno::BRN2SetDeviceAnno()
-{
+:_device(NULL),_device_number(0){
   BRNElement::init();
 }
 

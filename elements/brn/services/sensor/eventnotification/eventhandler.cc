@@ -87,11 +87,13 @@ EventHandler::push( int /*port*/, Packet *packet )
   packet->kill();
 }
 
+/*
 void
 EventHandler::clear_eventlist()
 {
   _evli.clear();
 }
+*/
 
 void
 EventHandler::add_event(EtherAddress src, int id, int distance)
@@ -102,10 +104,8 @@ EventHandler::add_event(EtherAddress src, int id, int distance)
 bool
 EventHandler::contains_event(EtherAddress src, int id)
 {
-  EventHandler::DetectedEvent *ev;
-
   for ( int i = 0; i < _evli.size(); i++ ) {
-    ev = &_evli[i];
+    EventHandler::DetectedEvent *ev = &_evli[i];
     if ( ( src == ev->_src) && ( id == ev->_id ) ) return true;
   }
 
@@ -117,12 +117,11 @@ String
 EventHandler::get_events()
 {
   StringAccum sa;
-  EventHandler::DetectedEvent *ev;
 
   sa << "<event node=\"" << BRN_NODE_NAME << "\" count=\"" << (_packet_events + _dht_events) << "\" >\n";
   sa << "\t<packet_event count=\"" << _packet_events << "\" >\n" ;
   for ( int i = 0; i < _evli.size(); i++ ) {
-    ev = &_evli[i];
+    EventHandler::DetectedEvent *ev = &_evli[i];
     sa << "\t\t<src addr=\"" << ev->_src.unparse() << "\" id=\"" << ev->_id << "\" distance=\"" << ev->_distance << "\" />\n";
   }
   sa << "\t</packet_event>\n";
@@ -147,7 +146,7 @@ EventHandler::reset()
 static String
 read_stats_param(Element *e, void *)
 {
-  EventHandler *eh = (EventHandler *)e;
+  EventHandler *eh = reinterpret_cast<EventHandler *>(e);
 
   return eh->get_events();
 }
@@ -155,7 +154,7 @@ read_stats_param(Element *e, void *)
 static int
 write_reset_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
-  EventHandler *eh = (EventHandler *)e;
+  EventHandler *eh = reinterpret_cast<EventHandler *>(e);
   eh->reset();
 
   return 0;

@@ -40,8 +40,6 @@ OpenBeaconDecap::simple_action(Packet *p)
 	uint8_t e_dhost[6], e_shost[6];
 	int i=0;
 	uint8_t ob_bcats[] = {255, 255};
-	uint8_t ob_bcats_ext[] = {255, 255,255,255};
-	
 	
 	WritablePacket *wp;
 	click_wifi_extra *ceh = NULL;
@@ -55,13 +53,14 @@ OpenBeaconDecap::simple_action(Packet *p)
 	}
 
 	if ( memcmp(&(e_dhost[4]),ob_bcats,2) == 0 ) {
+	  uint8_t ob_bcats_ext[] = {255, 255,255,255};
 	  memcpy( e_dhost, ob_bcats_ext ,4 );
 	}
 
 	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel/*, length=crh->length*/;
 	
 	p->pull( sizeof(Click2OBD_header)-12 );
-	wp = (WritablePacket *)p;
+	wp = reinterpret_cast<WritablePacket *>(p);
 		
 	p->set_mac_header( p->data(), 14);
     for(i=0; i<6; i++) {

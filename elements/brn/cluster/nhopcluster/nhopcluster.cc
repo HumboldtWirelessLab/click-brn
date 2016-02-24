@@ -41,11 +41,14 @@ CLICK_DECLS
 NHopCluster::NHopCluster()
   : _nhop_timer(static_nhop_timer_hook,this),
     _mode(NHOP_MODE_START),
+    _max_distance(0),
+    _cluster_head(NULL),
     _cluster_head_selected(false),
-    _delay(0)
+    _delay(0),
+    _start(0), _startdelay(0),
+    _send_notification(0), _fwd_notification(0), _send_req(0), _fwd_req(0)
 {
   Clustering::init();
-  _send_notification = _fwd_notification = _send_req = _fwd_req = 0;
 }
 
 NHopCluster::~NHopCluster()
@@ -74,14 +77,14 @@ NHopCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
-  NHopCluster *dcl = (NHopCluster*)element;
+  NHopCluster *dcl = reinterpret_cast<NHopCluster*>(element);
   return dcl->lpSendHandler(buffer, size);
 }
 
 static int
 rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  NHopCluster *dcl = (NHopCluster*)element;
+  NHopCluster *dcl = reinterpret_cast<NHopCluster*>(element);
   return dcl->lpReceiveHandler(ea, buffer, size);
 }
 
@@ -150,7 +153,7 @@ void
 NHopCluster::static_nhop_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((NHopCluster*)f)->timer_hook();
+  (reinterpret_cast<NHopCluster*>(f))->timer_hook();
 }
 
 void
@@ -323,13 +326,10 @@ NHopCluster::handle_notification(Packet *p)
 void
 NHopCluster::forward(Packet *p)
 {
-  WritablePacket *p_brn;
-  struct nhopcluster_managment *mgt;
-
-  mgt = NHopClusterProtocol::get_mgt(p, 0);
+  struct nhopcluster_managment *mgt = NHopClusterProtocol::get_mgt(p, 0);
   mgt->hops++;
 
-  p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance - mgt->hops, 0);
+  WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance - mgt->hops, 0);
   BRNPacketAnno::set_ether_anno(p_brn, _node_identity->getMasterAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN );
   output(1).push(p_brn);
 }
@@ -365,7 +365,7 @@ NHopCluster::get_info()
 static String
 read_info_param(Element *e, void *)
 {
-  NHopCluster *nc = (NHopCluster *)e;
+  NHopCluster *nc = reinterpret_cast<NHopCluster*>(e);
 
   return nc->get_info();
 }
@@ -373,14 +373,14 @@ read_info_param(Element *e, void *)
 static String
 read_debug_param(Element *e, void *)
 {
-  NHopCluster *fl = (NHopCluster *)e;
+  NHopCluster *fl = reinterpret_cast<NHopCluster*>(e);
   return String(fl->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  NHopCluster *fl = (NHopCluster *)e;
+  NHopCluster *fl = reinterpret_cast<NHopCluster*>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

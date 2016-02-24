@@ -45,9 +45,7 @@ class DartRouteQuerier : public Element
        EtherAddress _ea;
        int _no;
 
-       RequestAddress(EtherAddress *ea) {
-         _ea = EtherAddress(ea->data());
-         _no = 1;
+       explicit RequestAddress(EtherAddress *ea): _ea(ea->data()), _no(1) {
        }
 
        void inc() { _no++; }
@@ -80,7 +78,7 @@ class DartRouteQuerier : public Element
  private:
    RequestAddress *requests_for_ea(EtherAddress *ea );
    void del_requests_for_ea(EtherAddress *ea);
-   void del_requests_for_ea(uint8_t *ea);
+   void del_requests_for_ea(const uint8_t *ea);
 
    void start_issuing_request(EtherAddress *dst);
    void send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *entry );

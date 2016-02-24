@@ -12,7 +12,7 @@ class DHTOperationHandler
 {
   public:
 
-    DHTOperationHandler(BRNDB *db);
+    explicit DHTOperationHandler(BRNDB *db);
     DHTOperationHandler(BRNDB *db, int debug);
     ~DHTOperationHandler();
 

@@ -96,9 +96,9 @@ class DHTRoutingKlibs : public DHTRouting
     void handle_request(Packet *p, uint32_t node_group);
     bool update_nodes(DHTnodelist *dhtlist);
 
-    bool is_foreign(md5_byte_t *key);
+    //bool is_foreign(md5_byte_t *key);
+    //bool is_foreign(DHTnode *node);
     bool is_own(md5_byte_t *key);
-    bool is_foreign(DHTnode *node);
     bool is_own(DHTnode *node);
 
     int get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group);

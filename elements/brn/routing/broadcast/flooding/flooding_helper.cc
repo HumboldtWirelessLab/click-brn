@@ -74,6 +74,7 @@ FloodingHelper::print_vector(NeighbourMetricList &nodes)
 
 FloodingHelper::FloodingHelper():
   _link_table(NULL),
+  _max_metric_to_neighbor(0), _min_pdr_to_neighbor(0),
   _cache_timeout(FLOODINGHELPER_DEFAULTTIMEOUT),
   _pdr_cache(NULL),
   _pdr_cache_shift(FLOODINGHELPER_PDR_CACHE_SHIFT),
@@ -330,8 +331,6 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
     }
   }
 
-  int best_metric, best_metric_src, best_metric_dst;
-
   /*
    * Dijkstra: get the shortest path to all known nodes
    *
@@ -341,8 +340,8 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
 
     metric_changed = false;
 
+    int best_metric, best_metric_src, best_metric_dst;
     best_metric = best_metric_src = best_metric_dst = -1;
-    int new_best_metric;
 
     for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
       int src_metric = ng.nml[src_node]->_metric;
@@ -354,7 +353,7 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
 
         //_metric is not dived by 100. its not important to get the best metric (just compare)
         //move "*" . in this loop its enough to compore the pdr_cache stuff
-        new_best_metric = src_metric * _pdr_cache[pdr_cache_index];
+        int new_best_metric = src_metric * _pdr_cache[pdr_cache_index];
 
         if (new_best_metric >= best_metric) {
           best_metric = new_best_metric;

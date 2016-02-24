@@ -11,7 +11,7 @@ class Scheme {
 
  public:
 
-  Scheme(): _default_strategy(0) {}
+  Scheme(): _default_strategy(0),_strategy(0) {}
   virtual ~Scheme() {}
 
   uint32_t _default_strategy;
@@ -27,14 +27,14 @@ class SchemeList {
 
  public:
 
-  SchemeList(): _scheme_array(NULL) {
+  SchemeList(): _default_strategy(0), _scheme_array(NULL), _max_scheme_id(0) {
     _schemes.clear();
     _scheme_elements.clear();
     _scheme_string = "";
     _element_class = "";
   }
 
-  SchemeList(String elem_class): _scheme_array(NULL) {
+  explicit SchemeList(String elem_class): _default_strategy(0), _scheme_array(NULL), _max_scheme_id(0) {
     _schemes.clear();
     _scheme_elements.clear();
     _scheme_string = "";
@@ -48,7 +48,7 @@ class SchemeList {
 
   uint32_t _default_strategy;
 
-  void set_scheme_string(String s_schemes) { _scheme_string = s_schemes; }
+  void set_scheme_string(String s_schemes) { _scheme_string = String(s_schemes); }
 
   int parse_schemes(Element *e, ErrorHandler* errh) { return parse_schemes(_scheme_string, e, errh); }
 

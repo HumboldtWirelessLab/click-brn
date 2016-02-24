@@ -36,7 +36,7 @@ public:
   void increase_cw();
   void increase_cw_strict(uint8_t retries);
   void decrease_cw();
-  void keep_cw();
+  //void keep_cw();
 
 
 /* Own Variables */

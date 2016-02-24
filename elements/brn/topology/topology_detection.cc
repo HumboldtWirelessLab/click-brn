@@ -43,6 +43,7 @@ CLICK_DECLS
 TopologyDetection::TopologyDetection() :
 //detection_id(0),
 dibadawnAlgo(this),
+_lt(NULL),_node_identity(NULL),_topoInfo(NULL),
 _is_detect_periodically(false),
 _probability_of_perriodically_detection(0.8),
 _interval_ms(30 * 1000),
@@ -177,7 +178,7 @@ void TopologyDetection::update_info_timer()
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
 {
-  click_ether *ether_h = (click_ether *) packet->ether_header();
+  const click_ether *ether_h = reinterpret_cast<const click_ether *>( packet->ether_header());
   if (memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0)
   {
     handle_detection(packet);
@@ -283,7 +284,7 @@ enum
 
 static int write_param(const String& click_script_parameter, Element *element, void *vparam, ErrorHandler* errh)
 {
-  TopologyDetection *topo = (TopologyDetection *) element;
+  TopologyDetection *topo = reinterpret_cast<TopologyDetection *>( element);
   switch ((intptr_t) vparam)
   {
   case H_START_DETECTION:
@@ -310,7 +311,7 @@ static int write_param(const String& click_script_parameter, Element *element, v
 
 static String read_param(Element *e, void *thunk)
 {
-  TopologyDetection *topo = (TopologyDetection *) e;
+  TopologyDetection *topo = reinterpret_cast<TopologyDetection *>( e);
 
   switch ((uintptr_t) thunk) {
   case H_TOPOLOGY_INFO:

@@ -12,8 +12,14 @@
 
 CLICK_DECLS
 
-OLSRLinkInfoBase::OLSRLinkInfoBase()
-		: _timer(this)
+OLSRLinkInfoBase::OLSRLinkInfoBase() :
+  _linkSet(NULL),
+  _neighborInfo(NULL),
+  _interfaceInfo(NULL),
+  _routingTable(NULL),
+  _duplicateSet(NULL),
+  _tcGenerator(NULL),
+  _timer(this)
 {
 }
 
@@ -69,9 +75,9 @@ OLSRLinkInfoBase::run_timer(Timer *)
 	//find expired links and remove them
 	if (! _linkSet->empty() )
 	{
-		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); iter++)
+		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); ++iter)
 		{
-			link_data *data = (link_data *)iter.value();
+			link_data *data = reinterpret_cast<link_data *>(iter.value());
 			//store the main address of the node to which this was a link
 			neighbor = data->_main_addr; //_interfaceInfo->get_main_address(data->L_neigh_iface_addr);	
       if (Timestamp(data->L_time) <= Timestamp(now))
@@ -99,12 +105,12 @@ OLSRLinkInfoBase::run_timer(Timer *)
 	if (! links_removed->empty())
 	{
 		neighbor_removed = true;
-		for( HashMap<IPAddress, IPAddress>::iterator iter = links_removed->begin(); iter != links_removed->end(); iter++)
+		for( HashMap<IPAddress, IPAddress>::iterator iter = links_removed->begin(); iter != links_removed->end(); ++iter)
 		{
 			bool other_links_left = false;
-			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end(); link++)
+			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end();++link)
 			{
-				link_data *data = (link_data *)link.value();
+				link_data *data = reinterpret_cast<link_data *>(link.value());
         if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && Timestamp(data->L_SYM_time) > Timestamp(now))
 				{
 					other_links_left = true;
@@ -125,12 +131,12 @@ OLSRLinkInfoBase::run_timer(Timer *)
 	//downgrade neighbors that have no more symmetric links
 	if (! links_downgraded->empty() ) {
 		neighbor_downgraded = true;
-		for( HashMap<IPAddress, IPAddress>::iterator iter = links_downgraded->begin(); iter != links_downgraded->end(); iter++)
+		for( HashMap<IPAddress, IPAddress>::iterator iter = links_downgraded->begin(); iter != links_downgraded->end(); ++iter)
 		{
 			bool sym_link_left = false;
-			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end(); link++)
+			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end();++link)
 			{
-				link_data *data = (link_data *)link.value();
+				link_data *data = reinterpret_cast<link_data *>(link.value());
         if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && Timestamp(data->L_SYM_time) > Timestamp(now))
 				{
 					sym_link_left = true;
@@ -152,9 +158,9 @@ OLSRLinkInfoBase::run_timer(Timer *)
 	//find next link to expire
 	if (! _linkSet->empty() )
 	{
-		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); iter++)
+		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); ++iter)
 		{
-			link_data *data = (link_data *)iter.value();
+			link_data *data = reinterpret_cast<link_data *>(iter.value());
 
 			neighbor = data->_main_addr;
 
@@ -215,7 +221,7 @@ OLSRLinkInfoBase::find_link(IPAddress local_addr, IPAddress neigh_addr)
 	if (! _linkSet->empty() )
 	{
 		OLSRIPPair ippair = OLSRIPPair(local_addr, neigh_addr);
-		link_data *data = (link_data *) _linkSet->find(ippair);
+		link_data *data = reinterpret_cast<link_data *>( _linkSet->find(ippair));
 
 		if (!(data == 0))
 			return data;
@@ -248,7 +254,7 @@ void
 OLSRLinkInfoBase::remove_link(IPAddress local_addr, IPAddress neigh_addr)
 {
 	OLSRIPPair ippair = OLSRIPPair(local_addr, neigh_addr);
-	link_data *ptr=(link_data*) _linkSet->find(ippair);
+	link_data *ptr=reinterpret_cast<link_data*>( _linkSet->find(ippair));
 	
 	click_chatter("link %s <--> %s removing| %d %d\n", ptr->L_local_iface_addr.unparse().c_str(), ptr->L_neigh_iface_addr.unparse().c_str(), ptr->L_time.tv_sec, ptr->L_time.tv_usec);
 	
@@ -274,9 +280,9 @@ OLSRLinkInfoBase::print_link_set()
 {
 	if (! _linkSet->empty() )
 	{
-		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); iter++)
+		for (LinkSet::iterator iter = _linkSet->begin(); iter != _linkSet->end(); ++iter)
 		{
-			link_data *data = (link_data *) iter.value();
+			link_data *data = reinterpret_cast<link_data *>( iter.value());
 			click_chatter("link:\n");
 			click_chatter("\tlocal_iface: %s\n", data->L_local_iface_addr.unparse().c_str());
 			click_chatter("\tneigh_iface: %s\n", data->L_neigh_iface_addr.unparse().c_str());

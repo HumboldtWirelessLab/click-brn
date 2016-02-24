@@ -39,6 +39,7 @@ AlarmingState::AlarmingState():
   _hop_limit(DEFAULT_HOP_LIMT),
   _forward_flags(UPDATE_ALARM_NEW_NODE|UPDATE_ALARM_NEW_ID),
   _lt(NULL),
+  _nhopn_info(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
   _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
   _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
@@ -149,10 +150,8 @@ AlarmingState::update_alarm(int type, const EtherAddress *ea, int id, int hops, 
 void
 AlarmingState::update_neighbours()
 {
-  Vector<EtherAddress> neighbors;
-  int fwd_i;
-
   if (_lt) {
+    Vector<EtherAddress> neighbors;
     _lt->get_local_neighbors(neighbors);
 
     if ( neighbors.size() == 0 ) return;
@@ -166,7 +165,8 @@ AlarmingState::update_neighbours()
 
         if (ai->_hops < _hop_limit) {
           for( int n_i = 0; n_i < neighbors.size(); n_i++) {
-            for( fwd_i = 0; fwd_i < ai->_fwd.size(); fwd_i++ ) {
+            int fwd_i = 0;
+            for(;fwd_i < ai->_fwd.size(); fwd_i++ ) {
               ForwarderInfo *fwd = &(ai->_fwd[fwd_i]);
               if ( fwd->_ea == neighbors[n_i] ) {
                 found_fwd++;
@@ -187,10 +187,10 @@ AlarmingState::update_neighbours()
 void
 AlarmingState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *types)
 {
-  int type, t_i;
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
-    type = _alarm_nodes[an_i]._type;
-    for( t_i = types->size()-1 ; t_i >= 0; t_i--) {
+    int type = _alarm_nodes[an_i]._type;
+    int t_i = types->size()-1;
+    for(; t_i >= 0; t_i--) {
       //int ftype = (*types)[t_i];
       if ( (*types)[t_i] == type ) break;
     }
@@ -271,7 +271,7 @@ AlarmingState::get_state()
 static String
 read_state_param(Element *e, void *)
 {
-  return ((AlarmingState *)e)->get_state();
+  return(reinterpret_cast<AlarmingState *>(e))->get_state();
 }
 
 void

@@ -44,7 +44,7 @@ BoLearning::~BoLearning()
 void * BoLearning::cast(const char *name)
 {
   if (strcmp(name, "BoLearning") == 0)
-    return (BoLearning *) this;
+    return dynamic_cast<BoLearning *>(this);
 
   return BackoffScheme::cast(name);
 }
@@ -119,11 +119,11 @@ void BoLearning::decrease_cw()
   _bo_cnt_down++;
   _current_bo = _current_bo >> 1;
 }
-
+/*
 void BoLearning::keep_cw()
 {
 }
-
+*/
 CLICK_ENDDECLS
 
 EXPORT_ELEMENT(BoLearning)

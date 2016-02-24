@@ -31,7 +31,7 @@ BoMaxThroughput::~BoMaxThroughput()
 void * BoMaxThroughput::cast(const char *name)
 {
   if (strcmp(name, "BoMaxThroughput") == 0)
-    return (BoMaxThroughput *) this;
+    return dynamic_cast<BoMaxThroughput *>(this);
 
   return BackoffScheme::cast(name);
 }
@@ -51,7 +51,6 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) tos;
 
-  int32_t number_of_neighbours = 1;
   int32_t index_search_rate = -1;
   int32_t index_search_msdu_size = -1;
   int32_t index_no_neighbours = -1;
@@ -62,7 +61,7 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 
   //Get Number of Neighbours from the Channelstats-Element (_cst)
   struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
-  number_of_neighbours = as->no_sources;
+  int32_t number_of_neighbours = as->no_sources;
 
   BRN_DEBUG("BoMaxTP.get_cwmin():\n");
   BRN_DEBUG("    no. of nbs: %d", number_of_neighbours);

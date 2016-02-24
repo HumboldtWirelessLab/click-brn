@@ -42,8 +42,10 @@
 CLICK_DECLS
 
 PacketDecompression::PacketDecompression()
+  : cmode(0), ethertype(0)
 {
   BRNElement::init();
+  memset(compbuf, 0, sizeof(compbuf));
 }
 
 PacketDecompression::~PacketDecompression()
@@ -79,10 +81,9 @@ PacketDecompression::push( int /*port*/, Packet *packet )
     case COMPRESSION_MODE_FULL: {
       struct compression_header *ch = (struct compression_header *)p->data();
       int uncompsize = ntohs(ch->uncompressed_len);
-      bool is_lzw = false;
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
-
+        bool is_lzw = false;
         if ( ch->compression_type == COMPRESSION_TYPE_LZW ) {
           resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
           is_lzw = true;
@@ -143,7 +144,6 @@ PacketDecompression::push( int /*port*/, Packet *packet )
       break;
     }
     case COMPRESSION_MODE_BRN: {
-      uint16_t *et;
       struct compression_header *ch = (struct compression_header *)p->data();
       int uncompsize = ntohs(ch->uncompressed_len);
 
@@ -156,7 +156,7 @@ PacketDecompression::push( int /*port*/, Packet *packet )
           p = p->put(uncompsize - p->length());
           memcpy(p->data(), compbuf, uncompsize );
 
-          et = (uint16_t*)p->data();
+          uint16_t *et = (uint16_t*)p->data();
           BRNPacketAnno::set_ethertype_anno(p,*et);
           p->pull(sizeof(uint16_t));
 

@@ -50,7 +50,7 @@ void *
 BRN2DHCPLeaseTable::cast(const char *n)
 {
 	if (strcmp(n, "BRN2DHCPLeaseTable") == 0)
-		return (BRN2DHCPLeaseTable *)this;
+		return dynamic_cast<BRN2DHCPLeaseTable *>(this);
 	return 0;
 }
 
@@ -95,12 +95,12 @@ enum {H_LEASES};
 String
 BRN2DHCPLeaseTable::read_handler(Element *e, void *thunk)
 {
-	BRN2DHCPLeaseTable *lt = (BRN2DHCPLeaseTable *)e;
+	BRN2DHCPLeaseTable *lt = reinterpret_cast<BRN2DHCPLeaseTable *>(e);
 	switch ((uintptr_t) thunk) {
 	case H_LEASES: {
 		StringAccum sa;
     sa << "<dhcpleases count=\"" << lt->_leases.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
-		for (LeaseIter iter = lt->_leases.begin(); iter.live(); iter++) {
+		for (LeaseIter iter = lt->_leases.begin(); iter.live(); ++iter) {
 			Lease l = iter.value();
       sa << "\t<client ip=\"" << l._ip << "\" mac=\"" << l._eth;
 			sa << "\" start=\"" << l._start.sec() << "\" end=\"" << l._end.sec();

@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 CircleOverlay::CircleOverlay()
-{
+:_me(NULL),_ovl(NULL){
   BRNElement::init();
 }
 

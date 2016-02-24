@@ -39,10 +39,10 @@
 CLICK_DECLS
 
 FloodingPrenegotiation::FloodingPrenegotiation():
+  _linkstat(NULL), _link_table(NULL), _flooding_db(NULL),
   _seq(0),
   _max_ids_per_packet(DEFAULT_MAX_FLOODING_IDS_PER_PACKET),
-  _node_timeout(DEFAULT_FLOODING_NEIGHBOURS_TIMEOUT)
-{
+  _node_timeout(DEFAULT_FLOODING_NEIGHBOURS_TIMEOUT){
   BRNElement::init();
 }
 
@@ -68,7 +68,7 @@ FloodingPrenegotiation::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
-  FloodingPrenegotiation *lph = (FloodingPrenegotiation*)element;
+  FloodingPrenegotiation *lph = reinterpret_cast<FloodingPrenegotiation*>(element);
 
   return lph->lpSendHandler(buffer, size);
 }
@@ -76,7 +76,7 @@ tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 static int
 rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  FloodingPrenegotiation *lph = (FloodingPrenegotiation*)element;
+  FloodingPrenegotiation *lph = reinterpret_cast<FloodingPrenegotiation*>(element);
 
   return lph->lpReceiveHandler(ea, buffer, size);
 }
@@ -155,7 +155,7 @@ FloodingPrenegotiation::lpSendHandler(char *buffer, int size)
       }
     }
 
-    iter++;
+    ++iter;
   }
 
   return space_pointer;

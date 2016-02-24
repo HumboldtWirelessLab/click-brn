@@ -23,7 +23,7 @@ void *
 RtsCtsHiddenNode::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsHiddenNode") == 0)
-    return (RtsCtsHiddenNode *) this;
+    return reinterpret_cast<RtsCtsHiddenNode *>(this);
 
   return RtsCtsScheme::cast(name);
 }

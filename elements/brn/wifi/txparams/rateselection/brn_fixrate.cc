@@ -15,6 +15,7 @@
 CLICK_DECLS
 
 BrnFixRate::BrnFixRate():
+    _set_rates(false), _set_power(false),
     _rate0(0xFF), _rate1(0), _rate2(0), _rate3(0),
     _tries0(1), _tries1(0), _tries2(0), _tries3(0),
     _mcs0(false), _mcs1(false), _mcs2(false), _mcs3(false),
@@ -28,13 +29,14 @@ BrnFixRate::BrnFixRate():
     _power(0xFFFF)
 {
   _default_strategy = RATESELECTION_FIXRATE;
+  memset(&_mcs_flags,0,sizeof(_mcs_flags));
 }
 
 void *
 BrnFixRate::cast(const char *name)
 {
   if (strcmp(name, "BrnFixRate") == 0)
-    return (BrnFixRate *) this;
+    return reinterpret_cast<BrnFixRate *>(this);
 
   return RateSelection::cast(name);
 }
@@ -202,7 +204,7 @@ enum { H_STATS};
 static String
 BrnFixRate_read_param(Element */*e*/, void *thunk)
 {
-  //BrnFixRate *td = (BrnFixRate *)e;
+  //BrnFixRate *td = reinterpret_cast<BrnFixRate *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return String();

@@ -57,8 +57,8 @@ class BRN2NodeIdentity : public BRNElement {
   void add_handlers();
 
   //returns true if the given ethernet address belongs to this node (e.g. wlan-dev)
-  bool isIdentical(EtherAddress *);
-  bool isIdentical(uint8_t *data);
+  bool isIdentical(const EtherAddress *);
+  bool isIdentical(const uint8_t *data);
 
   int getDeviceNumber(EtherAddress *);
   int countDevices() { return _node_devices_size; }

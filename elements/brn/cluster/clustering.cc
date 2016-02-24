@@ -6,7 +6,7 @@
 
 CLICK_DECLS
 
-Clustering::Clustering(): _own_cluster(NULL), _known_clusters()
+Clustering::Clustering(): _linkstat(NULL), _node_identity(NULL), _own_cluster(NULL), _known_clusters()
 {
 
 }
@@ -45,13 +45,13 @@ Clustering::clustering_info()
 		 << "\n\t</CLUSTER>";
 */
 
-	  for(ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++) {
+	  for(ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); ++i) {
 		  if((*i)->_cluster_id==_own_cluster->_cluster_id ) {
 			  sa << "\n\t<CLUSTER>"
 				 << "\n\t\t<ID>" << (*i)->_cluster_id << "</ID>"
 				 << "\n\t\t<CLUSTERHEAD>" << (*i)->_clusterhead.unparse() << "</CLUSTERHEAD>"
 				 << "\n\t\t<MEMBER>";
-				  for(Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!= (*i)->_member.end(); j++) {
+				  for(Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!= (*i)->_member.end(); ++j) {
 					  sa << "\n\t\t\t<ETHERADDRESS>" << (*j).unparse() << "</ETHERADDRESS>";
 				  }
 			  sa << "\n\t\t</MEMBER>"
@@ -59,13 +59,13 @@ Clustering::clustering_info()
 		  }
 	  }
 
-	  for(ClusterListIter cli=_known_clusters.begin(); cli!= _known_clusters.end(); cli++) {
+	  for(ClusterListIter cli=_known_clusters.begin(); cli!= _known_clusters.end(); ++cli) {
 		  if((*cli)->_cluster_id!=_own_cluster->_cluster_id ) {
 			  sa << "\n\t<OTHERCLUSTER>"
 				 << "\n\t\t<ID>" << (*cli)->_cluster_id << "</ID>"
 				 << "\n\t\t<CLUSTERHEAD>" << (*cli)->_clusterhead.unparse() << "</CLUSTERHEAD>"
 				 << "\n\t\t<MEMBER>";
-				  for(Vector<EtherAddress>::iterator i=(*cli)->_member.begin(); i!= (*cli)->_member.end(); i++) {
+				  for(Vector<EtherAddress>::iterator i=(*cli)->_member.begin(); i!= (*cli)->_member.end(); ++i) {
 					  sa << "\n\t\t\t<ETHERADDRESS>" << (*i).unparse() << "</ETHERADDRESS>";
 				  }
 			  sa << "\n\t\t</MEMBER>"
@@ -80,8 +80,8 @@ Clustering::clustering_info()
 
 void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cHead ) {
 	// remove old info
-	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
-		for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); j++ ) {
+	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); ++i ) {
+		for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); ++j ) {
 			if( (*j).hashcode()==node.hashcode() ) {
 				if( (*i)->_cluster_id != cID ) {
 					(*i)->_member.erase( j );
@@ -94,11 +94,11 @@ void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress 
 	// insert new info
 	bool inserted = false;
 
-	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
+	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); ++i ) {
 		if( (*i)->_cluster_id == cID ) {
 			bool found = false;
 
-			for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); j++ ) {
+			for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); ++j ) {
 				StringAccum st;
 
 				if( (*j).hashcode()==node.hashcode() ) {
@@ -123,10 +123,12 @@ void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress 
 	}
 
 	// TODO: delete empty cluster
-	for( ClusterList::iterator i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
+	for( ClusterList::iterator i=_known_clusters.begin(); i!=_known_clusters.end(); ++i ) {
 		if( (*i)->_member.size()==0 ) {
+		    Cluster *t = (*i);
 			i = _known_clusters.erase( i );
-			i--;
+			--i;
+			delete t;
 		}
 	}
 }
@@ -134,14 +136,14 @@ void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress 
 static String
 read_clustering_info(Element *e, void */*thunk*/)
 {
-  return ((Clustering *)e)->clustering_info();
+  return (dynamic_cast<Clustering *>(e))->clustering_info();
 }
 
 static int
 write_clusterhead(const String &in_s, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
   EtherAddress ch;
-  Clustering *f = (Clustering *)e;
+  Clustering *f = reinterpret_cast<Clustering *>(e);
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);

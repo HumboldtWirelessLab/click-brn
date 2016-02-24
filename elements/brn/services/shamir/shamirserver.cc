@@ -30,7 +30,6 @@
 CLICK_DECLS
 
 ShamirServer::ShamirServer()
-	: _debug(false)
 {
 	BRNElement::init();
 
@@ -127,34 +126,19 @@ enum {
 };
 
 static String read_param(Element *e, void *thunk) {
-	ShamirServer *shamir_server = (ShamirServer *)e;
+	ShamirServer *shamir_server = reinterpret_cast<ShamirServer *>(e);
 
     switch((intptr_t) thunk) {
-    case H_MODULUS:
-        {
-            return String(BN_bn2hex(shamir_server->_modulus));
-            break;
-        }
-    case H_SHARE:
-        {
-            return String(BN_bn2hex(shamir_server->_share));
-            break;
-        }
-    case H_SHARE_ID:
-        {
-            return String(shamir_server->_share_id);
-            break;
-        }
-    default:
-        {
-            return String();
-        }
+      case H_MODULUS:  return String(BN_bn2hex(shamir_server->_modulus));
+      case H_SHARE:    return String(BN_bn2hex(shamir_server->_share));
+      case H_SHARE_ID: return String(shamir_server->_share_id);
+      default:         return String();
     }
 }
 
 static int write_param(const String &in_s, Element *e, void *vparam,
             ErrorHandler *errh) {
-    ShamirServer *shamir_server = (ShamirServer*) e;
+    ShamirServer *shamir_server = reinterpret_cast<ShamirServer*>( e);
     String s = cp_uncomment(in_s);
 
     switch((intptr_t) vparam) {

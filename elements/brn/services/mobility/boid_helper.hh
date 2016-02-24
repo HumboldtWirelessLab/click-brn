@@ -31,14 +31,14 @@ class Gravitation {
     Vector3D _position;
     int _mass;
 
-    Gravitation() {
-      _position = Vector3D();
-      _mass = 0;
+    Gravitation() :
+      _position(Vector3D()), _mass(0)
+    {
     }
 
-    Gravitation(int x, int y, int z, int m) {
-      _position = Vector3D(x,y,z);
-      _mass = m;
+    Gravitation(int x, int y, int z, int m) :
+      _position(Vector3D(x,y,z)), _mass(m)
+    {
     }
 
     ~Gravitation() {};
@@ -52,14 +52,14 @@ class Predator {
     Vector3D _position;
     int _power;
 
-    Predator() {
-      _position = Vector3D();
-      _power = 0;
+    Predator() :
+      _position(Vector3D()), _power(0)
+    {
     }
 
-    Predator(int x, int y, int z, int p) {
-      _position = Vector3D(x,y,z);
-      _power = p;
+    Predator(int x, int y, int z, int p) :
+      _position(Vector3D(x,y,z)), _power(p)
+    {
     }
 
     ~Predator() {};
@@ -70,6 +70,10 @@ typedef PredatorList::const_iterator PredatorListIter;
 
 class BoidMove {
   public:
+    BoidMove() :
+      _direction(Vector3D()),_speed(0),_move_type(0)
+    {}
+
     Vector3D _direction;
     int      _speed;
     int      _move_type;

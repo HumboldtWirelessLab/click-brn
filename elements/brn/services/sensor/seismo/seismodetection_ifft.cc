@@ -50,7 +50,9 @@ SeismoDetectionIFFT::SeismoDetectionIFFT():
   _ifft_im_block(NULL),
   _ifft_re_block_cpy(NULL),
   _ifft_im_block_cpy(NULL),
+  _ifft_re_out(NULL),
   _ifft_block_size(-1),
+  _ifft_max_block_size(0),
   _ifft_block_index(0),
   _channel(0),
 #ifdef HAVE_LIBFFTW3
@@ -77,9 +79,9 @@ void *
 SeismoDetectionIFFT::cast(const char *n)
 {
   if (strcmp(n, "SeismoDetectionIFFT") == 0)
-    return (SeismoDetectionIFFT *) this;
+    return dynamic_cast<SeismoDetectionIFFT *>(this);
   else if (strcmp(n, "SeismoDetectionAlgorithm") == 0)
-    return (SeismoDetectionAlgorithm *) this;
+    return dynamic_cast<SeismoDetectionAlgorithm *>(this);
   else
     return 0;
 }
@@ -183,10 +185,9 @@ int
 SeismoDetectionIFFT::detect_alarm( int32_t *in_data, uint16_t n) {
   int32_t min_v = INT32_MIN;
   int32_t max_v = INT32_MAX;
-  int32_t val = 0;
 
   for ( int32_t i = 0; i < n; i++ ) {
-    val = abs((int)in_data[i]);
+    int32_t val = abs((int)in_data[i]);
     if ( val < min_v ) min_v = val;
     if ( val > max_v ) max_v = val;
   }
@@ -225,7 +226,7 @@ SeismoDetectionIFFT::fft_libfftw3(int32_t *in_data, int32_t *out_data, uint16_t 
   double *out;
   fftw_plan plan_forward;
 
-  in = (double*)fftw_malloc(sizeof(double) * n );
+  in = reinterpret_cast<double*>(fftw_malloc(sizeof(double) * n ));
 
   for ( i = 0; i < n; i++ ) in[i] = (double)in_data[i];
 
@@ -238,7 +239,7 @@ SeismoDetectionIFFT::fft_libfftw3(int32_t *in_data, int32_t *out_data, uint16_t 
 */
   nc = ( n / 2 ) + 1;
 
-  out = (double*)fftw_malloc(sizeof(double) * n);
+  out = reinterpret_cast<double*>(fftw_malloc(sizeof(double) * n));
 
   plan_forward = fftw_plan_r2r_1d ( n, in, out, FFTW_R2HC, FFTW_PATIENT );
 
@@ -291,7 +292,7 @@ SeismoDetectionIFFT::stats(void)
 static String
 read_handler(Element *e, void */*thunk*/)
 {
-  SeismoDetectionIFFT *sdc = (SeismoDetectionIFFT*)e;
+  SeismoDetectionIFFT *sdc = reinterpret_cast<SeismoDetectionIFFT*>(e);
   return sdc->stats();
 }
 

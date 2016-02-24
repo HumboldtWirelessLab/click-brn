@@ -172,7 +172,7 @@ EventNotifier::reset()
 static int
 write_reset_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
-  ((EventNotifier *)e)->reset();
+ (reinterpret_cast<EventNotifier *>(e))->reset();
 
   return 0;
 }
@@ -180,7 +180,7 @@ write_reset_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*er
 static int
 write_payload_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
-  EventNotifier *en = (EventNotifier *)e;
+  EventNotifier *en = reinterpret_cast<EventNotifier *>(e);
   String s = cp_uncomment(in_s);
 
   Vector<String> args;
@@ -196,7 +196,7 @@ write_payload_param(const String &in_s, Element *e, void *, ErrorHandler */*errh
 static int
 write_event_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
-  EventNotifier *en = (EventNotifier *)e;
+  EventNotifier *en = reinterpret_cast<EventNotifier *>(e);
   String s = cp_uncomment(in_s);
 
   Vector<String> args;
@@ -219,7 +219,7 @@ static String
 read_stats_param(Element *e, void *)
 {
   StringAccum sa;
-  EventNotifier *en = (EventNotifier *)e;
+  EventNotifier *en = reinterpret_cast<EventNotifier *>(e);
 
   sa << "Events: " << (en->_push_packet_events + en->_pull_packet_events + en->_handler_events);
   sa << "\nPush Packets: " << en->_push_packet_events;

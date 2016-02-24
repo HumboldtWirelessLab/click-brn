@@ -127,8 +127,8 @@ BrnIappNotifyHandler::recv_handover_notify(
   BRN_CHECK_EXPR_RETURN(p == NULL || p->length() < sizeof(struct click_brn_iapp),
     ("invalid argument"), if (p) p->kill(); return;);
 
-  click_brn_iapp*     pIapp   = (click_brn_iapp*)p->data();
-  click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
+  const click_brn_iapp*     pIapp   = reinterpret_cast<const click_brn_iapp*>(p->data());
+  const click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
   BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_HON != pIapp->type,
     ("got invalid iapp type %d", pIapp->type), if (p) p->kill(); return;);
@@ -165,8 +165,8 @@ BrnIappNotifyHandler::recv_handover_reply(
   BRN_CHECK_EXPR_RETURN(p == NULL || p->length() < sizeof(struct click_brn_iapp),
     ("invalid argument"), if (p) p->kill(); return;);
 
-  click_brn_iapp*     pIapp      = (click_brn_iapp*)p->data();
-  click_brn_iapp_ho*  pHo        = &pIapp->payload.ho;
+  const click_brn_iapp*     pIapp      = reinterpret_cast<const click_brn_iapp*>(p->data());
+  const click_brn_iapp_ho*  pHo        = &pIapp->payload.ho;
 
   BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_HOR != pIapp->type,
     ("got invalid iapp type %d", pIapp->type), if (p) p->kill(); return;);
@@ -222,10 +222,10 @@ BrnIappNotifyHandler::send_handover_notify(
     apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
 
   // push out
-  Packet* p = _encap->create_handover_notify(client, apNew, apOld, seq_no);
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  WritablePacket* p = _encap->create_handover_notify(client, apNew, apOld, seq_no);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   pIapp->payload_type = CLICK_BRN_IAPP_PAYLOAD_EMPTY;
 
 
@@ -236,7 +236,9 @@ BrnIappNotifyHandler::send_handover_notify(
 
   NotifyTimer timer = NotifyTimer(t, p);
   timer.inc_num_notifies();
-  assert(_notifytimer.insert(client, timer) == true);
+  if ( ! _notifytimer.insert(client, timer)) {
+    BRN_ERROR("Insert of Client failed");
+  }
 
   //
   t->schedule_now();
@@ -269,7 +271,7 @@ void
 BrnIappNotifyHandler::run_timer(Timer *t) {
   assert(_notifytimer.size() > 0);
 
-  for (NotifyTimersIter i = _notifytimer.begin(); i.live(); i++) {
+  for (NotifyTimersIter i = _notifytimer.begin(); i.live();++i) {
     NotifyTimer* timer = &i.value();
     if (timer->get_timer() == t) {
       // found timer
@@ -301,7 +303,7 @@ enum {H_DEBUG};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappNotifyHandler *td = (BrnIappNotifyHandler *)e;
+  BrnIappNotifyHandler *td = reinterpret_cast<BrnIappNotifyHandler *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -314,7 +316,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappNotifyHandler *f = (BrnIappNotifyHandler *)e;
+  BrnIappNotifyHandler *f = reinterpret_cast<BrnIappNotifyHandler *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
@@ -331,7 +333,9 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 BrnIappNotifyHandler::cleanup_timer_for_client(EtherAddress client) {
   NotifyTimer timer = _notifytimer.find(client);
-  assert(_notifytimer.remove(client) == true);
+  if ( ! _notifytimer.remove(client)) {
+    BRN_ERROR("Remove of client failed");
+  }
   timer.get_packet()->kill();
   delete timer.get_timer();
 }

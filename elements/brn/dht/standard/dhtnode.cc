@@ -8,6 +8,9 @@
 
 CLICK_DECLS
 DHTnode::DHTnode():
+  _digest_length(DEFAULT_DIGEST_LENGTH),
+  _md5_digest32(NULL),
+  _ether_addr(EtherAddress()),
   _status(STATUS_UNKNOWN),
   _last_ping(Timestamp(0)),
   _failed_ping(0),
@@ -16,12 +19,13 @@ DHTnode::DHTnode():
   _rtt(0),
   _extra(NULL)
 {
-  _ether_addr = EtherAddress();
   memset(_md5_digest, 0, sizeof(_md5_digest));
-  _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
 DHTnode::DHTnode(EtherAddress addr):
+  _digest_length(DEFAULT_DIGEST_LENGTH),
+  _md5_digest32(NULL),
+  _ether_addr(addr),
   _status(STATUS_UNKNOWN),
   _last_ping(Timestamp(0)),
   _failed_ping(0),
@@ -30,15 +34,14 @@ DHTnode::DHTnode(EtherAddress addr):
   _rtt(0),
   _extra(NULL)
 {
-  _ether_addr = addr;
-
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(addr.data()).c_str(),
     strlen((const char*)MD5::convert_ether2hex(addr.data()).c_str()), _md5_digest );
-
-  _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
 DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid):
+  _digest_length(DEFAULT_DIGEST_LENGTH),
+  _md5_digest32(NULL),
+  _ether_addr(addr),
   _status(STATUS_UNKNOWN),
   _last_ping(Timestamp(0)),
   _failed_ping(0),
@@ -47,13 +50,13 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid):
   _rtt(0),
   _extra(NULL)
 {
-  _ether_addr = addr;
-
   memcpy(_md5_digest, nodeid, 16);
-  _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
 DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, uint16_t digest_length):
+  _digest_length(digest_length),
+  _md5_digest32(NULL),
+  _ether_addr(addr),
   _status(STATUS_UNKNOWN),
   _last_ping(Timestamp(0)),
   _failed_ping(0),
@@ -62,10 +65,7 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, uint16_t digest_length):
   _rtt(0),
   _extra(NULL)
 {
-  _ether_addr = addr;
-
   memset(_md5_digest, 0, sizeof(_md5_digest));
-  _digest_length = digest_length;
 
   if ( (nodeid != NULL) && (_digest_length > 0) ) {
     if ( ( _digest_length & 7 ) == 0 )
@@ -244,21 +244,21 @@ DHTnode::clone(void)
 }
 
 bool
-DHTnode::equals(DHTnode *n) {
+DHTnode::equals(const DHTnode *n) const {
   if ( n == NULL) return false;
 
   return ( (_digest_length == n->_digest_length) && (memcmp(_md5_digest, n->_md5_digest, 16) == 0) );
 }
 
 bool
-DHTnode::equalsID(DHTnode *n) {
+DHTnode::equalsID(DHTnode *n) const {
   if ( n == NULL) return false;
 
   return ( (_digest_length == n->_digest_length) && (memcmp(_md5_digest, n->_md5_digest, 16) == 0) );
 }
 
 bool
-DHTnode::equalsEtherAddress(DHTnode *n) {
+DHTnode::equalsEtherAddress(DHTnode *n) const {
   if ( n == NULL) return false;
 
   return ( memcmp(_ether_addr.data(), n->_ether_addr.data(), 6) == 0 );

@@ -141,7 +141,7 @@ public:
 
     link_entry() { }
 
-    link_entry(EtherAddress ether) {
+    explicit link_entry(EtherAddress ether) : _num_rates(0),_flags(0),_seq(0),_age(0) {
       memcpy(_ether, ether.data(), 6);
     }
   } CLICK_SIZE_PACKED_ATTRIBUTE;
@@ -171,7 +171,8 @@ public:
             uint16_t r,
             uint16_t sz,
             uint8_t p,
-            uint8_t rx_p) : _when(t), _seq(s), _rate(r), _size(sz), _power(p), _rx_power(rx_p) { }
+            uint8_t rx_p) : _when(t), _seq(s), _rate(r), _size(sz), _power(p), _rx_power(rx_p), _brn_rate_size_index(0),
+                            _reserved(0) { }
   };
 
 
@@ -203,12 +204,13 @@ public:
         _ether(et),
         _period(per),
         _tau(t),
+        _num_probes(0),
         _seq(0)
     {
       _tau_ts = Timestamp::make_msec(_tau);
     }
 
-    probe_list_t() : _period(0), _tau(0), _seq(0) {
+    probe_list_t() : _ether(), _period(0), _tau(0), _num_probes(0), _seq(0) {
       _tau_ts = Timestamp::make_msec(_tau);
     }
 
@@ -341,12 +343,12 @@ public:
     HandlerInfo(void *element,int protocol,
                 int32_t (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size),
                 int32_t (*rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour,
-                                                                            uint8_t fwd_rate, uint8_t rev_rate)) {
-
-      _element = element;
-      _protocol = protocol;
-      _tx_handler = tx_handler;
-      _rx_handler = rx_handler;
+                                                                            uint8_t fwd_rate, uint8_t rev_rate)) :
+      _element(element),
+      _protocol(protocol),
+      _tx_handler(tx_handler),
+      _rx_handler(rx_handler)
+    {
     }
   };
 
@@ -397,7 +399,7 @@ public:
   int _next_neighbor_to_add;
 
   void get_neighbors(Vector<EtherAddress> *ether_addrs) {
-    for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++)
+    for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); ++i)
       ether_addrs->push_back(i.key());
   }
 
@@ -412,7 +414,7 @@ public:
 
   void send_probe_hook();
   void send_probe();
-  static void static_send_hook(Timer *, void *e) { ((BRN2LinkStat *) e)->send_probe_hook(); }
+  static void static_send_hook(Timer *, void *e) { (reinterpret_cast<BRN2LinkStat *>(e))->send_probe_hook(); }
 
   Timer _timer;
   Timer _stale_timer;

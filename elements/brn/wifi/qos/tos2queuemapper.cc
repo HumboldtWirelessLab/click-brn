@@ -48,6 +48,7 @@ CLICK_DECLS
 
 
 Tos2QueueMapper::Tos2QueueMapper():
+    _device(NULL),
     _current_scheme(NULL),
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
     _mac_bo_scheme(MAC_BACKOFF_SCHEME_DEFAULT),
@@ -56,6 +57,13 @@ Tos2QueueMapper::Tos2QueueMapper():
     _qm_diff_queue_val(1),
     _qm_diff_minmaxcw_mode(QUEUEMAPPING_DIFF_MINMAXCW_DEFAULT),
     _qm_diff_minmaxcw_val(1),
+    no_queues(0),
+    _cwmin(NULL),
+    _cwmax(NULL),
+    _aifs(NULL),
+    _queue_usage(NULL),
+    _bo_exp(NULL),
+    _bo_usage_usage(NULL),
     _bo_usage_max_no(16),
     _last_bo_usage(NULL),
     _all_bos(NULL),
@@ -146,7 +154,7 @@ Tos2QueueMapper::initialize (ErrorHandler *errh)
 BackoffScheme *
 Tos2QueueMapper::get_bo_scheme(uint32_t strategy)
 {
-  return (BackoffScheme *)_scheme_list.get_scheme(strategy);
+  return reinterpret_cast<BackoffScheme *>(_scheme_list.get_scheme(strategy));
 }
 
 void
@@ -560,7 +568,7 @@ Tos2QueueMapper::stats()
     sa << "\t\t<strategy name=\"BoOff\" id=\"0\" active=\"" << (int)(_bqs_strategy==0?1:0) << "\" />\n";
     sa << "\t\t<strategy name=\"BoDirect\" id=\"1\" active=\"" << (int)(_bqs_strategy==1?1:0) << "\" />\n";
   for ( uint32_t i = 2; i <= _scheme_list._max_scheme_id; i++) {
-    Element *e = (Element *)_scheme_list.get_scheme(i);
+    Element *e = reinterpret_cast<Element *>(_scheme_list.get_scheme(i));
     if ( e == NULL ) continue;
     sa << "\t\t<strategy name=\"" << e->class_name() << "\" id=\"" << i;
     sa << "\" active=\"" << (int)(i==_bqs_strategy?1:0) << "\" />\n";
@@ -646,7 +654,7 @@ Tos2QueueMapper::test()
 
 static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 {
-  Tos2QueueMapper *td = (Tos2QueueMapper *)e;
+  Tos2QueueMapper *td = reinterpret_cast<Tos2QueueMapper *>(e);
   switch ((uintptr_t) thunk) {
     case H_TOS2QUEUEMAPPER_STATS:
       return td->stats();
@@ -660,7 +668,7 @@ static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 
 static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  	Tos2QueueMapper *f = (Tos2QueueMapper *)e;
+  	Tos2QueueMapper *f = reinterpret_cast<Tos2QueueMapper *>(e);
   	String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);

@@ -37,7 +37,7 @@
 
 CLICK_DECLS
 
-BRNGatewaySupervisor::BRNGatewaySupervisor() {}
+BRNGatewaySupervisor::BRNGatewaySupervisor(): _debug(0),_gw(NULL){}
 
 BRNGatewaySupervisor::~BRNGatewaySupervisor() {}
 
@@ -64,7 +64,7 @@ BRNGatewaySupervisor::initialize (ErrorHandler *) {
 /* handle incoming packets */
 void
 BRNGatewaySupervisor::push(int port, Packet *p) {
-  click_ether* ether = (click_ether*) p->ether_header();
+  const click_ether* ether = reinterpret_cast<const click_ether*>( p->ether_header());
 
 	BRN_CHECK_EXPR_RETURN(ether == NULL,
    ("Ether header not available. Killing packet."), p->kill(); return;);

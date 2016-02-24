@@ -69,7 +69,7 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
         CLASS_BRN_DEBUG("DHTOperationHandler: Read/write");
         CLASS_BRN_DEBUG("DHTOperationHandler: this doesn't work: read and write:check");
         result = dht_read(op);
-        result = dht_write(op);
+        if ( result == 0 ) result = dht_write(op);
       }
       else
       {
@@ -84,7 +84,7 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
         if ( ( op->header.operation & OPERATION_REMOVE ) == OPERATION_REMOVE )
         {
           result = dht_read(op);
-          result = dht_remove(op);
+          if ( result == 0 ) result = dht_remove(op);
           return result;
         }
         else

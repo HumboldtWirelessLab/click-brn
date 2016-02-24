@@ -27,9 +27,12 @@
 CLICK_DECLS
 
 DHTRoutingOmni::DHTRoutingOmni():
+  _linkstat(NULL),
   _ping_timer(static_ping_timer_hook,this),
   _lookup_timer(static_lookup_timer_hook,this),
-  _packet_buffer_timer(static_packet_buffer_timer_hook,this)
+  _packet_buffer_timer(static_packet_buffer_timer_hook,this),
+  _update_interval(0),
+  _start_delay(0)
 {
   DHTRouting::init();
 }
@@ -42,9 +45,9 @@ void *
 DHTRoutingOmni::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingOmni") == 0)
-    return (DHTRoutingOmni *) this;
+    return dynamic_cast<DHTRoutingOmni *>(this);
   else if (strcmp(name, "DHTRouting") == 0)
-         return (DHTRouting *) this;
+         return dynamic_cast<DHTRouting *>(this);
        else
          return NULL;
 }
@@ -88,7 +91,7 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
 static int
 tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*size*/)
 {
-  DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
+  DHTRoutingOmni *dhtro = reinterpret_cast<DHTRoutingOmni*>(element);
   if ( dhtro == NULL ) return 0;
 //  return lph->lpSendHandler(buffer, size);
   return 0;
@@ -97,7 +100,7 @@ tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*s
 static int
 rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
+  DHTRoutingOmni *dhtro = reinterpret_cast<DHTRoutingOmni*>(element);
   if ( dhtro == NULL ) return 0;
 //  return lph->lpReceiveHandler(buffer, size);*/
 
@@ -130,30 +133,27 @@ DHTRoutingOmni::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Timer is NULL");
   else {
-    ((DHTRoutingOmni*)f)->nodeDetection();
-    ((DHTRoutingOmni*)f)->set_lookup_timer();
+   (reinterpret_cast<DHTRoutingOmni*>(f))->nodeDetection();
+   (reinterpret_cast<DHTRoutingOmni*>(f))->set_lookup_timer();
   }
 }
 
 void
 DHTRoutingOmni::static_packet_buffer_timer_hook(Timer *t, void *f)
 {
-  DHTRoutingOmni *dht;
-  PacketSendBuffer::BufferedPacket *bpacket;
-  int next_p;
-
-  dht = (DHTRoutingOmni*)f;
+  DHTRoutingOmni *dht = reinterpret_cast<DHTRoutingOmni*>(f);
 
   if ( t == NULL ) {
     click_chatter("Timer is NULL");
     return;
   }
-  bpacket = dht->packetBuffer.getNextBufferedPacket();
+
+  PacketSendBuffer::BufferedPacket *bpacket = dht->packetBuffer.getNextBufferedPacket();
 
   if ( bpacket != NULL )
   {
     dht->output(bpacket->_port).push(bpacket->_p);
-    next_p = dht->packetBuffer.getTimeToNext();
+    int next_p = dht->packetBuffer.getTimeToNext();
     if ( next_p >= 0 )
       dht->_packet_buffer_timer.schedule_after_msec( next_p );
 
@@ -165,7 +165,7 @@ void
 DHTRoutingOmni::static_ping_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Timer is NULL");
-  else ((DHTRoutingOmni*)f)->ping_timer();
+  else(reinterpret_cast<DHTRoutingOmni*>(f))->ping_timer();
 }
 
 void
@@ -213,7 +213,7 @@ DHTRoutingOmni::push( int port, Packet *packet )
 void
 DHTRoutingOmni::handle_hello(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  const click_ether *ether_header = reinterpret_cast<const click_ether*>(p_in->ether_header());
   DHTnodelist dhtlist;
 
   EtherAddress ea;
@@ -235,8 +235,7 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
 void
 DHTRoutingOmni::handle_hello_request(Packet *p_in)
 {
-  WritablePacket *p,*big_p; 
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  const click_ether *ether_header = reinterpret_cast<const click_ether*>(p_in->ether_header());
   DHTnodelist dhtlist;
 
   EtherAddress ea;
@@ -250,8 +249,8 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
   if ( is_me(ether_header->ether_dhost) )
   {
     node = dhtlist.get_dhtnode(0);
-    p = DHTProtocolOmni::new_hello_packet(&(_me->_ether_addr));
-    big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
+    WritablePacket *p = DHTProtocolOmni::new_hello_packet(&(_me->_ether_addr));
+    WritablePacket *big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
 
     if ( big_p == NULL ) {
       BRN_WARN("Push failed. No memory left ??");
@@ -272,7 +271,7 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
 void
 DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  const click_ether *ether_header = reinterpret_cast<const click_ether*>(p_in->ether_header());
   DHTnodelist dhtlist;
   EtherAddress ea;
 
@@ -290,7 +289,7 @@ DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 void
 DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  const click_ether *ether_header = reinterpret_cast<const click_ether*>(p_in->ether_header());
   DHTnodelist dhtlist;
 
   BRN_DEBUG("Got Route Table reply from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
@@ -305,13 +304,11 @@ void
 DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
 {
   WritablePacket *p,*big_p;
-  DHTnode *node;
   DHTnodelist tmp_list;
-  int jitter, next_p;
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
-    node = _dhtnodes.get_dhtnode(i);
+    DHTnode *node = _dhtnodes.get_dhtnode(i);
     if ( ( node->_status == status ) || ( status == STATUS_UNKNOWN ) )
     {
       if ( node->_status == STATUS_NEW ) node->_status = STATUS_OK;
@@ -323,7 +320,7 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
         p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
         big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
 
-        jitter = (unsigned int ) ( click_random() % 50 );
+        int jitter = (unsigned int ) ( click_random() % 50 );
         packetBuffer.addPacket_ms(big_p, jitter, 0);
 
         tmp_list.clear();
@@ -336,13 +333,13 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
     p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
     big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
 
-    jitter = (unsigned int ) ( click_random() % 50 );
+    int jitter = (unsigned int ) ( click_random() % 50 );
     packetBuffer.addPacket_ms(big_p, jitter, 0);
 
     tmp_list.clear();
   }
 
-  next_p = packetBuffer.getTimeToNext();
+  int next_p = packetBuffer.getTimeToNext();
   _packet_buffer_timer.schedule_after_msec( next_p );
 
 }
@@ -351,14 +348,13 @@ void
 DHTRoutingOmni::send_routetable_request(EtherAddress *dst)
 {
   WritablePacket *p,*big_p;
-  DHTnode *node;
   DHTnodelist tmp_list;
 
   BRN_DEBUG("%s: Send request to %s",_me->_ether_addr.unparse().c_str(), dst->unparse().c_str());
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
-    node = _dhtnodes.get_dhtnode(i);
+    DHTnode *node = _dhtnodes.get_dhtnode(i);
     if ( node->_status == STATUS_OK )
     {
 
@@ -440,17 +436,13 @@ DHTRoutingOmni::get_responsibly_node(md5_byte_t *key, int replica_number)
 void
 DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
 {
-  DHTnode *node, *new_node;
   int count_newnodes = 0;
   int add_nodes = 0;
-  Timestamp now,n_age;
-
-  now = Timestamp::now();
 
   for ( int i = 0; i < dhtlist->size(); i++)
   {
-    new_node = dhtlist->get_dhtnode(i);
-    node = _dhtnodes.get_dhtnode(new_node);
+    DHTnode *new_node = dhtlist->get_dhtnode(i);
+    DHTnode *node = _dhtnodes.get_dhtnode(new_node);
 
     if ( node == NULL )
     {
@@ -611,15 +603,14 @@ String
 DHTRoutingOmni::routing_info(void)
 {
   StringAccum sa;
-  DHTnode *node;
-  char digest[16*2 + 1];
 
   sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << " )\n";
   sa << "DHT-Nodes (" << (int)_dhtnodes.size() << ") :\n";
 
   for( int i = 0; i < _dhtnodes.size(); i++ )
   {
-    node = _dhtnodes.get_dhtnode(i);
+    DHTnode *node = _dhtnodes.get_dhtnode(i);
+    char digest[16*2 + 1];
 
     sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
@@ -647,7 +638,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingOmni *dht_omni = (DHTRoutingOmni *)e;
+  DHTRoutingOmni *dht_omni = reinterpret_cast<DHTRoutingOmni *>(e);
 
   switch ((uintptr_t) thunk)
   {

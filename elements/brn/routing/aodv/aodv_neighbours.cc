@@ -14,7 +14,8 @@
 
 CLICK_DECLS
 AODVNeighbours::AODVNeighbours():
-	mySequenceNumber(0)
+	mySequenceNumber(0),
+	watcher(NULL)
 {
 }
 
@@ -35,7 +36,7 @@ void AODVNeighbours::setRouteUpdateWatcher(AODVRouteUpdateWatcher* w){
 }
 
 void AODVNeighbours::handleExpiry(Timer*, void * data){
-	TimerData * timerdata = (TimerData*) data;
+	TimerData * timerdata = reinterpret_cast<TimerData*>(data);
 	assert(timerdata);
 	timerdata->neighbours->expire(*timerdata->ip,timerdata);
 }

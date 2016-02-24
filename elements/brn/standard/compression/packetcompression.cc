@@ -41,9 +41,13 @@
 CLICK_DECLS
 
 PacketCompression::PacketCompression() :
- _compression(COMPRESSION_TYPE_LZW)
+  cmode(0),
+ _compression(COMPRESSION_TYPE_LZW),
+ _strip_len(0),
+ ethertype(0)
 {
   BRNElement::init();
+  memset(compbuf,0,sizeof(compbuf));
 }
 
 PacketCompression::~PacketCompression()
@@ -137,7 +141,7 @@ PacketCompression::push( int /*port*/, Packet *packet )
           ch->uncompressed_len = htons(oldlen);
           p = BRNProtocol::add_brn_header(p, BRN_PORT_COMPRESSION, BRN_PORT_COMPRESSION, 255, 0);
           p = p->push(sizeof(click_ether));
-          click_ether *ether = (click_ether *)p->data();
+          click_ether *ether = reinterpret_cast<click_ether *>(p->data());
           memcpy(ether->ether_shost, &macbuf[6], 6);
           memcpy(ether->ether_dhost, macbuf, 6);
           ether->ether_type = htons(ETHERTYPE_BRN);

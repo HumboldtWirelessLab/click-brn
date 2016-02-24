@@ -39,7 +39,7 @@
 CLICK_DECLS
 
 BRN2Arp::BRN2Arp() :
-  _debug(BrnLogger::DEFAULT)
+  _debug(BrnLogger::DEFAULT), count_arp_reply(0),_dhcpsubnetlist(NULL),_vlantable(NULL),_dht_storage(NULL)
 {
 
 }
@@ -87,7 +87,7 @@ BRN2Arp::initialize(ErrorHandler *)
 
 static void callback_func(void *e, DHTOperation *op)
 {
-  BRN2Arp *s = (BRN2Arp *)e;
+  BRN2Arp *s = reinterpret_cast<BRN2Arp *>(e);
 
   s->handle_dht_reply(op);
 }
@@ -120,8 +120,8 @@ BRN2Arp::push( int port, Packet *packet )
 int
 BRN2Arp::handle_arp_request(Packet *p)
 {
-  click_ether *ethp = (click_ether *) p->data();                  //etherhaeder rausholen
-  click_ether_arp *arpp = (click_ether_arp *) (ethp + 1);         //arpheader rausholen
+  const click_ether *ethp = reinterpret_cast<const click_ether *>( p->data());                  //etherhaeder rausholen
+  const click_ether_arp *arpp = reinterpret_cast<const click_ether_arp *>( (ethp + 1));         //arpheader rausholen
 
   if ( ntohs(arpp->ea_hdr.ar_op) == ARPOP_REQUEST )
   {
@@ -238,7 +238,7 @@ BRN2Arp::handle_dht_reply(DHTOperation *op)
 
 
 int
-BRN2Arp::send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add, uint8_t *d_ip_add )
+BRN2Arp::send_arp_reply( const uint8_t *s_hw_add, const uint8_t *s_ip_add, const uint8_t *d_hw_add, const uint8_t *d_ip_add )
 {
   count_arp_reply++;
 
@@ -252,9 +252,9 @@ BRN2Arp::send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add
   memset(p->data(), '\0', p->length());
 
   //pointer auf Ether-header holen
-  e = (click_ether *) p->data();
+  e = reinterpret_cast<click_ether *>( p->data());
   //Pointer auf BRN2Arp-Header holen
-  ea = (click_ether_arp *) (e + 1);
+  ea = reinterpret_cast<click_ether_arp *>( (e + 1));
 
   //alte Quelle ist neues Ziel des Etherframes
   memcpy(e->ether_dhost, d_hw_add, 6);
@@ -290,20 +290,20 @@ BRN2Arp::send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add
 }
 
 int 
-BRN2Arp::send_arp_request( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add, uint8_t *d_ip_add )
+BRN2Arp::send_arp_request(const uint8_t *s_hw_add, const uint8_t *s_ip_add, const uint8_t *d_hw_add, const uint8_t *d_ip_add )
 {
   WritablePacket *q = Packet::make(sizeof(click_ether) + sizeof(click_ether_arp));
   BRN_CHECK_EXPR_RETURN(!q,
     ("cannot make packet"), return (-1));
   memset(q->data(), '\0', q->length());
 
-  click_ether *e = (click_ether *) q->data();
+  click_ether *e = reinterpret_cast<click_ether *>( q->data());
   q->set_ether_header(e);
   memcpy(e->ether_dhost, "\xff\xff\xff\xff\xff\xff", 6);
   memcpy(e->ether_shost, s_hw_add, 6);
   e->ether_type = htons(ETHERTYPE_ARP);
 
-  click_ether_arp *ea = (click_ether_arp *) (e + 1);
+  click_ether_arp *ea = reinterpret_cast<click_ether_arp *>( (e + 1));
   ea->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);
   ea->ea_hdr.ar_pro = htons(ETHERTYPE_IP);
   ea->ea_hdr.ar_hln = 6;
@@ -335,7 +335,7 @@ enum {H_DEBUG, H_SENDARP};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BRN2Arp *td = (BRN2Arp *)e;
+  BRN2Arp *td = reinterpret_cast<BRN2Arp *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -350,7 +350,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BRN2Arp *f = (BRN2Arp *)e;
+  BRN2Arp *f = reinterpret_cast<BRN2Arp *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

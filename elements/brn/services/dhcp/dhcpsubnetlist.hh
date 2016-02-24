@@ -50,21 +50,22 @@ class BRN2DHCPSubnetList : public Element {
 
     DHCPSubnet( EtherAddress me, IPAddress net_address, IPAddress subnet_mask, IPAddress broadcast_address,
                 IPAddress router, IPAddress server_ident, IPAddress name_server, String domain_name, String sname,
-                String bootfilename, String time_offset, uint32_t default_lease, uint16_t vlan ) {
-       _me = me;
-       _net_address = net_address;
-       _subnet_mask = subnet_mask;
-       _broadcast_address = broadcast_address;
-       _router = router;                  //IP
-       _server_ident = server_ident;      //IP DHCP-Server
-       _name_server = name_server;        //IP
-       _domain_name = domain_name;
-       _sname = sname;                    //servername
-       _bootfilename = bootfilename;      //name des Bootfiles
-       _time_offset = time_offset;
-       _default_lease = default_lease;
-       _vlan = vlan;
-     }
+                String bootfilename, String time_offset, uint32_t default_lease, uint16_t vlan ):
+                _me(me),
+                _net_address(net_address),
+                _subnet_mask(subnet_mask),
+                _broadcast_address(broadcast_address),
+                _router(router),                  //IP
+                _server_ident(server_ident),      //IP DHCP-Server
+                _name_server(name_server),        //IP
+                _domain_name(domain_name),
+                _sname(sname),                    //servername
+                _bootfilename(bootfilename),      //name des Bootfiles
+                _time_offset(time_offset),
+                _default_lease(default_lease),
+                _vlan(vlan)
+    {
+    }
   };
 
   typedef Vector<DHCPSubnet> SubnetList;

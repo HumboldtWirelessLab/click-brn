@@ -53,9 +53,8 @@ class BRN2DNSClient : public BRNElement {
     String _hostname;
     IPAddress _addr;
 
-    DNSClientInfo(String hostname)
+    explicit DNSClientInfo(String hostname): _hostname(hostname), _addr()
     {
-      _hostname = hostname;
     }
 
     ~DNSClientInfo()

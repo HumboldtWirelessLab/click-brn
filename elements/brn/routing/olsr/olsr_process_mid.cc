@@ -10,7 +10,7 @@
 CLICK_DECLS
 
 OLSRProcessMID::OLSRProcessMID()
-
+ : _interfaceInfo(NULL),_routingTable(NULL)
 {
 }
 
@@ -37,10 +37,9 @@ OLSRProcessMID::configure(Vector<String> &conf, ErrorHandler *errh)
 
 void
 OLSRProcessMID::push(int, Packet *packet){
- 
+
   bool interface_changed = false;
   msg_hdr_info msg_info;
-  interface_data* data;
   int mid_msg_offset, bytes_left;
   struct timeval now;
 
@@ -51,9 +50,9 @@ OLSRProcessMID::push(int, Packet *packet){
   bytes_left = msg_info.msg_size - sizeof(olsr_msg_hdr);
 
   do{
-    in_addr *address = (in_addr *) (packet->data() + mid_msg_offset);
+    const in_addr *address = reinterpret_cast<const in_addr *>( (packet->data() + mid_msg_offset));
     IPAddress interface_address = IPAddress(*address);
-    data = _interfaceInfo->find_interface(interface_address);
+    interface_data* data = _interfaceInfo->find_interface(interface_address);
     
     if ( data == 0 ){
       _interfaceInfo->add_interface(interface_address, msg_info.originator_address, (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval());

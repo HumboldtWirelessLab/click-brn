@@ -18,9 +18,11 @@ CLICK_DECLS
 
 DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
+  _key(0),_interval(0),_mode(0),
   _request_timer(static_request_timer_hook,this),
   _starttime(0),
   _startkey(0),
+  _countkey(0),
   _write(false),
   _read(true),
   op_rep(0),
@@ -40,8 +42,10 @@ DHTStorageTest::DHTStorageTest():
   timeout_time(0),
   max_timeout_time(0),
   _retries(0),
-  _replica(0)
-
+  _replica(0),
+  last_read(false),
+  last_timeout(false),
+  last_not_found(false)
 {
   BRNElement::init();
 }
@@ -106,7 +110,7 @@ int DHTStorageTest::initialize(ErrorHandler *)
 void
 DHTStorageTest::callback_func(void *e, DHTOperation *op)
 {
-  DHTStorageTest *s = (DHTStorageTest *)e;
+  DHTStorageTest *s = reinterpret_cast<DHTStorageTest *>(e);
   s->callback(op);
 }
 
@@ -174,7 +178,7 @@ DHTStorageTest::callback(DHTOperation *op) {
 void
 DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
 {
-  DHTStorageTest *s = (DHTStorageTest *)f;
+  DHTStorageTest *s = reinterpret_cast<DHTStorageTest *>(f);
   s->request_timer_hook(t);
 }
 
@@ -334,7 +338,7 @@ DHTStorageTest::print_test_results()
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTStorageTest *dht_str = (DHTStorageTest *)e;
+  DHTStorageTest *dht_str = reinterpret_cast<DHTStorageTest *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -349,7 +353,7 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
 {
-  DHTStorageTest *dht_str = (DHTStorageTest *)e;
+  DHTStorageTest *dht_str = reinterpret_cast<DHTStorageTest *>(e);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -360,9 +364,9 @@ write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
     case H_USER_TEST: {
       String key;
       String value;
-      uint8_t mode;
 
       if ( args.size() > 1 ) {
+        uint8_t mode;
         if ( args[0] == String("write") ) mode = MODE_INSERT;
         else if (args[0] == String("read")) mode = MODE_READ;
         else mode = MODE_APPEND;

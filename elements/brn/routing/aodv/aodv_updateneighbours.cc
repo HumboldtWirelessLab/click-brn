@@ -43,7 +43,7 @@ void AODVUpdateNeighbours::push (int port, Packet * packet){
 		case AODV_RREP_MESSAGE: //RREP or HELLO
 			{
 			WritablePacket * writable = packet->uniqueify();
-			aodv_rrep_header * rrep = (aodv_rrep_header*) (writable->data() + aodv_headeroffset);
+			aodv_rrep_header * rrep = reinterpret_cast<aodv_rrep_header*>( (writable->data() + aodv_headeroffset));
 		
 			// RERRs aren't allowed here
 			assert(rrep->type == 2);
@@ -65,7 +65,7 @@ void AODVUpdateNeighbours::push (int port, Packet * packet){
 			break;
 			}
 		case AODV_RREQ_MESSAGE: //RREQ
-			//aodv_rreq_header * header = (aodv_rreq_header*) (packet->data() + aodv_headeroffset);
+			//aodv_rreq_header * header = reinterpret_cast<aodv_rreq_header*>( (packet->data() + aodv_headeroffset));
 			//click_chatter("AODV rreq packet received from %s with rreqid %u", IPAddress(header->originator).s().c_str(), ntohl(header->rreqid));
 			
 			// RFC 6.5: create or update route to previous hop ...

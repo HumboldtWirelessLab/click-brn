@@ -44,18 +44,16 @@ public:
 	int initialize(ErrorHandler* errh);
 
 	void jmp_next_session();
-	static void session_trigger(Timer *, void *element) { ((KeyServer *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { (reinterpret_cast<KeyServer *>(element))->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *, void *element) { ((KeyServer *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { (reinterpret_cast<KeyServer *>(element))->jmp_next_epoch(); }
 
 	void prepare_new_epoch();
 
 	String stats();
 
 private:
-	int _debug;
-
 	BRN2NodeIdentity *_me;
 	Element *_wepencap;
 	Element *_wepdecap;

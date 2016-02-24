@@ -18,7 +18,9 @@
 CLICK_DECLS
 
 MPRFlooding::MPRFlooding():
+  _me(NULL),_fhelper(NULL),_flooding_db(NULL),
   _max_metric_to_neighbor(MPR_DEFAULT_NB_METRIC),
+  _min_pdr_to_neighbor(0),
   _update_interval(MPR_DEFAULT_UPDATE_INTERVAL),
   _fix_mpr(false),
   _last_bcast_id(-1),
@@ -35,9 +37,9 @@ void *
 MPRFlooding::cast(const char *name)
 {
   if (strcmp(name, "MPRFlooding") == 0)
-    return (MPRFlooding *) this;
+    return dynamic_cast<MPRFlooding *>(this);
   else if (strcmp(name, "FloodingPolicy") == 0)
-         return (FloodingPolicy *) this;
+         return dynamic_cast<FloodingPolicy *>(this);
        else
          return NULL;
 }
@@ -142,8 +144,6 @@ MPRFlooding::do_forward(EtherAddress *src, EtherAddress */*fwd*/, const EtherAdd
                         uint32_t forward_count, uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                         Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack)
 {
-  EtherAddress ea;
-  uint32_t i;
   bool fwd = false;
 
   if ( forward_count > 0 ) return false;
@@ -152,7 +152,9 @@ MPRFlooding::do_forward(EtherAddress *src, EtherAddress */*fwd*/, const EtherAdd
 
   if ( rx_data_size == 0 ) fwd = true;
   else {
-    for(i = 0; (i < rx_data_size) && (fwd == false);) {
+    uint32_t i = 0;
+
+    for(; (i < rx_data_size) && (fwd == false);) {
 
       struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)&(rxdata[i]);
 
@@ -165,7 +167,7 @@ MPRFlooding::do_forward(EtherAddress *src, EtherAddress */*fwd*/, const EtherAdd
         uint32_t mpr_data_idx = sizeof(struct click_brn_bcast_extra_data);
 
         for(;mpr_data_idx < extdat->size; mpr_data_idx += 6, rxdata_idx += 6 ) {
-          ea = EtherAddress(&(rxdata[rxdata_idx]));
+          EtherAddress ea = EtherAddress(&(rxdata[rxdata_idx]));
           if ( _me->isIdentical(&ea) || (ea == brn_etheraddress_broadcast)) {
             fwd = true;
             break;
@@ -175,8 +177,10 @@ MPRFlooding::do_forward(EtherAddress *src, EtherAddress */*fwd*/, const EtherAdd
       } else i += extdat->size;
     }
 
-    if ( i == rx_data_size ) fwd = true;
-    else if ( i > rx_data_size ) {
+    assert(i <= rx_data_size);
+
+    if ( i == rx_data_size ) fwd = true; //no BCAST_EXTRA_DATA_MPR found, so forward to be sure
+    else if ( i > rx_data_size ) {       //header is corrupted -> forward to be sure
       BRN_ERROR("Bcast-Header-Error");
       fwd = true;
     }
@@ -278,7 +282,7 @@ MPRFlooding::set_mpr(HashMap<EtherAddress,EtherAddress> *known_nodes)
             for ( int j = 0; j < adj_mat_index; j++ )
               new_adj_mat[i*adj_mat_size + j] = adj_mat[i*adj_mat_used + j];
 
-          delete adj_mat;
+          delete[] adj_mat;
           adj_mat = new_adj_mat;
         }
 
@@ -504,7 +508,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  MPRFlooding *mprfl = (MPRFlooding *)e;
+  MPRFlooding *mprfl = reinterpret_cast<MPRFlooding *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -516,7 +520,7 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  MPRFlooding *mprfl = (MPRFlooding *)e;
+  MPRFlooding *mprfl = reinterpret_cast<MPRFlooding *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((uintptr_t) vparam)

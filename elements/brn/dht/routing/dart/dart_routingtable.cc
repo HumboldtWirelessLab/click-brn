@@ -16,8 +16,13 @@
 CLICK_DECLS
 
 DartRoutingTable::DartRoutingTable():
-  _validID(false)
+  _me(NULL),
+  _validID(false),
+  _parent(NULL),
+  _ds(NULL),
+  _debug(BrnLogger::DEFAULT)
 {
+  memcpy(_ident,EtherAddress().data(),6);
 }
 
 DartRoutingTable::~DartRoutingTable()
@@ -47,7 +52,6 @@ int
 DartRoutingTable::initialize(ErrorHandler *)
 {
   return 0;
-  memcpy(_ident,EtherAddress().data(),6);
 }
 
 /****************************************************************************************
@@ -136,10 +140,8 @@ DartRoutingTable::add_neighbour(DHTnode *node)
 int
 DartRoutingTable::add_nodes(DHTnodelist *nodes)
 {
-  DHTnode *n;
-
   for ( int i = 0; i < nodes->size(); i++ ) {
-    n = nodes->get_dhtnode(i);
+    DHTnode *n = nodes->get_dhtnode(i);
     add_node(n);
   }
 
@@ -185,9 +187,8 @@ DartRoutingTable::add_update_callback(void (*info_func)(void*,int), void *info_o
 void
 DartRoutingTable::update_callback(int status)
 {
-  CallbackFunction *cbf;
   for ( int i = 0; i < _callbacklist.size(); i++ ) {
-    cbf = _callbacklist[i];
+    CallbackFunction *cbf = _callbacklist[i];
 
     (*cbf->_info_func)(cbf->_info_obj, status);
   }
@@ -239,7 +240,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DartRoutingTable *drt = (DartRoutingTable *)e;
+  DartRoutingTable *drt = reinterpret_cast<DartRoutingTable *>(e);
 
   switch ((uintptr_t) thunk)
   {

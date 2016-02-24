@@ -29,10 +29,9 @@
 CLICK_DECLS
 
 ShamirClient::ShamirClient()
-    : _debug(false)
-{
+    : _modulus(NULL)
+,_threshold(0),_bn_ctx(NULL){
     BRNElement::init();
-    _modulus = NULL;
 }
 
 ShamirClient::~ShamirClient() {
@@ -90,7 +89,6 @@ int ShamirClient::send_request() {
 
 void ShamirClient::combine() {
     BIGNUM *tmp, *product, *result;
-    uint32_t current_id;
 
     /*TODO: Perform some sanity checks */
 
@@ -98,7 +96,7 @@ void ShamirClient::combine() {
     BN_zero(result);
 
     for (HashTable<uint32_t, BIGNUM *>::iterator it = _received_shares.begin(); it; ++it) {
-        current_id = it.key();
+        uint32_t current_id = it.key();
         int current_lagrange = 1;
 
         /* Compute the Lagrange coeffient for the base polynomial at x=0
@@ -178,14 +176,13 @@ enum {
 };
 
 static String read_param(Element *e, void *thunk) {
-	ShamirClient *shamir_client = (ShamirClient *)e;
-    char *c = NULL;
     StringAccum s;
 
     switch((intptr_t) thunk) {
     case H_MODULUS:
         {
-            c = BN_bn2hex(shamir_client->_modulus);
+            ShamirClient *shamir_client = reinterpret_cast<ShamirClient *>(e);
+            char *c = BN_bn2hex(shamir_client->_modulus);
             s << c;
             free(c);
             break;
@@ -201,7 +198,7 @@ static String read_param(Element *e, void *thunk) {
 
 static int write_param(const String &in_s, Element *e, void *vparam,
             ErrorHandler *errh) {
-    ShamirClient *s = (ShamirClient*) e;
+    ShamirClient *s = reinterpret_cast<ShamirClient*>( e);
 
     switch((intptr_t) vparam) {
         case H_MODULUS:

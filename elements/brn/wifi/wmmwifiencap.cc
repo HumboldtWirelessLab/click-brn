@@ -14,7 +14,7 @@
 CLICK_DECLS
 
 WMMWifiEncap::WMMWifiEncap()
-  : _winfo(0)
+  : qos(0),queue(0),_debug(false),_mode(0),_winfo(NULL)
 {
 }
 
@@ -71,7 +71,7 @@ WMMWifiEncap::simple_action(Packet *p)
 
   }
 
-  click_ether *eh = (click_ether *) p->data();
+  const click_ether *eh = reinterpret_cast<const click_ether *>( p->data());
   src = EtherAddress(eh->ether_shost);
   dst = EtherAddress(eh->ether_dhost);
   memcpy(&ethtype, p->data() + 12, 2);
@@ -145,7 +145,7 @@ enum {H_DEBUG, H_MODE, H_BSSID};
 static String
 WMMWifiEncap_read_param(Element *e, void *thunk)
 {
-  WMMWifiEncap *td = (WMMWifiEncap *)e;
+  WMMWifiEncap *td = reinterpret_cast<WMMWifiEncap *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
 	return String(td->_debug) + "\n";
@@ -161,7 +161,7 @@ static int
 WMMWifiEncap_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  WMMWifiEncap *f = (WMMWifiEncap *)e;
+  WMMWifiEncap *f = reinterpret_cast<WMMWifiEncap *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

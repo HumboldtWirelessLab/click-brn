@@ -6,6 +6,7 @@
 CLICK_DECLS
 
 PacketAggregation::PacketAggregation()
+ : _debug(0)
 {
 }
 
@@ -16,8 +17,12 @@ PacketAggregation::~PacketAggregation()
 Packet *
 PacketAggregation::amsdu_aggregation(Vector<Packet *> *packets, uint32_t max_size, Vector<Packet *> *used_packets)
 {
+  if ((packets == NULL) || (used_packets == NULL)) {
+    click_chatter("packets or used_packets not available!!");
+    return NULL;
+  }
+
   uint32_t estimated_size = 32;
-  int32_t used_packets_id[packets->size()];
   int32_t count_used_packets = 0;
   uint32_t packet_pos = 0;
 
@@ -25,7 +30,7 @@ PacketAggregation::amsdu_aggregation(Vector<Packet *> *packets, uint32_t max_siz
     // remove WifiHeader (-32) ; add SA,DA,Len,Type (LLC) (+20)
     if ( (estimated_size + ((*packets)[i]->length()) - 32 + 20) <= max_size ) {
       estimated_size += ((*packets)[i]->length()) - 32 + 20;
-      if ( used_packets != NULL ) used_packets->push_back((*packets)[i]);
+      used_packets->push_back((*packets)[i]);
       count_used_packets++;
     }
   }
@@ -50,6 +55,7 @@ PacketAggregation::amsdu_aggregation(Vector<Packet *> *packets, uint32_t max_siz
   packet_pos += sizeof(struct wifi_qos_field) + sizeof(struct wifi_n_ht_control);
 
   uint8_t *data = (uint8_t*)&(ht_ctrl[1]);
+  int32_t *used_packets_id = new int32_t[packets->size()];
 
   for ( int i = 0; i < count_used_packets; i++) {
     struct wifi_n_msdu_header *msdu_h = (struct wifi_n_msdu_header *)data;
@@ -69,9 +75,12 @@ PacketAggregation::amsdu_aggregation(Vector<Packet *> *packets, uint32_t max_siz
   }
 
   for ( int i = count_used_packets; i >= 0; i++ ) {
-    if ( used_packets == NULL ) ((*packets)[used_packets_id[i]])->kill();
+    Packet *up = ((*packets)[used_packets_id[i]]);
+    if ( up != NULL ) up->kill();
     packets->erase(packets->begin() + used_packets_id[i]);
   }
+
+  delete[] used_packets_id;
 
   return p;
 }

@@ -103,13 +103,12 @@ public:
     uint32_t       _clear_counter;
 
   public:
-    ClientInfo() : _state(SEEN_OTHER), _age(0), _clear_counter(0) { 
+    ClientInfo() : _state(SEEN_OTHER), _dev(NULL), _seq_no(0), _age(0),
+                   _last_updated(Timestamp::now().timeval()), _clear_counter(0) {
     }
 
-    ClientInfo(client_state state, EtherAddress eth,  EtherAddress ap, 
-      BRN2Device *dev, const String& ssid) :
-        _state(state), _eth(eth), _ap(ap), _dev(dev), _ssid(ssid), _age(0) {
-      _last_updated = Timestamp::now().timeval();
+    ClientInfo(client_state state, EtherAddress eth,  EtherAddress ap, BRN2Device *dev, const String& ssid) :
+        _state(state), _eth(eth), _ap(ap), _dev(dev), _seq_no(0), _ssid(ssid), _age(0), _last_updated(Timestamp::now().timeval()), _clear_counter(0) {
     }
 
     inline client_state get_state() const {

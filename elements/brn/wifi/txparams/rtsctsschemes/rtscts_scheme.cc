@@ -15,9 +15,9 @@ void *
 RtsCtsScheme::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsScheme") == 0)
-    return (RtsCtsScheme *) this;
+    return dynamic_cast<RtsCtsScheme *>(this);
   else if (strcmp(name, "Scheme") == 0)
-    return (Scheme *) this;
+    return dynamic_cast<Scheme *>(this);
   else
     return NULL;
 }

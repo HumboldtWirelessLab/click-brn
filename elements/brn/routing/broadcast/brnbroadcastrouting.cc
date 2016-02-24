@@ -39,7 +39,7 @@
 CLICK_DECLS
 
 BrnBroadcastRouting::BrnBroadcastRouting()
-{
+:_node_id(NULL){
   BRNElement::init();
 }
 
@@ -70,8 +70,6 @@ BrnBroadcastRouting::push( int port, Packet *packet )
 {
   BRN_DEBUG("BrnBroadcastRouting: PUSH :%s\n",_node_id->getMasterAddress()->unparse().c_str());
 
-  click_ether *ether;
-
   if ( port == 0 )  //from client
   {
     BRN_DEBUG("BrnBroadcastRouting: PUSH vom Client :%s\n",_node_id->getMasterAddress()->unparse().c_str());
@@ -79,7 +77,7 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
     if ( ttl == 0 ) ttl = BROADCASTROUTING_DAFAULT_MAX_HOP_COUNT;
 
-    ether = (click_ether *)packet->data();
+    const click_ether *ether = reinterpret_cast<const click_ether *>(packet->data());
     EtherAddress src = EtherAddress(ether->ether_shost);
 
     WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING, ttl);
@@ -92,12 +90,12 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     BRN_DEBUG("BrnBroadcastRouting: PUSH von BRN :%s\n",_node_id->getMasterAddress()->unparse().c_str());
 
     uint8_t *packet_data = (uint8_t *)packet->data();
-    ether = (click_ether *)packet_data;
+    const click_ether *ether = reinterpret_cast<click_ether *>(packet_data);
     EtherAddress dst_addr = EtherAddress(ether->ether_dhost);
 
     if ( _node_id->isIdentical(&dst_addr) || dst_addr.is_broadcast() ) {
       BRN_DEBUG("This is for me");
-      ether = (click_ether *)packet->data();
+      ether = reinterpret_cast<const click_ether *>(packet->data());
       packet->set_ether_header(ether);
 
       uint8_t ttl = BRNPacketAnno::ttl_anno(packet);

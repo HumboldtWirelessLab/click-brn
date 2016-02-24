@@ -12,7 +12,8 @@
 
 CLICK_DECLS
 
-RtsCtsPLI::RtsCtsPLI()
+RtsCtsPLI::RtsCtsPLI() :
+  _pli(NULL)
 {
   _default_strategy = RTS_CTS_STRATEGY_PLI;
 }
@@ -21,7 +22,7 @@ void *
 RtsCtsPLI::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsPLI") == 0)
-    return (RtsCtsPLI *) this;
+    return dynamic_cast<RtsCtsPLI *>(this);
 
   return RtsCtsScheme::cast(name);
 }

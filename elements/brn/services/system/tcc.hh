@@ -52,7 +52,7 @@ class TCC : public BRNElement {
 
     uint32_t _no_calls;
 
-    TccFunction(String name, String result, Vector<String> args) {
+    TccFunction(String name, String result, Vector<String> args): _wrapper_func() {
       String sresult = cp_uncomment(result);
 
       _name = name;

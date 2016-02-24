@@ -69,7 +69,7 @@ PacketDefragmentation::initialize(ErrorHandler *)
 void
 PacketDefragmentation::push( int /*port*/, Packet *packet )
 {
-  click_ether *annotated_ether = (click_ether *)packet->ether_header();
+  const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(packet->ether_header());
   EtherAddress src = EtherAddress(annotated_ether->ether_shost);
 
   struct fragmention_header *fh = (struct fragmention_header*)packet->data();

@@ -10,6 +10,7 @@ CLICK_DECLS
 
 
 OLSRRecoverFromLinkLayer::OLSRRecoverFromLinkLayer()
+ : _neighborInfoBase(NULL),_linkInfoBase(NULL),_arpQuerier(NULL),_interfaceInfoBase(NULL),_routingTable(NULL),_tcGenerator(NULL)
 {
 }
 
@@ -69,9 +70,9 @@ OLSRRecoverFromLinkLayer::push(int, Packet *packet)
 	// remove the matching neighbor from the neighbor info base if there are no more links
 	bool other_interfaces_left = false;
 	bool mpr_selector_removed = true;
-	for (OLSRLinkInfoBase::LinkSet::iterator iter = _linkInfoBase->get_link_set()->begin(); iter != _linkInfoBase->get_link_set()->end(); iter++)
+	for (OLSRLinkInfoBase::LinkSet::iterator iter = _linkInfoBase->get_link_set()->begin(); iter != _linkInfoBase->get_link_set()->end(); ++iter)
 	{
-		link_data *data = (link_data *)iter.value();
+		link_data *data = reinterpret_cast<link_data *>(iter.value());
 		if (_interfaceInfoBase->get_main_address(data->L_neigh_iface_addr) == next_hop_main_IP)
 		{
 			other_interfaces_left = true;

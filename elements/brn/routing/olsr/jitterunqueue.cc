@@ -6,9 +6,7 @@
 #include <click/standard/scheduleinfo.hh>
 CLICK_DECLS
 
-inline struct timeval
-			mk_tval(int sec,int usec)
-{
+inline struct timeval mk_tval(int sec,int usec) {
 	struct timeval tv;
 	tv.tv_sec = sec;
 	tv.tv_usec = usec;
@@ -22,7 +20,9 @@ inline struct timeval
 
 
 JitterUnqueue::JitterUnqueue()
-		: _task(this)
+		:
+_task(this),
+_minmaxdiff_usec(0)
 {
 }
 
@@ -104,7 +104,7 @@ JitterUnqueue::set_mindelay(int mindelay)
 int
 JitterUnqueue::set_maxdelay_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	JitterUnqueue* me = (JitterUnqueue *) e;
+	JitterUnqueue* me = reinterpret_cast<JitterUnqueue *>( e);
 	int maxdelay = 0;
 	int res =  cp_va_kparse(conf, me, errh,
                           "maxdelay", cpkP, cpInteger, &maxdelay,
@@ -116,7 +116,7 @@ JitterUnqueue::set_maxdelay_handler(const String &conf, Element *e, void *, Erro
 int
 JitterUnqueue::set_mindelay_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	JitterUnqueue* me = (JitterUnqueue *) e;
+	JitterUnqueue* me = reinterpret_cast<JitterUnqueue *>( e);
 	int mindelay = 0;
 	int res =  cp_va_kparse(conf, me, errh,
                           "mindelay", cpkP, cpInteger, &mindelay,

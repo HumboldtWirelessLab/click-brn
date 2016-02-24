@@ -114,13 +114,13 @@ class RPC : public BRNElement {
   int call_remote_function(String params);
   String get_handler_value(String full_handler_name);
 
-  void request_data(const EtherAddress ea, String handler);
+  void request_data(const EtherAddress &ea, String handler);
   void handle_request_data(Packet *p);
   void handle_reply_data(Packet *p);
 
-  void request_function(const EtherAddress ea, String handler);
+  void request_function(const EtherAddress &ea, String handler);
   void handle_request_function(Packet *p);
-  void send_reply_function(const EtherAddress ea, String handler,String result);
+  void send_reply_function(const EtherAddress &ea, String handler, String result);
   void handle_reply_function(Packet *p);
 
   int insert_pending_rpc(String rpc);

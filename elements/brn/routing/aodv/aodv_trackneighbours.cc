@@ -15,7 +15,7 @@
 
 CLICK_DECLS
 AODVTrackNeighbours::AODVTrackNeighbours()
-{
+:generateRerr(NULL),neighbour_table(NULL),myIP(NULL){
 }
 
 AODVTrackNeighbours::~AODVTrackNeighbours()
@@ -34,8 +34,9 @@ AODVTrackNeighbours::configure(Vector<String> &conf, ErrorHandler *errh)
 	return res;
 }
 
+/*
 void AODVTrackNeighbours::handleExpiry(Timer*, void * data){
-	TimerData * timerdata = (TimerData*) data;
+	TimerData * timerdata = reinterpret_cast<TimerData*>( data);
 	assert(timerdata);
 	assert(timerdata->me);
 	assert(timerdata->ip);
@@ -44,9 +45,10 @@ void AODVTrackNeighbours::handleExpiry(Timer*, void * data){
 	delete timerdata;
 	// delete all from timerdata but trackneighbours itself
 }
+*/
 
 // neighbour doesn't respond any more, send RERR
-void AODVTrackNeighbours::expire(IPAddress* ip){
+/*void AODVTrackNeighbours::expire(IPAddress* ip){
 	assert(ip);
 	TimerMap::Pair* pair = neighbour_timers.find_pair(*ip);
 	assert(pair);
@@ -76,7 +78,7 @@ void AODVTrackNeighbours::expire(IPAddress* ip){
 		delete(precursors); // we got a pointer so clean it
 	}
 }
-
+*/
 //RFC 6.9: keep track of hello messages, and react on "Hello messages or otherwise" so everything from that node
 void AODVTrackNeighbours::push (int port, Packet * packet){
 	assert(port == 0);

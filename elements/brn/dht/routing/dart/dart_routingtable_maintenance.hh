@@ -55,9 +55,6 @@ class DartRoutingTableMaintenance : public BRNElement
     void assign_id(DHTnode *newnode);
 
     int _update_interval;
-
-  public:
-    int _debug;
 };
 
 CLICK_ENDDECLS

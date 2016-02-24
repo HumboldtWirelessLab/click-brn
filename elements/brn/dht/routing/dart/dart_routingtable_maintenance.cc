@@ -25,11 +25,11 @@
 CLICK_DECLS
 
 DartRoutingTableMaintenance::DartRoutingTableMaintenance():
+  _drt(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
   _starttime(FALCON_DEFAULT_START_TIME),
   _activestart(false),
-  _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
-  _debug(BrnLogger::DEFAULT)
+  _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL)
 {
   BRNElement::init();
 }
@@ -65,8 +65,8 @@ void
 DartRoutingTableMaintenance::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((DartRoutingTableMaintenance*)f)->table_maintenance();
-  ((DartRoutingTableMaintenance*)f)->set_lookup_timer();
+  (reinterpret_cast<DartRoutingTableMaintenance*>(f))->table_maintenance();
+  (reinterpret_cast<DartRoutingTableMaintenance*>(f))->set_lookup_timer();
 }
 
 void
@@ -162,7 +162,6 @@ DartRoutingTableMaintenance::assign_id(DHTnode *newnode)
 void
 DartRoutingTableMaintenance::handle_request(Packet *packet)
 {
-  WritablePacket *rep;
   DHTnode src;
 
   uint8_t status;
@@ -173,7 +172,7 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
 
   if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
     assign_id(&src);
-    rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet,_drt->_ident); //reply, so change src and dst
+    WritablePacket *rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet,_drt->_ident); //reply, so change src and dst
 
     src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
 
@@ -224,7 +223,7 @@ enum {
 static int
 write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
 {
-  DartRoutingTableMaintenance *drt = (DartRoutingTableMaintenance *)e;
+  DartRoutingTableMaintenance *drt = reinterpret_cast<DartRoutingTableMaintenance*>(e);
   String s = cp_uncomment(in_s);
 
   switch ((uintptr_t) thunk)
@@ -245,14 +244,14 @@ write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
 static String
 read_debug_param(Element *e, void *)
 {
-  DartRoutingTableMaintenance *drtm = (DartRoutingTableMaintenance *)e;
+  DartRoutingTableMaintenance *drtm = reinterpret_cast<DartRoutingTableMaintenance*>(e);
   return String(drtm->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  DartRoutingTableMaintenance *drtm = (DartRoutingTableMaintenance *)e;
+  DartRoutingTableMaintenance *drtm = reinterpret_cast<DartRoutingTableMaintenance*>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug))

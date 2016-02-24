@@ -52,7 +52,7 @@ class RNGraph : public BRNElement {
   void calc_neighbors();
   uint32_t metric2dist_sqr(uint32_t metric);
 
-  static void static_calc_neighbors(Timer *, void *e) { ((RNGraph *) e)->calc_neighbors(); }
+  static void static_calc_neighbors(Timer *, void *e) { (reinterpret_cast<RNGraph *>(e))->calc_neighbors(); }
 
   Timer _timer;
 

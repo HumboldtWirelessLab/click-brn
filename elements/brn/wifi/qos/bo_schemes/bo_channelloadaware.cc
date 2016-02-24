@@ -38,7 +38,7 @@ BoChannelLoadAware::~BoChannelLoadAware()
 void * BoChannelLoadAware::cast(const char *name)
 {
   if (strcmp(name, "BoChannelLoadAware") == 0)
-    return (BoChannelLoadAware *) this;
+    return dynamic_cast<BoChannelLoadAware *>(this);
 
   return BackoffScheme::cast(name);
 }

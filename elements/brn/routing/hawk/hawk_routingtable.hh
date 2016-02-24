@@ -32,7 +32,7 @@ class HawkRoutingtable : public BRNElement {
       Timestamp _time;
 
       RTEntry( EtherAddress *ea, uint8_t *id, int id_len,
-               EtherAddress *next_phy, EtherAddress *next,bool is_direct) {
+               EtherAddress *next_phy, EtherAddress *next,bool is_direct): _metric(0) {
         _dst_id_length = id_len;
         memcpy(_dst_id, id, MAX_NODEID_LENTGH);
         _dst = EtherAddress(ea->data());

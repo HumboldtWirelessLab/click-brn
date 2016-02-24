@@ -20,7 +20,8 @@
 CLICK_DECLS
 
 OLSRHelloGenerator::OLSRHelloGenerator()
-		: _timer( this ), _node_willingness( OLSR_WILLINGNESS )
+		: _period(0),_htime(0),_vtime(0),_timer( this ),_linkInfoBase(NULL),_neighborInfoBase(NULL),
+		  _interfaceInfoBase(NULL),_forward(NULL),_neighbor_hold_time(0), _node_willingness( OLSR_WILLINGNESS )
 {
 }
 
@@ -86,10 +87,10 @@ OLSRHelloGenerator::generate_hello()
 	Vector <IPAddress> adv_link_addr;
 	if ( ! link_set->empty() )
 	{
-		for ( HashMap<OLSRIPPair, void*>::iterator iter = link_set->begin(); iter != link_set->end(); iter++ )
+		for ( HashMap<OLSRIPPair, void*>::iterator iter = link_set->begin(); iter != link_set->end(); ++iter )
 		{
 			struct link_data *data;
-			data = ( link_data * ) iter.value();
+			data = reinterpret_cast<link_data *>(iter.value());
 			if ( ( data->L_local_iface_addr == _local_iface_addr ) && ((Timestamp)data->L_time >= Timestamp(now) ) )
 			{
 				uint8_t link_code = get_link_code( data, now );
@@ -116,9 +117,9 @@ OLSRHelloGenerator::generate_hello()
 
 	HashMap<IPAddress, void *> *neighborSet = _neighborInfoBase->get_neighbor_set();
 
-	for ( HashMap<IPAddress, void *> ::iterator iter = neighborSet->begin(); iter != neighborSet->end(); iter++ )
+	for ( HashMap<IPAddress, void *> ::iterator iter = neighborSet->begin(); iter != neighborSet->end(); ++iter )
 	{
-		neighbor_data *neighbor = ( neighbor_data * ) iter.value();
+		neighbor_data *neighbor = reinterpret_cast<neighbor_data *>(iter.value());
 		if ( !neighbor_included.findp( neighbor->N_neigh_main_addr ) )
 		{
 			uint8_t link_code = OLSR_UNSPEC_LINK;
@@ -162,11 +163,11 @@ OLSRHelloGenerator::generate_hello()
 	struct timeval tv = Timestamp::now().timeval();
 	packet->set_timestamp_anno( tv );
 
-	olsr_pkt_hdr *pkt_hdr = ( olsr_pkt_hdr * ) packet->data();
+	olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>(packet->data());
 	pkt_hdr->pkt_length = 0;
 	pkt_hdr->pkt_seq = 0; //added in OLSRAddPaqSeq
 
-	olsr_msg_hdr *msg_hdr = ( olsr_msg_hdr * ) ( pkt_hdr + 1 );
+	olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>(( pkt_hdr + 1 ));
 	msg_hdr->msg_type = OLSR_HELLO_MESSAGE;
 	msg_hdr->vtime = _vtime;
 	msg_hdr->msg_size = htons( sizeof( olsr_msg_hdr ) + sizeof( olsr_hello_hdr ) );
@@ -175,7 +176,7 @@ OLSRHelloGenerator::generate_hello()
 	msg_hdr->hop_count = 0;
 
 
-	olsr_hello_hdr *hello_hdr = ( olsr_hello_hdr * ) ( msg_hdr + 1 );
+	olsr_hello_hdr *hello_hdr = reinterpret_cast<olsr_hello_hdr *>(( msg_hdr + 1 ));
 	hello_hdr->reserved = 0;
 	hello_hdr->htime = _htime;
 	hello_hdr->willingness = _node_willingness;
@@ -192,16 +193,16 @@ OLSRHelloGenerator::generate_hello()
 		int number_in_neighbor_interfaces = 0; //rather unelegant solution to problem with pointers,
 		//avoids overwriting addresses in hello message
 
-		for ( HashMap<uint8_t, Vector <IPAddress> >::iterator iter = neighbor_interfaces.begin(); iter != neighbor_interfaces.end(); iter++ )
+		for ( HashMap<uint8_t, Vector <IPAddress> >::iterator iter = neighbor_interfaces.begin(); iter != neighbor_interfaces.end(); ++iter )
 		{
 			//if (packet->put(sizeof(olsr_link_hdr))==0) click_chatter ("put 1 resulted in 0\n");
 
 			if ( number_in_neighbor_interfaces == 0 )
 			{
-				link_hdr = ( olsr_link_hdr * ) ( hello_hdr + 1 );
+				link_hdr = reinterpret_cast<olsr_link_hdr *>(( hello_hdr + 1 ));
 			}
 			else
-				link_hdr = ( olsr_link_hdr * ) ( address + 1 );
+				link_hdr = reinterpret_cast<olsr_link_hdr *>(( address + 1 ));
 
 			link_hdr->link_code = iter.key();
 			link_hdr->reserved = 0;
@@ -213,9 +214,9 @@ OLSRHelloGenerator::generate_hello()
 			{
 				// click_chatter ("\t i=%d: %s\n",i,addr_vector[i].unparse().c_str());
 				if ( i == 0 )
-					address = ( in_addr * ) ( link_hdr + 1 );
+					address = reinterpret_cast<in_addr *>(( link_hdr + 1 ));
 				else
-					address = ( in_addr * ) ( address + 1 );
+					address = reinterpret_cast<in_addr *>(( address + 1 ));
 
 				*address = addr_vector[ i ].in_addr();
 				link_hdr->link_msg_size = htons( ntohs( link_hdr->link_msg_size ) + sizeof( in_addr ) );
@@ -328,7 +329,7 @@ OLSRHelloGenerator::set_neighbor_hold_time(int neighbor_hold_time)
 int
 OLSRHelloGenerator::set_period_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
+	OLSRHelloGenerator* me = reinterpret_cast<OLSRHelloGenerator *>( e);
 	int new_period;
     int res = cp_va_kparse( conf, me, errh,"period (msec)", cpkP, cpInteger, &new_period, cpEnd);
 	if ( res < 0 )
@@ -342,7 +343,7 @@ OLSRHelloGenerator::set_period_handler(const String &conf, Element *e, void *, E
 int
 OLSRHelloGenerator::set_neighbor_hold_time_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
+	OLSRHelloGenerator* me = reinterpret_cast<OLSRHelloGenerator *>( e);
 	int new_nbr_hold_time;
     int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, cpEnd);
 	if ( res < 0 )

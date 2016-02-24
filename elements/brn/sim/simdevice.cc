@@ -27,7 +27,8 @@ static int snr_offset[] = { 10, 30, 20, 35, 55, 40, 60, 45, 65, 50, 72, 55, 90, 
 SimDevice::SimDevice()
   : _task(this),
     empirical_index(0),
-    empirical_packet_count(100)
+    empirical_packet_count(100),
+    _rx_range_size(0),empirical_data_ht(NULL),empirical_data_ht_size(0),empirical_psr_ht(NULL),empirical_data_non_ht(NULL),empirical_data_non_ht_size(0),empirical_psr_non_ht(NULL)
 {
   BRNElement::init();
 }
@@ -354,7 +355,7 @@ static String
 read_handler(Element *e, void *thunk)
 {
   switch ((uintptr_t) thunk) {
-    case H_PSR: return ((SimDevice*)e)->print_psr();
+    case H_PSR: return(reinterpret_cast<SimDevice*>(e))->print_psr();
   }
   return String();
 }

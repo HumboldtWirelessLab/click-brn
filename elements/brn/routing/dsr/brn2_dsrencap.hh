@@ -56,12 +56,12 @@ class BRN2DSREncap : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  Packet *add_src_header(Packet *, EtherAddresses);
+  WritablePacket *add_src_header(Packet *, EtherAddresses);
   Packet *create_rreq(EtherAddress, IPAddress, EtherAddress, IPAddress, uint16_t);
   Packet *create_rrep(EtherAddress, IPAddress, EtherAddress, IPAddress, const BRN2RouteQuerierRoute &, uint16_t rreq_id);
   Packet *create_rerr(EtherAddress, EtherAddress, EtherAddress, const BRN2RouteQuerierRoute &);
-  Packet *set_packet_to_next_hop(Packet * p_in);
-  Packet *skipInMemoryHops(Packet *p_in);
+  WritablePacket *set_packet_to_next_hop(Packet * p_in);
+  WritablePacket *skipInMemoryHops(Packet *p_in);
 
   //
   //member

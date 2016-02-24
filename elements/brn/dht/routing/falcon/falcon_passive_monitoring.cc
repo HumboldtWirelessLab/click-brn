@@ -19,6 +19,7 @@
 CLICK_DECLS
 
 FalconPassiveMonitoring::FalconPassiveMonitoring():
+  _frt(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
   _passive_monitoring_mode(FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED)
 {
@@ -53,9 +54,9 @@ FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
 
-  ((FalconPassiveMonitoring*)f)->check_monitoring();
+  (reinterpret_cast<FalconPassiveMonitoring*>(f))->check_monitoring();
 
-  ((FalconPassiveMonitoring*)f)->_lookup_timer.reschedule_after_msec(5000);
+  (reinterpret_cast<FalconPassiveMonitoring*>(f))->_lookup_timer.reschedule_after_msec(5000);
 
 }
 

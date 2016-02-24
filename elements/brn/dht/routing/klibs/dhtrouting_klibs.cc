@@ -26,6 +26,16 @@
 CLICK_DECLS
 
 DHTRoutingKlibs::DHTRoutingKlibs():
+  _linkstat(NULL),
+  _p_own_dhtnodes(0),
+  _p_foreign_dhtnodes(0),
+  _max_foreign_nodes(0),
+  _max_own_nodes_per_packet(0),
+  _max_foreign_nodes_per_packet(0),
+  _start_time(0),
+  _update_interval(0),
+  _max_age(0),
+  _max_ping_time(0),
   _lookup_timer(static_lookup_timer_hook,this),
   _packet_buffer_timer(static_packet_buffer_timer_hook,this)
 {
@@ -40,9 +50,9 @@ void *
 DHTRoutingKlibs::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingKlibs") == 0)
-    return (DHTRoutingKlibs *) this;
+    return dynamic_cast<DHTRoutingKlibs *>(this);
   else if (strcmp(name, "DHTRouting") == 0)
-         return (DHTRouting *) this;
+         return dynamic_cast<DHTRouting *>(this);
        else
          return NULL;
 }
@@ -94,7 +104,7 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
 static int
 tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*size*/)
 {
-  DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
+  DHTRoutingKlibs *dhtrk = reinterpret_cast<DHTRoutingKlibs *>(element);
   if ( dhtrk == NULL ) return 0;
 
   //return lph->lpSendHandler(buffer, size);
@@ -105,7 +115,7 @@ tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*s
 static int
 rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
+  DHTRoutingKlibs *dhtrk = reinterpret_cast<DHTRoutingKlibs *>(element);
   if ( dhtrk == NULL ) return 0;
 
   //return lph->lpReceiveHandler(buffer, size);*/
@@ -139,27 +149,24 @@ void
 DHTRoutingKlibs::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((DHTRoutingKlibs*)f)->nodeDetection();
-  ((DHTRoutingKlibs*)f)->sendHello();
-  ((DHTRoutingKlibs*)f)->set_lookup_timer();
+  DHTRoutingKlibs *dht_klibs = reinterpret_cast<DHTRoutingKlibs *>(f);
+  dht_klibs->nodeDetection();
+  dht_klibs->sendHello();
+  dht_klibs->set_lookup_timer();
 }
 
 void
 DHTRoutingKlibs::static_packet_buffer_timer_hook(Timer *t, void *f)
 {
-  DHTRoutingKlibs *dht;
-  PacketSendBuffer::BufferedPacket *bpacket;
-  int next_p;
-
-  dht = (DHTRoutingKlibs*)f;
-
   if ( t == NULL ) click_chatter("Timer is NULL");
-  bpacket = dht->packetBuffer.getNextBufferedPacket();
+
+  DHTRoutingKlibs *dht = reinterpret_cast<DHTRoutingKlibs *>(f);
+  PacketSendBuffer::BufferedPacket *bpacket = dht->packetBuffer.getNextBufferedPacket();
 
   if ( bpacket != NULL )
   {
     dht->output(bpacket->_port).push(bpacket->_p);
-    next_p = dht->packetBuffer.getTimeToNext();
+    int next_p = dht->packetBuffer.getTimeToNext();
     if ( next_p >= 0 )
       dht->_packet_buffer_timer.schedule_after_msec( next_p );
     else
@@ -307,25 +314,22 @@ DHTRoutingKlibs::sendHello()
 void
 DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
 {
-  WritablePacket *p,*big_p; 
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  const click_ether *ether_header = reinterpret_cast<const click_ether*>(p_in->ether_header());
   DHTnodelist dhtlist;
   DHTnodelist send_dhtlist;
 //  int count_nodes;
-  DHTnode *node = NULL;
-  bool notify_storage = false;
 
 //  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
   uint8_t ptype;
   /*count_nodes =*/ DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
-  notify_storage = update_nodes(&dhtlist);
+  bool notify_storage = update_nodes(&dhtlist);
 
   if ( is_me(ether_header->ether_dhost) )
   {
     EtherAddress ea = EtherAddress(ether_header->ether_shost);
 
-    node = _own_dhtnodes.get_dhtnode(&ea);       //TODO: better check whether node is foreign or own
+    DHTnode *node = _own_dhtnodes.get_dhtnode(&ea);       //TODO: better check whether node is foreign or own
     if ( node == NULL )
       node = _foreign_dhtnodes.get_dhtnode(&ea);
 
@@ -351,8 +355,8 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
     }
 
     get_nodelist(&send_dhtlist, node, node_group);
-    p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&ea, KLIBS_HELLO, &send_dhtlist);
-    big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &ea, BRN_PORT_DHTROUTING);
+    WritablePacket *p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&ea, KLIBS_HELLO, &send_dhtlist);
+    WritablePacket *big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &ea, BRN_PORT_DHTROUTING);
     send_dhtlist.clear();
 
     if ( big_p == NULL ) click_chatter("Push failed. No memory left ??");
@@ -440,6 +444,7 @@ DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key, int replica_number)
 }
 
 
+/*
 bool
 DHTRoutingKlibs::is_foreign(md5_byte_t *key)
 {
@@ -447,15 +452,16 @@ DHTRoutingKlibs::is_foreign(md5_byte_t *key)
 }
 
 bool
-DHTRoutingKlibs::is_own(md5_byte_t *key)
-{
-  return ( ( _me->_md5_digest[0] & 128 ) == ( key[0] & 128 ) );
-}
-
-bool
 DHTRoutingKlibs::is_foreign(DHTnode *node)
 {
   return ( ( _me->_md5_digest[0] & 128 ) != ( node->_md5_digest[0] & 128 ) );
+}
+*/
+
+bool
+DHTRoutingKlibs::is_own(md5_byte_t *key)
+{
+  return ( ( _me->_md5_digest[0] & 128 ) == ( key[0] & 128 ) );
 }
 
 bool
@@ -471,20 +477,16 @@ DHTRoutingKlibs::is_own(DHTnode *node)
 bool
 DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
 {
-  DHTnode *node, *new_node;
   int add_own_nodes = 0;
   int add_for_nodes = 0;
-  bool own_group;
+
   bool notify_storage = false;
-
-  Timestamp now,n_age;
-
-  now = Timestamp::now();
 
   for ( int i = 0; i < dhtlist->size(); i++)
   {
-    new_node = dhtlist->get_dhtnode(i);
-    own_group = is_own(new_node);
+    DHTnode *node;
+    DHTnode *new_node = dhtlist->get_dhtnode(i);
+    bool own_group = is_own(new_node);
     if ( own_group )
       node = _own_dhtnodes.get_dhtnode(new_node);
     else
@@ -537,13 +539,9 @@ void
 DHTRoutingKlibs::nodeDetection()
 {
   Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
-  WritablePacket *p,*big_p;
-  DHTnode *node;
-  DHTnodelist _list;
   bool _list_filled = false;
 
 //  bool is_own;
-
 
   if ( _linkstat == NULL ) return;
 
@@ -553,7 +551,7 @@ DHTRoutingKlibs::nodeDetection()
   for( int i = 0; i < neighbors.size(); i++ ) {
 //    click_chatter("New neighbors");
 
-    node = _own_dhtnodes.get_dhtnode(&(neighbors[i]));       //TODO: better check whether node is foreign or own
+    DHTnode *node = _own_dhtnodes.get_dhtnode(&(neighbors[i]));       //TODO: better check whether node is foreign or own
 
     if ( node == NULL ) {
 //      is_own = false;
@@ -565,13 +563,17 @@ DHTRoutingKlibs::nodeDetection()
     if ( node == NULL ) {
       //Don't add the node. Just send him a packet with routing information. if it is a dht-node
       //it will send a packet anyway TODO: think about this, you also can use broadcast if one or more neighbors are new
+      DHTnodelist _list;
+
       if ( ! _list_filled ) {
         get_nodelist(&_list, NULL, ALL_NODES);
         _list_filled = true;
       }
 
-      p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(neighbors[i]), KLIBS_HELLO, &_list);
-      big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
+      WritablePacket *p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(neighbors[i]), KLIBS_HELLO, &_list);
+      WritablePacket *big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
+
+      if ( _list_filled ) _list.clear();
 
       if ( big_p == NULL ) click_chatter("Error in DHT");
       else output(0).push(big_p);
@@ -583,7 +585,6 @@ DHTRoutingKlibs::nodeDetection()
     }
   }
 
-  if ( _list_filled ) _list.clear();
 
 }
 
@@ -606,14 +607,14 @@ DHTRoutingKlibs::nodeDetection()
 int
 DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
 {
-  int max_own_node;
-  int max_for_node;
 #ifdef BRNDEBUG_DHT_ROUTING_KLIBS
   int added_nodes = 0;
 #endif
 
   if ( ( group == ALL_NODES ) || ( group = OWN_NODES ) )
   {
+    int max_own_node;
+
     if ( _own_dhtnodes.size() > _max_own_nodes_per_packet ) max_own_node = _max_own_nodes_per_packet;
     else max_own_node = _own_dhtnodes.size();
 
@@ -628,6 +629,8 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
 
   if ( ( group == ALL_NODES ) || ( group = FOREIGN_NODES ) )
   {
+    int max_for_node;
+
     if ( _foreign_dhtnodes.size() > _max_foreign_nodes_per_packet ) max_for_node = _max_foreign_nodes_per_packet;
     else max_for_node = _foreign_dhtnodes.size();
 
@@ -720,7 +723,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingKlibs *dht_klibs = (DHTRoutingKlibs *)e;
+  DHTRoutingKlibs *dht_klibs = reinterpret_cast<DHTRoutingKlibs *>(e);
 
   switch ((uintptr_t) thunk)
   {

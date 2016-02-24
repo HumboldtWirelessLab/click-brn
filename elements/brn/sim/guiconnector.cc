@@ -240,7 +240,7 @@ static int
 write_param(const String &/*in_s*/, Element *e, void *vparam,
                 ErrorHandler */*errh*/)
 {
-  GuiConnector *f = (GuiConnector *)e;
+  GuiConnector *f = reinterpret_cast<GuiConnector *>(e);
   switch((intptr_t)vparam) {
     case H_FINISH:
       f->finish();

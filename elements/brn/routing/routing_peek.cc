@@ -54,7 +54,7 @@ RoutingPeek::push( int port, Packet *packet )
   BRN_DEBUG("P-len: %d  header_len: %d",packet->length(), header_len);
 
   if ( packet->length() > header_len ) {
-    click_ether *ether = (click_ether *)&((const uint8_t*)packet->data())[header_len];
+    const click_ether *ether = reinterpret_cast<const click_ether *>(&((const uint8_t*)packet->data())[header_len]);
     uint16_t ethertype = ntohs(ether->ether_type);
     EtherAddress src = EtherAddress(ether->ether_shost);
     EtherAddress dst = EtherAddress(ether->ether_dhost);
@@ -77,7 +77,7 @@ RoutingPeek::push( int port, Packet *packet )
 static String
 read_peek_info(Element *e, void */*thunk*/)
 {
-  RoutingPeek *rp = (RoutingPeek *)e;
+  RoutingPeek *rp = reinterpret_cast<RoutingPeek *>(e);
   return "Number of peek: " + String(rp->_peeklist.size()) + "\n";
 }
 

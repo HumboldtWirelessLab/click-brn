@@ -21,22 +21,14 @@ public:
 
   OLSRIPPair() : _to(), _to_netmask("255.255.255.255"), _from(), _from_netmask("255.255.255.255") { }
 
-  OLSRIPPair(IPAddress from, IPAddress to) : _to_netmask("255.255.255.255"), _from_netmask("255.255.255.255") {
-      _to = to;
-      _from = from;
+  OLSRIPPair(IPAddress from, IPAddress to) : _to(to), _to_netmask("255.255.255.255"), _from(from), _from_netmask("255.255.255.255") {
   }
 
-  OLSRIPPair(IPAddress from, IPAddress from_netmask, IPAddress to, IPAddress to_netmask) {
-      _to = to;
-      _to_netmask = to_netmask;
-      _from = from;
-      _from_netmask = from_netmask;
+  OLSRIPPair(IPAddress from, IPAddress from_netmask, IPAddress to, IPAddress to_netmask): _to(to), _to_netmask(to_netmask), _from(from), _from_netmask(from_netmask)
+  {
   }
 
-  OLSRIPPair(IPAddress from, IPAddress to, IPAddress to_netmask) : _from_netmask("255.255.255.255") {
-      _to = to;
-      _to_netmask = to_netmask;
-      _from = from;
+  OLSRIPPair(IPAddress from, IPAddress to, IPAddress to_netmask) : _to(to), _to_netmask(to_netmask), _from(from), _from_netmask("255.255.255.255") {
   }
 
   bool contains(IPAddress foo) {

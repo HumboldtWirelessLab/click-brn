@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 BRN2VLAN::BRN2VLAN()
+ : _wifiinfolist(NULL),_dhcpsubnetlist(NULL),_vlantable(NULL),_debug(0)
 {
 }
 
@@ -46,7 +47,7 @@ enum {
 static String
 BRN2VLAN_read_param(Element *e, void *thunk)
 {
-  BRN2VLAN *wil = (BRN2VLAN *)e;
+  BRN2VLAN *wil = reinterpret_cast<BRN2VLAN *>(e);
   switch ((uintptr_t) thunk) {
     case H_DEBUG: {
       return String(wil->_debug) + "\n";
@@ -64,7 +65,7 @@ static int
 BRN2VLAN_write_param(const String &in_s, Element *e, void *vparam,
                                  ErrorHandler *errh)
 {
-  BRN2VLAN *f = (BRN2VLAN *)e;
+  BRN2VLAN *f = reinterpret_cast<BRN2VLAN *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {

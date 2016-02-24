@@ -86,7 +86,7 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 static int32_t
 tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t size)
 {
-  FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
+  FalconLinkProbeHandler *dhtf = reinterpret_cast<FalconLinkProbeHandler*>(element);
   if ( dhtf == NULL ) return 0;
 
   return dhtf->lpSendHandler(buffer, size);
@@ -95,7 +95,7 @@ tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t siz
 static int32_t
 rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size,bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
+  FalconLinkProbeHandler *dhtf = reinterpret_cast<FalconLinkProbeHandler*>(element);
   if ( dhtf == NULL ) return 0;
 
   return dhtf->lpReceiveHandler(buffer, size , is_neighbour);
@@ -276,7 +276,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
 static int
 write_reg_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  FalconLinkProbeHandler *lph = (FalconLinkProbeHandler *)e;
+  FalconLinkProbeHandler *lph = reinterpret_cast<FalconLinkProbeHandler*>(e);
 
   String s = cp_uncomment(in_s);
   bool reg_handler;

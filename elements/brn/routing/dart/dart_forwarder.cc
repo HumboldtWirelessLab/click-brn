@@ -43,10 +43,9 @@ CLICK_DECLS
 DartForwarder::DartForwarder()
   : _debug(BrnLogger::DEFAULT),
     _opt(0),
-    _me()
-    
+    _me(),
+    _dartrouting(NULL),_idcache(NULL),_drt(NULL)
 {
-
 }
 
 DartForwarder::~DartForwarder()
@@ -166,14 +165,14 @@ BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(hea
 static String
 read_debug_param(Element *e, void *)
 {
-  DartForwarder *sf = (DartForwarder *)e;
+  DartForwarder *sf = reinterpret_cast<DartForwarder *>(e);
   return String(sf->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  DartForwarder *sf = (DartForwarder *)e;
+  DartForwarder *sf = reinterpret_cast<DartForwarder *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

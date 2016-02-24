@@ -12,6 +12,7 @@ CLICK_DECLS
 
 
 PacketLossInformation_Graph::PacketLossInformation_Graph()
+: _root(NULL)
 {
 
 }

@@ -144,7 +144,7 @@ class PacketDefragmentation : public BRNElement
       }
     }
 
-    SrcInfo(EtherAddress *src) {
+    explicit SrcInfo(EtherAddress *src) {
       for ( int i = 0; i < FRAGMENTATION_LIST_SIZE; i++ )  {
         fi_list[i].p = NULL;
       }

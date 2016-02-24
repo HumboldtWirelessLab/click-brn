@@ -16,9 +16,16 @@
 CLICK_DECLS
 
 ForeignRxStats::ForeignRxStats():
+  _device(NULL),
   last_packet(NULL),
+  seq(0),
   fwd_timer(this),
-  ack_timeout(FOREIGNRXSTATS_DEFAULT_ACK_TIMEOUT)
+  ack_timeout(FOREIGNRXSTATS_DEFAULT_ACK_TIMEOUT),
+  rfx_last_packet_was_abort(0),
+  frx_stats_ack_without_uc_data(0),
+  frx_stats_uc_data_with_ack(0),
+  frx_stats_uc_data_with_ack_and_abort(0),
+  frx_stats_uc_data_without_ack(0)
 {
   BRNElement::init();
 }
@@ -168,7 +175,7 @@ ForeignRxStats::stats_handler()
 static String
 ForeignRxStats_read_param(Element *e, void *thunk)
 {
-  ForeignRxStats *td = (ForeignRxStats *)e;
+  ForeignRxStats *td = reinterpret_cast<ForeignRxStats *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return td->stats_handler();

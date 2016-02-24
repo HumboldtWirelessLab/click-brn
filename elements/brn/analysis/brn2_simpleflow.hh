@@ -35,10 +35,7 @@ class FlowID {
     //
     FlowID() : _src(), _id(0), _hashcode(0) { }
 
-    FlowID(EtherAddress src, uint32_t id) {
-      _src = src;
-      _id = id;
-      _hashcode = (((uint32_t)_src.sdata()[2]) << 16) + _id;
+    FlowID(EtherAddress src, uint32_t id): _src(src), _id(id),_hashcode((((uint32_t)src.sdata()[2]) << 16) + id) {
     }
 
     inline bool operator==(FlowID other) {
@@ -162,25 +159,26 @@ class BRN2SimpleFlow : public BRNElement
       String _extra_data;
       int8_t _header_size;
 
-      Flow(): _type(TYPE_NO_ACK), _active(false), _buffered_p(NULL) {}
+      Flow(): _id(0), _type(TYPE_NO_ACK), _interval(0), _size(0), _burst(0), _duration(0), _active(false), _txPackets(0),
+              _tx_packets_feedback(0), _rxPackets(0), _rxCrcErrors(0), _cum_sum_hops(0), _min_hops(0), _max_hops(0),
+              _sum_sq_hops(0), _cum_sum_rt_time(0), _min_rt_time(0), _max_rt_time(0), _sum_sq_rt_time(0), _max_packet_id(0),
+              _rx_out_of_order(0), metric_sum(0), route_hops(0),_buffered_p(NULL), _header_size(0) {}
 
-      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int size, int interval, int burst, int duration) {
-        _buffered_p = NULL;
+      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int size, int interval, int burst, int duration) :
+              _src(src), _dst(dst), _id(id), _type(type), _interval(interval), _size(size), _burst(burst), _duration(duration),
+              _active(false), _txPackets(0),
+              _tx_packets_feedback(0), _rxPackets(0), _rxCrcErrors(0), _cum_sum_hops(0), _min_hops(0), _max_hops(0),
+              _sum_sq_hops(0), _cum_sum_rt_time(0), _min_rt_time(0), _max_rt_time(0), _sum_sq_rt_time(0), _start_time(Timestamp::now()),
+              _max_packet_id(0), _rx_out_of_order(0), metric_sum(0), route_hops(0),_buffered_p(NULL), _header_size(0)
+      {
         reset();
-        _src = src;
-        _dst = dst;
-        _id = id;
-        _type = type;
-        _size = size;
-        _interval = interval;
-        _burst = burst;
-        _duration = duration;
-        _active = false;
-        _start_time = Timestamp::now();
         _end_time = _start_time + Timestamp::make_msec(duration/1000, duration%1000);
       }
 
-      ~Flow() {}
+      ~Flow() {
+        if (_buffered_p != NULL) _buffered_p->kill();
+        _buffered_p = NULL;
+      }
 
       void reset() {
         _active = false;

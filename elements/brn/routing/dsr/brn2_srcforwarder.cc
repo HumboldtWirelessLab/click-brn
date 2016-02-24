@@ -95,21 +95,23 @@ BRN2SrcForwarder::uninitialize()
 Packet *
 BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
 {
+  WritablePacket *p_out = p_in->uniqueify();
+
   BRN_DEBUG(" * calling NodeIdentity::skipInMemoryHops().");
 
-  click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = reinterpret_cast<click_brn_dsr *>((p_out->data() + sizeof(click_brn)));
 
   int index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
 
   BRN_DEBUG(" * index = %d brn_dsr->dsr_hop_count = %d", index, brn_dsr->dsr_hop_count);
 
   if ( (brn_dsr->dsr_hop_count == 0) || (brn_dsr->dsr_segsleft == 0) )
-    return p_in;
+    return p_out;
 
   assert(index >= 0 && index < BRN_DSR_MAX_HOP_COUNT);
   assert(index <= brn_dsr->dsr_hop_count);
 
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
+  const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
 
   EtherAddress dest(dsr_hops[index].hw.data);
 
@@ -131,16 +133,16 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
 
   BRN_DEBUG("Use Source: %s",src.unparse().c_str());
 
-  BRNPacketAnno::set_src_ether_anno(p_in,src);  //TODO: CHECK
+  BRNPacketAnno::set_src_ether_anno(p_out,src);  //TODO: CHECK
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_dst_ether_anno(p_out,EtherAddress(brn_dsr->dsr_dst.data));
   } else {
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
+    BRNPacketAnno::set_dst_ether_anno(p_out,EtherAddress(dsr_hops[index].hw.data));
   }
-  BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
+  BRNPacketAnno::set_ethertype_anno(p_out,ETHERTYPE_BRN);
 
-  return p_in;
+  return p_out;
 }
 
 void
@@ -154,7 +156,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
   } else if (port == 1) { // src packets received by this node
     BRN_DEBUG(" * source routed packet received from other node.");
 
-    click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+    const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>((p_in->data() + sizeof(click_brn)));
 
     assert(brn_dsr->dsr_type == BRN_DSR_SRC);
 
@@ -196,13 +198,16 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
         EtherAddress next(brn_dsr->dsr_dst.data);
         EtherAddress src(brn_dsr->dsr_src.data);
 
-        click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
+        const click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
         EtherAddress last(dsr_hops[brn_dsr->dsr_hop_count - 1].hw.data);
 
         BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
-        if ( ( ! rid_e ) && (ntohs(brn_dsr->dsr_id) != 0) )
-          //FIXME: rid_e is never used
+        if ( ( ! rid_e ) && (ntohs(brn_dsr->dsr_id) != 0) ) {
           rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
+          if ( rid_e == NULL ) {
+            BRN_ERROR("DSR-ID-Cache error");
+          }
+        }
       }
       // remove all brn header and return packet to kernel
       Packet *p = strip_all_headers(p_in);
@@ -222,10 +227,10 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
 {
   BRN_DEBUG("* forward_src: ...");
 
-  Packet *p_out = _dsr_encap->set_packet_to_next_hop(p_in);
+  WritablePacket *p_out = _dsr_encap->set_packet_to_next_hop(p_in);
 
   // check the link metric from me to the dst
-  click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_out->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = reinterpret_cast<click_brn_dsr *>((p_out->data() + sizeof(click_brn)));
 
   int source_hops  = brn_dsr->dsr_hop_count;
   int segments     = brn_dsr->dsr_segsleft;
@@ -259,26 +264,28 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   if (segments > 0)     // NOT the last hop (if it is the last hop, then next is dst)
     next = EtherAddress (dsr_hops[index].hw.data);
 
-  BrnRouteIdCache::RouteIdEntry* rid_e;
   if ( _dsr_rid_cache ) {
-    rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
+    BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
     if ( rid_e ) {
       next = EtherAddress(rid_e->_next_hop.data());
       rid_e->update();
     } else {
-      if ( ntohs(brn_dsr->dsr_id) != 0 )
-        //FIXME: rid_e is never used
+      if ( ntohs(brn_dsr->dsr_id) != 0 ) {
         rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
+        if ( rid_e == NULL ) {
+          BRN_ERROR("DSR-ID-Cache error");
+        }
+      }
     }
   }
 
+  WritablePacket* p = p_in->uniqueify();
   // Check if the next hop exists in link table    
   if (BRN_DSR_INVALID_ROUTE_METRIC == _link_table->get_link_metric(me, next)) {
     BRN_DEBUG(" * BRN2SrcForwarder: no link between %s and %s, broken source route.", me.unparse().c_str(), next.unparse().c_str());
     BRN_DEBUG(_link_table->print_links().c_str());
 
-    WritablePacket* p = p_in->uniqueify();
-    click_ether *ether = (click_ether *)p->ether_header();
+    click_ether *ether = reinterpret_cast<click_ether *>(p->ether_header());
 
     memcpy(ether->ether_shost, me.data(), sizeof(ether->ether_shost));
     memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));
@@ -288,7 +295,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
     return;
   }
 
-  click_ether *ether = (click_ether *)p_in->ether_header();//TODO: CHECK: this is important ??
+  click_ether *ether = reinterpret_cast<click_ether *>(p->ether_header());//TODO: CHECK: this is important ??
   memcpy(ether->ether_shost, me.data(), sizeof(ether->ether_shost));  //TODO: copx
   memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));  //TODO: is a copy
   ether->ether_type = htons(ETHERTYPE_BRN);                //TODO: CHECK: this is important ??
@@ -303,7 +310,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
 Packet *
 BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 {
-  click_brn_dsr *dsr_src = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  const click_brn_dsr *dsr_src = reinterpret_cast<const click_brn_dsr *>((p_in->data() + sizeof(click_brn)));
 
   int brn_dsr_len = sizeof(click_brn) + DSRProtocol::header_length(dsr_src);
 
@@ -327,7 +334,7 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
     //BRN_DEBUG("PUSH Etherheader");
   }
 
-  ether_anno = (click_ether*)p->data();
+  ether_anno = reinterpret_cast<click_ether*>(p->data());
   p->set_ether_header(ether_anno);
 
   memcpy( ether_anno->ether_shost, src.data(), 6 );

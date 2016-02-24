@@ -33,7 +33,8 @@
 CLICK_DECLS
 
 BrnProbeRequester::BrnProbeRequester()
-  : _rtable(0),
+  : _debug(false),
+    _rtable(0),
     _winfo(0)
 {
 }
@@ -149,7 +150,7 @@ enum {H_DEBUG, H_ETH, H_SEND_PROBE};
 static String
 BrnProbeRequester_read_param(Element *e, void *thunk)
 {
-  BrnProbeRequester *td = (BrnProbeRequester *)e;
+  BrnProbeRequester *td = reinterpret_cast<BrnProbeRequester *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -163,7 +164,7 @@ static int
 BrnProbeRequester_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BrnProbeRequester *f = (BrnProbeRequester *)e;
+  BrnProbeRequester *f = reinterpret_cast<BrnProbeRequester *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {

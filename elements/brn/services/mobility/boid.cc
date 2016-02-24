@@ -42,8 +42,18 @@ CLICK_DECLS
 
 Boid::Boid():
   _boid_timer(this),
+  _mob(NULL),
+  _gps(NULL),
+  _gpsmap(NULL),
+  _behavior(NULL),
   _interval(BOID_DEFAULT_INTERVAL),
-  _active(false)
+  _active(false),
+  _radius(0),
+  _cohesion(0.0),
+  _gravitation(0.0),
+  _steerlimit(0.0),
+  _seperation(0.0),
+  _speed(0)
 {
   BRNElement::init();
 }
@@ -181,7 +191,7 @@ enum {
 static String
 Boid_read_param(Element *e, void *thunk)
 {
-  Boid *b = (Boid *)e;
+  Boid *b = reinterpret_cast<Boid *>(e);
 
   switch ((uintptr_t) thunk) {
     case H_GRAVITATION: {
@@ -222,7 +232,7 @@ Boid_read_param(Element *e, void *thunk)
 static int
 Boid_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Boid *boid = (Boid *)e;
+  Boid *boid = reinterpret_cast<Boid *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
 

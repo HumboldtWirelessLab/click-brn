@@ -15,9 +15,9 @@
 CLICK_DECLS
 
 OpenBeaconEncap::OpenBeaconEncap()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(BrnLogger::DEFAULT) ,_errh(NULL)
 {
-	
+	memset(opbecon_filter,0,sizeof(opbecon_filter));
 }
 
 OpenBeaconEncap::~OpenBeaconEncap()

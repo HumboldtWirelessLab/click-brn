@@ -31,7 +31,8 @@ CLICK_DECLS
 //
 // C o n s t r u c t o r
 //
-FibonacciNode::FibonacciNode(){
+FibonacciNode::FibonacciNode(): m_value(0)
+{
     m_degree = 0;
     m_parent = s_noPointer;
     m_child  = s_noPointer;

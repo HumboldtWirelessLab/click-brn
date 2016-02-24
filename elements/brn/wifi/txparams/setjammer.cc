@@ -58,7 +58,7 @@ enum {H_JAMMER};
 
 static String SetJammer_read_param(Element *e, void *thunk)
 {
-  SetJammer *f = (SetJammer *)e;
+  SetJammer *f = reinterpret_cast<SetJammer *>(e);
   switch ((uintptr_t) thunk) {
     case H_JAMMER:
       return  String(f->_jammer);
@@ -69,7 +69,7 @@ static String SetJammer_read_param(Element *e, void *thunk)
 
 static int SetJammer_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  SetJammer *f = (SetJammer *)e;
+  SetJammer *f = reinterpret_cast<SetJammer *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_JAMMER:

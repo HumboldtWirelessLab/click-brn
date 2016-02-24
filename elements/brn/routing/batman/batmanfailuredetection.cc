@@ -38,6 +38,7 @@
 CLICK_DECLS
 
 BatmanFailureDetection::BatmanFailureDetection():
+  _brt(NULL),_nodeid(NULL),
   _active(false),
   _loop_timeout(BATMAN_DEFAULT_LOOP_TIMEOUT),
   _detected_loops(0), _detected_duplicates(0), _no_retries(0), _no_failures(0)
@@ -170,7 +171,7 @@ BatmanFailureDetection::get_info()
 static String 
 BatmanFailureDetection_read_param(Element *e, void */*thunk*/)
 {
-  return ((BatmanFailureDetection*)e)->get_info();
+  return(reinterpret_cast<BatmanFailureDetection*>(e))->get_info();
 }
 
 void

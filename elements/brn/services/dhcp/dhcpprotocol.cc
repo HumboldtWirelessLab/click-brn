@@ -70,11 +70,12 @@ DHCPProtocol::getOption(Packet *p, int option_num,int *option_size)
 {
   struct dhcp_packet *dhcp_p = (struct dhcp_packet*)p->data(); ;
 
-  int offset;
+  unsigned char *wanted_option = NULL;
+  *option_size = 0;
 
-  offset = 4; // MagicCookie
+  int offset = 4; // MagicCookie
 
-  while( ( dhcp_p->options[offset] != DHO_END ) && ( offset < (int)( p->length() - DHCP_FIXED_NON_UDP ) ) )
+  while ( (offset < ((int)( p->length() - DHCP_FIXED_NON_UDP))) && ( dhcp_p->options[offset] != DHO_END ) )
   {
 #ifdef DHCP_PACKETUTIL_DEBUG
     click_chatter("DHCPUtils: option_num : %d | curr: %d", option_num, packet->options[offset]);
@@ -88,13 +89,13 @@ DHCPProtocol::getOption(Packet *p, int option_num,int *option_size)
     if( dhcp_p->options[offset] == option_num )
     {
       *option_size = dhcp_p->options[offset + 1];
-      return ( &(dhcp_p->options[offset + 2]) )  ;
+      wanted_option = &(dhcp_p->options[offset + 2]);
+      break;
     }
     offset += ( ( dhcp_p->options[offset + 1] ) + 2 );
   }
 
-  option_size = 0;
-  return NULL;
+  return wanted_option;
 }
 
 
@@ -166,8 +167,8 @@ DHCPProtocol::add_option(Packet *p, int option_num,int option_size,uint8_t *opti
   click_chatter("DHCPUtils: Packet um %d Bytes grösser machen. Es war %d Bytes gross",add_bytes, p->length());
 #endif
 
-  if ( add_bytes > 0 ) w_p = (WritablePacket *)p->put( add_bytes );
-  else w_p = (WritablePacket *)p->put( 0 );
+  if ( add_bytes > 0 ) w_p = reinterpret_cast<WritablePacket *>(p->put( add_bytes ));
+  else w_p = reinterpret_cast<WritablePacket *>(p->put( 0 ));
 
   dhcp_p = (struct dhcp_packet*)w_p->data(); ;
 
@@ -193,7 +194,6 @@ int
 DHCPProtocol::retrieve_dhcptype(Packet *p_in)
 {
   uint8_t *dhcp = (uint8_t *)p_in->data();
-  uint32_t code, len, offset;
 
   if ( memcmp(DHCP_OPTIONS_COOKIE, &dhcp[DHCP_FIXED_NON_UDP], 4) != 0)
   {
@@ -205,9 +205,9 @@ DHCPProtocol::retrieve_dhcptype(Packet *p_in)
     click_chatter("DHCPUtils: * Magic Cookie: valid\n");
 #endif
 
-  for ( offset = DHCP_FIXED_NON_UDP + 4; offset < p_in->length(); ) {
-    code = dhcp[offset];
-    len = dhcp[offset + 1];
+  for ( uint32_t offset = DHCP_FIXED_NON_UDP + 4; offset < p_in->length(); ) {
+    uint32_t code = dhcp[offset];
+    uint32_t len = dhcp[offset + 1];
 
     if (code == DHO_PAD) {
       ++offset;

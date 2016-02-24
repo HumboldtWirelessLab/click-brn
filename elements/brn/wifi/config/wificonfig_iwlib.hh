@@ -79,7 +79,7 @@ class WifiConfigIwLib: public WifiConfig
     static int sock_iwconfig_refs;
 #endif
 
-    WifiConfigIwLib(String dev_name);
+    explicit WifiConfigIwLib(String dev_name);
     ~WifiConfigIwLib();
 
     int set_txpower(int txpower);

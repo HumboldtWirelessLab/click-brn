@@ -79,9 +79,10 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first
   first->set_nodeid(ne->node_id);
 
   int32_t buffer_left = sizeof(struct dht_falcon_node_entry);
-  int32_t node_index = 0;
 
   if ( nodes != NULL ) {
+    int32_t node_index = 0;
+
     while ( buffer_left < buffer_len ) {
       node_index++;
       DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].node_id);
@@ -109,6 +110,7 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHT
   memcpy(ne->node_id, me->_md5_digest, sizeof(ne->node_id));
 
   int32_t buffer_left = buffer_len - sizeof(struct dht_falcon_node_entry);
+
   int32_t node_index = 0;
 
   if ( nodes != NULL ) {
@@ -138,9 +140,9 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first
   first->set_nodeid(ne->node_id);
 
   int32_t buffer_left = sizeof(struct dht_falcon_node_entry);
-  int32_t node_index = 0;
 
   if ( nodes != NULL ) {
+    int32_t node_index = 0;
     while ( buffer_left < buffer_len ) {
       node_index++;
       DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].node_id);

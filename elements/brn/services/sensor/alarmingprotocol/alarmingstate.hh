@@ -30,8 +30,7 @@ class AlarmingState : public BRNElement {
    public:
     EtherAddress _ea;
 
-    ForwarderInfo(const EtherAddress *ea) {
-      _ea= *ea;
+    explicit ForwarderInfo(const EtherAddress *ea): _ea(*ea) {
     }
   };
 
@@ -46,12 +45,8 @@ class AlarmingState : public BRNElement {
     int _fract_fwd;
     int _retries;
 
-    AlarmInfo(uint8_t id, uint8_t hops) {
-      _id = id;
-      _hops = hops;
-      _fwd_missing = false;
-      _fract_fwd = 0;
-      _retries = 0;
+    AlarmInfo(uint8_t id, uint8_t hops):_id(id), _hops(hops), _fwd_missing(false), _fract_fwd(0), _retries(0)
+    {
     }
 
     ForwarderInfo *get_fwd_by_address(const EtherAddress *ea) {
@@ -68,12 +63,11 @@ class AlarmingState : public BRNElement {
 
   class AlarmNode {
    public:
-    EtherAddress _ea;
     uint8_t _type;
+    EtherAddress _ea;
 
-    AlarmNode( uint8_t type, const EtherAddress *ea) {
-      _type = type;
-      _ea = *ea;
+    AlarmNode( uint8_t type, const EtherAddress *ea): _type(type), _ea(*ea)
+    {
     }
 
     Vector<AlarmInfo> _info;

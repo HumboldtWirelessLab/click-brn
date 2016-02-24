@@ -115,7 +115,7 @@ enum {
 static String
 read_handler(Element *e, void *thunk)
 {
-  SystemInfo *si = (SystemInfo *)e;
+  SystemInfo *si = reinterpret_cast<SystemInfo *>(e);
   Timestamp now = Timestamp::now();
 
   StringAccum sa;

@@ -37,9 +37,9 @@ LoadbalancingReroutingMinFlow::~LoadbalancingReroutingMinFlow()
 void *LoadbalancingReroutingMinFlow::cast(const char *name)
 {
   if (strcmp(name, "LoadbalancingReroutingMinFlow") == 0)
-    return (LoadbalancingReroutingMinFlow *) this;
+    return dynamic_cast<LoadbalancingReroutingMinFlow *>(this);
   else if (strcmp(name, "LoadbalancingRerouting") == 0)
-    return (LoadbalancingRerouting *) this;
+    return dynamic_cast<LoadbalancingRerouting *>(this);
   else
     return NULL;
 }

@@ -6,7 +6,8 @@
 
 CLICK_DECLS
 
-DHTRouting::DHTRouting()
+DHTRouting::DHTRouting():
+  _me(NULL)
 {
 }
 
@@ -26,7 +27,7 @@ enum {H_NODE_ID};
 static String
 read_node_id(Element *e, void *thunk)
 {
-  DHTRouting *dhtr = (DHTRouting *)e;
+  DHTRouting *dhtr = reinterpret_cast<DHTRouting *>(e);
   switch ((uintptr_t) thunk) {
     case H_NODE_ID:
       char digest[16*2 + 1];
@@ -40,7 +41,7 @@ read_node_id(Element *e, void *thunk)
 static int
 write_node_id(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  DHTRouting *f = (DHTRouting *)e;
+  DHTRouting *f =  reinterpret_cast<DHTRouting *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_NODE_ID: {

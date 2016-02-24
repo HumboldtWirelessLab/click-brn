@@ -12,6 +12,7 @@
 CLICK_DECLS
 
 OLSRProcessTC::OLSRProcessTC()
+: _topologyInfo(NULL),_neighborInfo(NULL),_routingTable(NULL),_interfaceInfo(NULL)
 {
 }
 
@@ -83,7 +84,7 @@ OLSRProcessTC::push(int, Packet *packet)
   int neigh_addr_offset = sizeof(olsr_msg_hdr) + sizeof(olsr_tc_hdr);
   
   while ( remaining_neigh_bytes >= (int) sizeof(in_addr) ){
-    in_addr *address = (in_addr *) (packet->data() + neigh_addr_offset);
+    const in_addr *address = reinterpret_cast<const in_addr *>( (packet->data() + neigh_addr_offset));
     IPAddress dest_addr = IPAddress(*address);
     if (dest_addr != _myMainIP && _neighborInfo->find_neighbor(dest_addr) == 0){
       //dont record entries for myself or my neighbors

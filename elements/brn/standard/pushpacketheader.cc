@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 PushPacketHeader::PushPacketHeader()
-  :_debug(BrnLogger::DEFAULT)
+  : _use_anno(false), _debug(BrnLogger::DEFAULT)
 {
 }
 

@@ -163,7 +163,7 @@ FloodingEnd2EndRetry::stats()
 static String
 read_stats_param(Element *e, void *)
 {
-  return ((FloodingEnd2EndRetry *)e)->stats();
+  return (reinterpret_cast<FloodingEnd2EndRetry *>(e))->stats();
 }
 
 void

@@ -49,19 +49,16 @@ class FloodingEnd2EndRetry : public BRNElement {
       Packet *_p;
       int16_t _retries;
       int16_t _max_retries; 
-      
+
       Timestamp _enqueue_time;
-      
+
       uint32_t _timeout;       //delay between
       Timestamp _last_timeout;
       Timestamp _next_timeout;
-      
-      RetryPacket(Packet *p, int16_t retries, uint32_t timeout)
+
+      RetryPacket(Packet *p, int16_t retries, uint32_t timeout): _p(p),  _retries(0), _max_retries(retries), _enqueue_time(Timestamp::now()),
+                                                                 _timeout(0), _last_timeout(Timestamp::now()), _next_timeout(Timestamp::now())
       {
-        _p = p;
-        _max_retries = retries;
-        _last_timeout = _enqueue_time = Timestamp::now();
-        _retries = 0;
         set_timeout(timeout);
       }
 

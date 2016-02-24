@@ -46,7 +46,7 @@
 CLICK_DECLS
 
 OLSRHNAGenerator::OLSRHNAGenerator()
-		: _timer(this), _association_info(0)
+		: _period(0), _vtime(0), _timer(this), _association_info(0), _hna_hold_time(0)
 {
 }
 
@@ -136,11 +136,11 @@ OLSRHNAGenerator::generate_hna()
 	}
 	memset(packet->data(), 0, packet->length());
 
-	olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+	olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( packet->data());
 	pkt_hdr->pkt_length = 0; //added in OLSRForward
 	pkt_hdr->pkt_seq = 0; //added in OLSRForward
 
-	olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) (pkt_hdr + 1);
+	olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( (pkt_hdr + 1));
 	msg_hdr->msg_type = OLSR_HNA_MESSAGE;
 	msg_hdr->vtime = _vtime;
 	msg_hdr->msg_size = htons(sizeof(olsr_msg_hdr));
@@ -152,21 +152,21 @@ OLSRHNAGenerator::generate_hna()
 
 	bool first_iter = true;
 	in_addr *address = 0;
-	address = (in_addr *) (msg_hdr + 1);
+	address = reinterpret_cast<in_addr *>( (msg_hdr + 1));
 	if (! _fixedAssociations.empty())
 	{
 		//click_chatter("%s | generating a hna for the subnet\n");
 		//click_chatter("%s | I am advertising the following subnets that can be reached\n");
-		for (Vector<_Association>::iterator iter = _fixedAssociations.begin(); iter != _fixedAssociations.end(); iter++)
+		for (Vector<_Association>::iterator iter = _fixedAssociations.begin(); iter != _fixedAssociations.end(); ++iter)
 		{
 
 			if (first_iter)	first_iter = false;
-			else address = (in_addr *) (address + 1);
+			else address = reinterpret_cast<in_addr *>( (address + 1));
 
 			_Association* association = iter;
 			*address = association->network_addr.in_addr();
 			//	click_chatter("%s | network_addr = %s\n", _my_ip.unparse().c_str(), association->network_addr.unparse().c_str());
-			address = (in_addr *) (address + 1);
+			address = reinterpret_cast<in_addr *>( (address + 1));
 			*address = association->netmask.in_addr();
 			//	click_chatter("%s | netmask = %s\n", _my_ip.unparse().c_str(), association->netmask.unparse().c_str());
 			msg_hdr->msg_size = htons( ntohs(msg_hdr->msg_size) + 2 * sizeof(in_addr) );
@@ -177,11 +177,11 @@ OLSRHNAGenerator::generate_hna()
 	{
 		click_chatter("%s | generating a hna for the subnet\n", name().c_str());
 		click_chatter("%s | I am advertising the following subnets that can be reached\n", name().c_str());
-		for (Vector<OLSRIPPair>::iterator iter = association_set->begin(); iter != association_set->end(); iter++)
+		for (Vector<OLSRIPPair>::iterator iter = association_set->begin(); iter != association_set->end(); ++iter)
 		{
 			/* //--mvhaen-- changes due to MORHE
 			 // a slight hack. If we were set to advertise a subnet, don't advertise nodes that we already advertised
-			 for (Vector<_Association>::iterator iter2 = _fixedAssociations.begin(); iter2 != _fixedAssociations.end(); iter2++)
+			 for (Vector<_Association>::iterator iter2 = _fixedAssociations.begin(); iter2 != _fixedAssociations.end(); ++iter2)
 			 {
 			   if (iter->_from.matches_prefix(iter->_network_addr, iter2->netmask_))
 			   {
@@ -190,11 +190,11 @@ OLSRHNAGenerator::generate_hna()
 			 }
 			 //--mvhaen--*/
 			if (first_iter)	first_iter = false;
-			else address = (in_addr *) (address + 1);
+			else address = reinterpret_cast<in_addr *>( (address + 1));
 
 			*address = iter->_from.in_addr();
 			click_chatter("%s | A_network_addr = %s\n", _my_ip.unparse().c_str(), iter->_from.unparse().c_str());
-			address = (in_addr *) (address + 1);
+			address = reinterpret_cast<in_addr *>( (address + 1));
 			*address = iter->_to.in_addr();
 			click_chatter("%s | A_netmask = %s\n", _my_ip.unparse().c_str(), iter->_to.unparse().c_str());
 			msg_hdr->msg_size = htons( ntohs(msg_hdr->msg_size) + 2 * sizeof(in_addr) );
@@ -233,7 +233,7 @@ OLSRHNAGenerator::compute_vtime()
 int
 OLSRHNAGenerator::add_association_write_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
-	OLSRHNAGenerator* me = (OLSRHNAGenerator *) e;
+	OLSRHNAGenerator* me = reinterpret_cast<OLSRHNAGenerator *>( e);
 	IPAddress network_addr;
 	IPAddress netmask;
 	int res = cp_va_kparse(conf, me, errh,

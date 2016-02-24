@@ -37,11 +37,13 @@
 CLICK_DECLS
 
 FalconRoutingTable::FalconRoutingTable():
+  _me(NULL),
   successor(NULL),
   predecessor(NULL),
   backlog(NULL),
   _lastUpdatedPosition(0),
   fix_successor(false),
+  ping_successor_counter(0),
   _dbg_routing_info(0),
   max_node_age(RT_MAX_NODE_AGE),
   _passive_monitoring(false)
@@ -266,10 +268,8 @@ FalconRoutingTable::add_neighbour(DHTnode *node)
 int
 FalconRoutingTable::add_nodes(DHTnodelist *nodes)
 {
-  DHTnode *n;
-
   for ( int i = 0; i < nodes->size(); i++ ) {
-    n = nodes->get_dhtnode(i);
+    DHTnode *n = nodes->get_dhtnode(i);
     add_node(n);
   }
 
@@ -279,14 +279,13 @@ FalconRoutingTable::add_nodes(DHTnodelist *nodes)
 int
 FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
 {
-  int table;
-  DHTnode *fn;
   if ( isSuccessor(node) && (position != 0) ) {
     BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
     return 0;
   }
 
-  fn = find_node_in_tables(node, &table);
+  int table;
+  DHTnode *fn = find_node_in_tables(node, &table);
 
   assert( fn != NULL );
 
@@ -472,9 +471,8 @@ FalconRoutingTable::add_update_callback(void (*info_func)(void*,int), void *info
 void
 FalconRoutingTable::update_callback(int status)
 {
-  CallbackFunction *cbf;
   for ( int i = 0; i < _callbacklist.size(); i++ ) {
-    cbf = _callbacklist[i];
+    CallbackFunction *cbf = _callbacklist[i];
 
     (*cbf->_info_func)(cbf->_info_obj, status);
   }
@@ -588,7 +586,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  FalconRoutingTable *dht_falcon = (FalconRoutingTable *)e;
+  FalconRoutingTable *dht_falcon = reinterpret_cast<FalconRoutingTable *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -602,7 +600,7 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  FalconRoutingTable *dht_falcon = (FalconRoutingTable *)e;
+  FalconRoutingTable *dht_falcon = reinterpret_cast<FalconRoutingTable *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((uintptr_t) vparam)

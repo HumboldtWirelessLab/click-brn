@@ -27,7 +27,7 @@ void *
 BrnMinstrelRate::cast(const char *name)
 {
   if (strcmp(name, "BrnMinstrelRate") == 0)
-    return (BrnMinstrelRate *) this;
+    return dynamic_cast<BrnMinstrelRate *>(this);
 
   return RateSelection::cast(name);
 }
@@ -59,7 +59,7 @@ BrnMinstrelRate::configure(Vector<String> &conf, ErrorHandler *errh)
 void
 BrnMinstrelRate::adjust_all(NeighborTable *neighbors)
 {
-  for (NIter iter = neighbors->begin(); iter.live(); iter++) {
+  for (NIter iter = neighbors->begin(); iter.live(); ++iter) {
     NeighbourRateInfo *nri = iter.value();
     setMinstrelInfo(nri);
   }
@@ -80,7 +80,7 @@ BrnMinstrelRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neig
 
   if (nri->_rs_data == NULL) setMinstrelInfo(nri);
 
-  MinstrelNodeInfo *mni = (MinstrelNodeInfo*)nri->_rs_data;
+  MinstrelNodeInfo *mni = reinterpret_cast<MinstrelNodeInfo*>(nri->_rs_data);
 
 
   MCS sample_mcs;
@@ -119,8 +119,8 @@ void
 BrnMinstrelRate::setMinstrelInfo(NeighbourRateInfo *nri)
 {
   BRN_DEBUG("Set MinstrelNodeInfo");
-  if ( nri->_rs_data == NULL ) nri->_rs_data = (void*)new MinstrelNodeInfo();
-  MinstrelNodeInfo *mni = (MinstrelNodeInfo*)nri->_rs_data;
+  if ( nri->_rs_data == NULL ) nri->_rs_data = reinterpret_cast<void*>(new MinstrelNodeInfo());
+  MinstrelNodeInfo *mni = reinterpret_cast<MinstrelNodeInfo*>(nri->_rs_data);
 
   if (nri->stats._ratestatsmap.size() == 0) {
     mni->best_eff_tp = nri->_rates[0];

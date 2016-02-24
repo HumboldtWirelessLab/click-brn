@@ -71,8 +71,8 @@ class OLSRARPResponder : public Element { public:
 
   Packet *simple_action(Packet *);
   
-  Packet *make_response(unsigned char tha[6], unsigned char tpa[4],
-                        unsigned char sha[6], unsigned char spa[4], Packet *);
+  Packet *make_response(const unsigned char tha[6], const unsigned char tpa[4],
+                        const unsigned char sha[6], const unsigned char spa[4], Packet *);
 
   bool lookup(IPAddress, EtherAddress &) const;
 

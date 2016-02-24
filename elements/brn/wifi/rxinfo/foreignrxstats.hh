@@ -46,13 +46,9 @@ class ForeignRxStats : public BRNElement {
       Timestamp _last_index_inc;
       uint16_t  _last_seq;
 
-      RxStats(EtherAddress ea) {
-        _ea = ea;
+      explicit RxStats(EtherAddress ea): _ea(ea), _last_index_inc(Timestamp::now()),_last_seq(0)  {
         memset(_seq, 0, sizeof(_seq));
         memset(_flags, 0, sizeof(_flags));
-
-        _last_index_inc = Timestamp::now();
-        _last_seq = 0;
       }
 
       ~RxStats() {

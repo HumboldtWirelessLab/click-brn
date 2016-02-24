@@ -44,8 +44,12 @@
 CLICK_DECLS
 
 BoidBehaviorSimple::BoidBehaviorSimple():
+  _cs(NULL),
+  boidmove(BoidMove()),
+  _interval(0),
   _radius(BOID_DEFAULT_RADIUS),
   _cohesion(BOID_DEFAULT_COHESION),
+  _gravitation(BOID_DEFAULT_GRAVITATION),
   _steerlimit(BOID_DEFAULT_STEERLIMIT),
   _seperation(BOID_DEFAULT_SEPERATION),
   _speed(BOID_DEFAULT_SPEED)
@@ -100,7 +104,7 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
 {
   Vector3D velo;
   Vector3D possum;
-  
+
   Vector3D grav;
   Vector3D sep;
   Vector3D coh;
@@ -124,7 +128,7 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
   /**********************************************************/
   ChannelStats::SrcInfoTable *src_tab = _cs->get_latest_stats_neighbours();
 
-  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
+  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); ++iter) {
     //ChannelStats::SrcInfo src = iter.value();
     EtherAddress ea = iter.key();
 
@@ -164,7 +168,7 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
   int count = 0;
 
   //for(SwarmObject neighbor :swarmCluster.get(clus)) {
-  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
+  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); ++iter) {
 
     //ChannelStats::SrcInfo src = iter.value();
     EtherAddress ea = iter.key();
@@ -310,7 +314,7 @@ enum {
 static String
 BoidBehaviorSimple_read_param(Element */*e*/, void *thunk)
 {
-  //BoidBehaviorSimple *b = (BoidBehaviorSimple *)e;
+  //BoidBehaviorSimple *b = reinterpret_cast<BoidBehaviorSimple *>(e);
 
   switch ((uintptr_t) thunk) {
     case H_STATS: {

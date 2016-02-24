@@ -33,8 +33,8 @@ class AODVTrackNeighbours : public Element {
 		
 		virtual void push (int, Packet *);
 	private:
-		static void handleExpiry(Timer*, void *); // calback function for timers
-		void expire(IPAddress*);
+		//static void handleExpiry(Timer*, void *); // calback function for timers
+		//void expire(IPAddress*);
 		
 		AODVGenerateRERR * generateRerr;
 		AODVNeighbours* neighbour_table;

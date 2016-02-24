@@ -5,7 +5,8 @@ CLICK_DECLS
 
 extern "C" {
   static int mcs_data_rate_sorter(const void *va, const void *vb, void * /*thunk*/) {
-    MCS *a = ((MCS *)va), *b = ((MCS *)vb);
+    const MCS *a = reinterpret_cast<const MCS *>(va);
+    const MCS *b = reinterpret_cast<const MCS *>(vb);
 
     if ( a->_data_rate > b->_data_rate ) return 1;
     if ( a->_data_rate < b->_data_rate ) return -1;
@@ -26,9 +27,9 @@ void *
 RateSelection::cast(const char *name)
 {
   if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
+    return dynamic_cast<RateSelection *>(this);
   else if (strcmp(name, "Scheme") == 0)
-    return (Scheme *) this;
+    return dynamic_cast<Scheme *>(this);
   else
     return NULL;
 }

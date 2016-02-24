@@ -267,14 +267,14 @@ LinuxRTCtrl::linux_rt_update(const String &s)
 static String
 read_rt_info(Element *e, void *)
 {
-  LinuxRTCtrl *rt = (LinuxRTCtrl *)e;
+  LinuxRTCtrl *rt = reinterpret_cast<LinuxRTCtrl *>(e);
   return rt->linux_rt_info();
 }
 
 static int
 write_rt_table(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
-  LinuxRTCtrl *rt = (LinuxRTCtrl *)e;
+  LinuxRTCtrl *rt = reinterpret_cast<LinuxRTCtrl *>(e);
   rt->linux_rt_update(in_s);
   return 0;
 }

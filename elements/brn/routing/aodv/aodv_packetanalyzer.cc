@@ -24,7 +24,7 @@ String AODVPacketAnalyzer::getTypeString(int message_type){
 String AODVPacketAnalyzer::getMessageString(Packet *packet){
 	// determine type using size
 	if (packet->length() == aodv_headeroffset + sizeof(aodv_rrep_header)){ //RREP, HELLO or RERR
-		aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
+		const aodv_rrep_header * rrep = reinterpret_cast<const aodv_rrep_header*>(packet->data() + aodv_headeroffset);
 		if (rrep->type == 2){
 			if (packet->ip_header()->ip_ttl == 1){
 				return AODV_HELLO_STRING;

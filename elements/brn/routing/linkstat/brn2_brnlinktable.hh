@@ -62,10 +62,7 @@ class EthernetPair {
     //
     EthernetPair() : _to(), _from(), _hashcode(0) { }
 
-    EthernetPair(EtherAddress from, EtherAddress to) {
-      _to = to;
-      _from = from;
-      _hashcode = (((uint32_t)from.sdata()[2]) << 16) + ((uint32_t)to.sdata()[2]);
+    EthernetPair(EtherAddress from, EtherAddress to): _to(to), _from(from), _hashcode((((uint32_t)from.sdata()[2]) << 16) + ((uint32_t)to.sdata()[2])) {
     }
 
     bool contains(EtherAddress foo) {
@@ -101,12 +98,10 @@ class BrnHostInfo {
 
     bool _is_associated;
 
-    BrnHostInfo(EtherAddress p) {
-      _ether = p;
-      _is_associated = false;
+    explicit BrnHostInfo(EtherAddress p):_ether(p), _is_associated(false)  {
     }
 
-    BrnHostInfo() : _ether() {
+    BrnHostInfo() : _ether(), _is_associated(false) {
     }
 
     BrnHostInfo(const BrnHostInfo &p) :
@@ -129,24 +124,12 @@ class BrnLinkInfo {
 
     Timestamp _last_updated;
 
-    BrnLinkInfo() {
-      _from = EtherAddress();
-      _to = EtherAddress();
-      _metric = 0;
-      _seq = 0;
-      _age = 0;
-      _last_updated = Timestamp(0);
+    BrnLinkInfo() : _from(), _to(), _metric(0), _seq(0), _age(0), _permanent(false), _symetry(false), _last_updated(0) {
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to,
-      uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
-      _from = from;
-      _to = to;
-      _metric = metric;
-      _seq = seq;
-      _age = age;
-      _permanent = permanent;
-      _last_updated = Timestamp::now();
+      uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) :
+      _from(from), _to(to), _metric(metric), _seq(seq), _age(age), _permanent(permanent), _symetry(false), _last_updated(Timestamp::now()) {
     }
 
     BrnLinkInfo(const BrnLinkInfo &p) :
@@ -154,6 +137,7 @@ class BrnLinkInfo {
       _metric(p._metric), _seq(p._seq),
       _age(p._age),
       _permanent(p._permanent),
+      _symetry(p._symetry),
       _last_updated(p._last_updated)
       { }
 
@@ -290,7 +274,7 @@ class Brn2LinkTable: public BRNElement {
 
   void add_informant(BrnLinkTableChangeInformant *inf) {
     ltci.push_back(inf);
-    for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+    for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
       BrnHostInfo *bhi = _hosts.findp(iter.key());
       inf->add_node(bhi);
     }

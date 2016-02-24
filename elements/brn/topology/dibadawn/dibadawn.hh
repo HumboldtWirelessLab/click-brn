@@ -48,7 +48,7 @@ public:
     DibadawnLinkStatistic link_stat;
     DibadawnConfig config;
 
-    DibadawnAlgorithm(BRNElement *brn_click_element);
+    explicit DibadawnAlgorithm(BRNElement *brn_click_element);
     void receive(DibadawnPacket &packet);
     void startNewSearch();
     void setTopologyInfo(TopologyInfo *topoInfo);

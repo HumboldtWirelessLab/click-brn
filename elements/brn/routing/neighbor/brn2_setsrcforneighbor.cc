@@ -34,6 +34,7 @@
 CLICK_DECLS
 
 BRN2SetSrcForNeighbor::BRN2SetSrcForNeighbor():
+  _debug(0),
   _link_table(NULL),
   _nblist(NULL),
   _use_anno(false)
@@ -95,9 +96,11 @@ BRN2SetSrcForNeighbor::smaction(Packet *p_in)
   EtherAddress dst;
   click_ether *ether = NULL;
 
-  if ( _use_anno ) dst = BRNPacketAnno::src_ether_anno(p_in);
+  WritablePacket *p_out = p_in->uniqueify();
+
+  if ( _use_anno ) dst = BRNPacketAnno::src_ether_anno(p_out);
   else {
-    ether = (click_ether *)p_in->data();
+    ether = reinterpret_cast<click_ether *>(p_out->data());
     dst = EtherAddress(ether->ether_dhost);
   }
 
@@ -109,15 +112,15 @@ BRN2SetSrcForNeighbor::smaction(Packet *p_in)
     else if (_link_table) src = _link_table->get_neighbor(dst);  //return the local src addr for the (best) link
 
     if ( src == NULL ) {
-      output(1).push(p_in);
-      p_in = NULL;
+      output(1).push(p_out);
+      p_out = NULL;
     } else {
-      if ( _use_anno ) BRNPacketAnno::set_src_ether_anno(p_in, *src);
+      if ( _use_anno ) BRNPacketAnno::set_src_ether_anno(p_out, *src);
       else memcpy(ether->ether_shost, src->data(), 6);
     }
   }
 
-  return p_in;
+  return p_out;
 
 }
 
@@ -128,7 +131,7 @@ BRN2SetSrcForNeighbor::smaction(Packet *p_in)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2SetSrcForNeighbor *ds = (BRN2SetSrcForNeighbor *)e;
+  BRN2SetSrcForNeighbor *ds = reinterpret_cast<BRN2SetSrcForNeighbor *>(e);
   return String(ds->_debug) + "\n";
 }
 
@@ -136,7 +139,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
 		      ErrorHandler *errh)
 {
-  BRN2SetSrcForNeighbor *ds = (BRN2SetSrcForNeighbor *)e;
+  BRN2SetSrcForNeighbor *ds = reinterpret_cast<BRN2SetSrcForNeighbor *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

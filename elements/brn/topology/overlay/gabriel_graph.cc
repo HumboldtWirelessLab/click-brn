@@ -41,7 +41,7 @@
 CLICK_DECLS
 
 GabrielGraph::GabrielGraph() :
-	_timer(static_calc_neighbors,this)
+	_timer(static_calc_neighbors,this), _me(NULL),_ovl(NULL),_link_table(NULL),_update_intervall(0),_threshold(0)
 {
   BRNElement::init();
 }

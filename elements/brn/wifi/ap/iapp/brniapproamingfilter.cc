@@ -41,8 +41,8 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////////////
 
 BrnIappRoamingFilter::BrnIappRoamingFilter() :
-  _debug(BrnLogger::DEFAULT)
-{
+  _debug(BrnLogger::DEFAULT),
+  _assoc_list(NULL){
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ enum {H_DEBUG};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappRoamingFilter *td = (BrnIappRoamingFilter *)e;
+  BrnIappRoamingFilter *td = reinterpret_cast<BrnIappRoamingFilter *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -144,7 +144,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappRoamingFilter *f = (BrnIappRoamingFilter *)e;
+  BrnIappRoamingFilter *f = reinterpret_cast<BrnIappRoamingFilter *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

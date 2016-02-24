@@ -43,10 +43,12 @@ FloodingPiggyback::FloodingPiggyback():
   _flooding(NULL),
   _fhelper(NULL),
   _flooding_db(NULL),
+  extra_data_size(0),
   _max_last_nodes_per_pkt(BCAST_EXTRA_DATA_NODEINFO_DFL_MAX_NODES),
   _update_interval(BCAST_EXTRA_DATA_NEIGHBOURS_UPDATE_INTERVAL)
 {
   BRNElement::init();
+  memset(&extra_data,0,sizeof(extra_data));
 }
 
 FloodingPiggyback::~FloodingPiggyback()

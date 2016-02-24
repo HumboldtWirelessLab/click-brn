@@ -35,6 +35,8 @@ CLICK_DECLS
 
 class com_obj {
 public:
+	Vector <SSL*> old_connections;
+
 	com_obj(SSL_CTX *_ctx, enum role_t _role) {
 		role = _role;
 		ctx = _ctx;
@@ -60,6 +62,8 @@ public:
 
 		// Must be called before first SSL_read or SSL_write
 		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
+		
+		old_connections.clear();
 	}
 
 	~com_obj() {
@@ -77,6 +81,7 @@ public:
             SSL_set_bio(conn,NULL,NULL);
             SSL_free(conn);
         }*/
+		old_connections.push_back(conn);
 		conn = SSL_new(ctx);
 		SSL_set_bio(conn,bioIn,bioOut);
 		SSL_set_read_ahead(conn, 1);

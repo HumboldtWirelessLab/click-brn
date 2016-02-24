@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 OverlayStructure::OverlayStructure() 
-{
+:_pre(false),_me(NULL){
   BRNElement::init();
 }
 
@@ -362,13 +362,13 @@ enum {
 
 static String read_stats(Element *e, void */*thunk*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)e;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
   return ovl->stats();
 }
 
 static int add_own_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -385,7 +385,7 @@ static int add_own_parent (const String &in_s, Element *element, void */*thunk*/
 
 static int add_own_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -405,7 +405,7 @@ static int add_own_child (const String &in_s, Element *element, void */*thunk*/,
 static int add_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
   //Notice that this only makes the node believe, that some node has a new parent, but it's not added to its parent list
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -423,7 +423,7 @@ static int add_parent (const String &in_s, Element *element, void */*thunk*/, Er
 static int add_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
   //Notice that this only makes the node believe, that some node has a new child, but it's not added to its child list
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -440,7 +440,7 @@ static int add_child (const String &in_s, Element *element, void */*thunk*/, Err
 
 static int remove_own_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -457,7 +457,7 @@ static int remove_own_parent (const String &in_s, Element *element, void */*thun
 
 static int remove_own_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -475,7 +475,7 @@ static int remove_own_child (const String &in_s, Element *element, void */*thunk
 static int remove_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
   //Notice that this only makes the node believe, that some node has a new parent, but it's not added to its parent list
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -493,7 +493,7 @@ static int remove_parent (const String &in_s, Element *element, void */*thunk*/,
 static int remove_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
   //Notice that this only makes the node believe, that some node has a new child, but it's not added to its child list
-  OverlayStructure *ovl = (OverlayStructure *)element;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 
   String s = cp_uncomment(in_s);
   Vector<String> args;
@@ -510,7 +510,7 @@ static int remove_child (const String &in_s, Element *element, void */*thunk*/, 
 
 static int set_pre (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
 	//click_chatter("set_pre0");
-	OverlayStructure *ovl = (OverlayStructure *)element;
+	OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 	
     String s = cp_uncomment(in_s);
     //click_chatter("set_pre1: %s",s.c_str());
@@ -527,7 +527,7 @@ static int set_pre (const String &in_s, Element *element, void */*thunk*/, Error
 }
 
 static int reset_all (const String &/*in_s*/, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
-	OverlayStructure *ovl = (OverlayStructure *)element;
+	OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(element);
 	
     ovl->reset();
 	
@@ -537,7 +537,7 @@ static int reset_all (const String &/*in_s*/, Element *element, void */*thunk*/,
 static String
 read_own_parents(Element *e, void */*thunk*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)e;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
   return ovl->printOwnParents();
 ;
 }
@@ -545,28 +545,28 @@ read_own_parents(Element *e, void */*thunk*/)
 static String
 read_own_children(Element *e, void */*thunk*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)e;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
   return ovl->printOwnChildren();
 }
 
 static String
 read_all_parents(Element *e, void */*thunk*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)e;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
   return ovl->printAllParents();
 }
 
 static String
 read_all_children(Element *e, void */*thunk*/)
 {
-  OverlayStructure *ovl = (OverlayStructure *)e;
+  OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
   return ovl->printAllChildren();
 }
 
 static String
 read_pre(Element *e, void */*thunk*/)
 {
-	OverlayStructure *ovl = (OverlayStructure *)e;
+	OverlayStructure *ovl = reinterpret_cast<OverlayStructure *>(e);
 	return ovl->printPre();
 }
 

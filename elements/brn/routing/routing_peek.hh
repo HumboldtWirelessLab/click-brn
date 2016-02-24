@@ -64,9 +64,8 @@ class RoutingPeek : public BRNElement
      */
 
     bool call_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port) {
-      PeekFunction *pf;
       for ( int i = 0; i < _peeklist.size(); i++ ) {
-        pf = _peeklist[i];
+        PeekFunction *pf = _peeklist[i];
         if ( pf->_brn_port == brn_port )
           if ( ! (*pf->_peek_func)(pf->_peek_obj, p, src, dst, brn_port) ) return false;
       }

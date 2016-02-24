@@ -11,6 +11,7 @@ CLICK_DECLS
 
 BrnRXCorrelation::BrnRXCorrelation()
   :_debug(BrnLogger::DEFAULT),
+   _linkstat(NULL),
    _linkprobe_id(0)
 {
 }
@@ -36,14 +37,14 @@ BrnRXCorrelation::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
-  BrnRXCorrelation *lph = (BrnRXCorrelation*)element;
+  BrnRXCorrelation *lph = reinterpret_cast<BrnRXCorrelation*>(element);
   return lph->lpSendHandler((unsigned char*)buffer, size);
 }
 
 static int
 rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-  BrnRXCorrelation *lph = (BrnRXCorrelation*)element;
+  BrnRXCorrelation *lph = reinterpret_cast<BrnRXCorrelation*>(element);
   return lph->lpReceiveHandler((unsigned char*)buffer, size);
 }
 
@@ -91,7 +92,6 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
   EtherAddress source;
 
   NeighbourInfo *ni;
-  struct rxc_neighbour_info* rxni;
   struct rxc_header* rxch = (struct rxc_header*)ptr;
   source = EtherAddress(rxch->src);
   lpid = ntohs(rxch->lp_id);
@@ -104,7 +104,7 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
   int index = sizeof(struct rxc_header);
 
   while ( index < payload_size ) {
-    rxni = (struct rxc_neighbour_info*)&(ptr[index]);
+    struct rxc_neighbour_info* rxni = (struct rxc_neighbour_info*)&(ptr[index]);
 
     neighbour_addr = EtherAddress(rxni->mac);
 
@@ -133,15 +133,6 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
 int
 BrnRXCorrelation::lpSendHandler(uint8_t *ptr, int payload_size)
 {
-  uint16_t size;
-  uint16_t n_index;
-  uint16_t id_bitmap;
-  uint16_t id_index;
-  uint16_t id_last;
-  uint16_t id_first;
-  uint16_t index_first;
-  struct rxc_neighbour_info* ni;
-
   //increase id for next message
   _linkprobe_id++;
 
@@ -151,24 +142,24 @@ BrnRXCorrelation::lpSendHandler(uint8_t *ptr, int payload_size)
   rxch->lp_id = htons(_linkprobe_id);
 
   /* set pointer after the header and start to add information for each known neighbour*/
-  size = sizeof(struct rxc_header);
+  uint16_t size = sizeof(struct rxc_header);
 
-  n_index = 0;
+  uint16_t n_index = 0;
 
   while ( (n_index < _cand.size()) && ((size + sizeof(rxc_neighbour_info)) < (uint16_t)payload_size ) ) {
-    ni = (struct rxc_neighbour_info*)&(ptr[size]);                                                       //pointer to next neighbourinfo
+    struct rxc_neighbour_info* ni = (struct rxc_neighbour_info*)&(ptr[size]);                                                       //pointer to next neighbourinfo
     size += sizeof(struct rxc_neighbour_info);                                                            //step pointer forward
 
     memcpy(ni->mac, _cand[n_index]->_addr.data(), 6);                                                     //copy address
 
-    id_last = _cand[n_index]->get_last_recv_linkprobe();                                    //get last receive ID
-    id_first = id_last - (sizeof(ni->following_ids) * 8);                                   //we want to push the last X id, so what the first id we want ?
-    index_first = _cand[n_index]->get_index_of(id_first);                                   //index of the id
+    uint16_t id_last = _cand[n_index]->get_last_recv_linkprobe();                                    //get last receive ID
+    uint16_t id_first = id_last - (sizeof(ni->following_ids) * 8);                                   //we want to push the last X id, so what the first id we want ?
+    uint16_t index_first = _cand[n_index]->get_index_of(id_first);                                   //index of the id
 
     ni->first_id = htons(_cand[n_index]->_ids[index_first]);                                //set first known ID
 
-    id_bitmap = 0;                                                                          //prepare bitmap
-    id_index = (index_first + 1) % MAXIDS;                                                  //set to next known ID
+    uint16_t id_bitmap = 0;                                                                          //prepare bitmap
+    uint16_t id_index = (index_first + 1) % MAXIDS;                                                  //set to next known ID
     while ( id_index != _cand[n_index]->_ids_next ) {
       BRN_DEBUG("Add %d for %s",_cand[n_index]->_ids[id_index], _cand[n_index]->_addr.unparse().c_str());
 
@@ -226,13 +217,13 @@ BrnRXCorrelation::printNeighbourInfo()
 static String
 read_handler_info(Element *e, void *)
 {
-  return ((BrnRXCorrelation*)e)->printNeighbourInfo();
+  return(reinterpret_cast<BrnRXCorrelation*>(e))->printNeighbourInfo();
 }
 
 static int 
 write_handler_debug(const String &in_s, Element *e, void *,ErrorHandler *errh)
 {
-  BrnRXCorrelation *brnrxc = (BrnRXCorrelation*)e;
+  BrnRXCorrelation *brnrxc = reinterpret_cast<BrnRXCorrelation*>(e);
   String s = cp_uncomment(in_s);
 
   int debug;
@@ -254,7 +245,7 @@ write_handler_debug(const String &in_s, Element *e, void *,ErrorHandler *errh)
 static String
 read_handler_debug(Element *e, void *)
 {
-  BrnRXCorrelation *brn2debug = (BrnRXCorrelation*)e;
+  BrnRXCorrelation *brn2debug = reinterpret_cast<BrnRXCorrelation*>(e);
 
   return String(brn2debug->_debug);
 }

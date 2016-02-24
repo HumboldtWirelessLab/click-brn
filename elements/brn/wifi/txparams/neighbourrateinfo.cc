@@ -11,33 +11,26 @@ CLICK_DECLS
 int NeighbourRateInfo::_debug = 2;
 
 
-NeighbourRateInfo::NeighbourRateInfo()
+NeighbourRateInfo::NeighbourRateInfo() :
+  _max_power(0),
+  _rs_data(NULL),
+  _pc_data(NULL),
+  init_stamp(Timestamp::now()),
+  stats_duration(0)
 {
-  _rs_data = NULL;
-
-  init_stamp     = Timestamp::now();
 }
-
-
 
 NeighbourRateInfo::~NeighbourRateInfo()
 {
 }
 
-NeighbourRateInfo::NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power)
+NeighbourRateInfo::NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power): _eth(eth), _rates(rates),
+                                                                                              _max_power(max_power), _rs_data(NULL),
+                                                                                              _pc_data(NULL), init_stamp(Timestamp::now()), stats_duration(0)
 {
-  _eth = eth;
-  _rates = rates;
-  _max_power = max_power;
-  _rs_data = NULL;
-  _pc_data = NULL;
-
-  init_stamp = Timestamp::now();
-
   stats.no_timeslots = 10;
   stats.curr_timeslot = 0;
   stats.last_timeslot = 0;
-
 }
 
 

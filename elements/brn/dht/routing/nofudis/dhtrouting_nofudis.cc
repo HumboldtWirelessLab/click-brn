@@ -20,8 +20,10 @@
 CLICK_DECLS
 
 DHTRoutingNoFuDis::DHTRoutingNoFuDis():
+  _linkstat(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
-  _packet_buffer_timer(static_packet_buffer_timer_hook,this)
+  _packet_buffer_timer(static_packet_buffer_timer_hook,this),
+  _update_interval(0)
 {
   DHTRouting::init();
 }
@@ -34,9 +36,9 @@ void *
 DHTRoutingNoFuDis::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingNoFuDis") == 0)
-    return (DHTRoutingNoFuDis *) this;
+    return dynamic_cast<DHTRoutingNoFuDis *>(this);
   else if (strcmp(name, "DHTRouting") == 0)
-         return (DHTRouting *) this;
+         return dynamic_cast<DHTRouting *>(this);
        else
          return NULL;
 }
@@ -73,7 +75,7 @@ DHTRoutingNoFuDis::configure(Vector<String> &conf, ErrorHandler *errh)
 static int
 tx_handler(void */*element*/, const EtherAddress*, char */*buffer*/, int/* size*/)
 {
-//  DHTRoutingNoFuDis *dhtro = (DHTRoutingNoFuDis*)element;
+//  DHTRoutingNoFuDis *dhtro = reinterpret_cast<DHTRoutingNoFuDis*>(element);
 //  return lph->lpSendHandler(buffer, size);
 
   return 0;
@@ -82,7 +84,7 @@ tx_handler(void */*element*/, const EtherAddress*, char */*buffer*/, int/* size*
 static int
 rx_handler(void */*element*/, EtherAddress*, char */*buffer*/, int/* size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
-//  DHTRoutingNoFuDis *dhtro = (DHTRoutingNoFuDis*)element;
+//  DHTRoutingNoFuDis *dhtro = reinterpret_cast<DHTRoutingNoFuDis*>(element);
 //  return lph->lpReceiveHandler(buffer, size);*/
 
   return 0;
@@ -102,11 +104,13 @@ DHTRoutingNoFuDis::initialize(ErrorHandler *)
   return 0;
 }
 
+/*
 void
 DHTRoutingNoFuDis::set_lookup_timer()
 {
   _lookup_timer.schedule_after_msec( _update_interval );
 }
+*/
 
 void
 DHTRoutingNoFuDis::static_lookup_timer_hook(Timer *t, void */*f*/)
@@ -119,9 +123,8 @@ DHTRoutingNoFuDis::static_packet_buffer_timer_hook(Timer *t, void *f)
 {
   DHTRoutingNoFuDis *dht;
   PacketSendBuffer::BufferedPacket *bpacket;
-  int next_p;
 
-  dht = (DHTRoutingNoFuDis*)f;
+  dht = reinterpret_cast<DHTRoutingNoFuDis*>(f);
 
   if ( t == NULL ) click_chatter("Timer is NULL");
   bpacket = dht->packetBuffer.getNextBufferedPacket();
@@ -129,7 +132,7 @@ DHTRoutingNoFuDis::static_packet_buffer_timer_hook(Timer *t, void *f)
   if ( bpacket != NULL )
   {
     dht->output(bpacket->_port).push(bpacket->_p);
-    next_p = dht->packetBuffer.getTimeToNext();
+    int next_p = dht->packetBuffer.getTimeToNext();
     if ( next_p >= 0 )
       dht->_packet_buffer_timer.schedule_after_msec( next_p );
     else
@@ -202,7 +205,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingNoFuDis *dht_omni = (DHTRoutingNoFuDis *)e;
+  DHTRoutingNoFuDis *dht_omni = reinterpret_cast<DHTRoutingNoFuDis *>(e);
 
   switch ((uintptr_t) thunk)
   {

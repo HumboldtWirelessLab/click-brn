@@ -10,6 +10,7 @@
 CLICK_DECLS
 
 OLSRForward::OLSRForward()
+: _interfaceInfo(NULL),_localIfInfoBase(NULL),_duplicateSet(NULL),_neighborInfo(NULL),_msg_seq(0)
 {
 }
 
@@ -59,7 +60,7 @@ OLSRForward::push(int port, Packet *packet)
       if (duplicate_tuple != 0){
 	
 	if (duplicate_tuple->D_retransmitted){
-	  //olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) packet->data();
+	  //olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( packet->data());
 	 //click_chatter ("FORWARD (node %s): DROPPING message from %s received on interface %s messagetype  --  ALREADY RETRANSMITTED: %d\n",_myMainIP.unparse().cc(),msg_info.originator_address.unparse().cc(), receiving_If_IP.unparse().cc(),msg_hdr->msg_type);
 	  output(1).push(packet); //discard
 	  return;
@@ -68,7 +69,7 @@ OLSRForward::push(int port, Packet *packet)
 	for (int i = 0; i < duplicate_tuple->D_iface_list.size(); i++){
 	  IPAddress iface_address = duplicate_tuple->D_iface_list.at(i);
 	  if (iface_address == receiving_If_IP){
-	    //olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) packet->data();
+	    //olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( packet->data());
 	 //click_chatter ("FORWARD (node %s): DROPPING message from %s received on interface %s messagetype  --  receiving INTERFACE on D_iface_list: %d\n",_myMainIP.unparse().cc(),msg_info.originator_address.unparse().cc(), receiving_If_IP.unparse().cc(),msg_hdr->msg_type);
 	    output(1).push(packet); //discard
 	    return;
@@ -93,21 +94,22 @@ OLSRForward::push(int port, Packet *packet)
 	 }
 	  if (retransmit)
 	  {
-	  olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) packet->data();
+		  WritablePacket *p_out = packet->uniqueify();
+	  olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( p_out->data());
 	  msg_hdr->ttl = msg_hdr->ttl - 1;
 	  msg_hdr->hop_count = msg_hdr->hop_count + 1;
 	//adding olsr packet header
-	packet=packet->push(sizeof(olsr_pkt_hdr));
-	olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+	p_out=p_out->push(sizeof(olsr_pkt_hdr));
+	olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( p_out->data());
 	pkt_hdr->pkt_length = htons(msg_info.msg_size + sizeof(olsr_pkt_hdr));
 	pkt_hdr->pkt_seq = 0;
-	output(0).push(packet); //forward packet
+	output(0).push(p_out); //forward packet
 	//click_chatter ("FORWARD (node %s): relaying message from %s received on interface %s messagetype: %d\n",_myMainIP.unparse().cc(),msg_info.originator_address.unparse().cc(), receiving_If_IP.unparse().cc(),msg_hdr->msg_type);
 	return;
 	}
 	else
 	 {
-	 //olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) packet->data();
+	 //olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( packet->data());
 	 //click_chatter ("FORWARD (node %s): DROPPING message from %s received on interface %s messagetype: %d\n",_myMainIP.unparse().cc(),msg_info.originator_address.unparse().cc(), receiving_If_IP.unparse().cc(),msg_hdr->msg_type);
 	 output(1).push(packet); //discard
 	 
@@ -116,13 +118,14 @@ OLSRForward::push(int port, Packet *packet)
     }
   else if ( port == 1 ) { //packets from self, and msg_seq
       msg_hdr_info msg_info = OLSRPacketHandle::get_msg_hdr_info(packet, sizeof(olsr_pkt_hdr));
-    olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+    WritablePacket *p_out = packet->uniqueify();
+    olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( p_out->data());
     pkt_hdr->pkt_length = htons(msg_info.msg_size + sizeof(olsr_pkt_hdr));
     pkt_hdr->pkt_seq = 0;
-    olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) (pkt_hdr + 1);
+    olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( (pkt_hdr + 1));
     msg_hdr->msg_seq = htons ( get_msg_seq() );
     //click_chatter ("FORWARD (node %s) broadcasting message from me: messagetype: %d\n",_myMainIP.unparse().cc(),msg_hdr->msg_type);
-    output(0).push(packet); //forward packet
+    output(0).push(p_out); //forward packet
     return;
   }
   else{

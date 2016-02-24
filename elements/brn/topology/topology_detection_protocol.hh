@@ -53,14 +53,10 @@ class TopologyDetectionLink {
 
     bool _is_bridge;
 
-    TopologyDetectionLink() {
-      _is_bridge = false;
+    TopologyDetectionLink(): _a(), _b(), _is_bridge(false) {
     }
 
-    TopologyDetectionLink(EtherAddress *a, EtherAddress *b, bool is_bridge) {
-      _a = *a;
-      _b = *b;
-      _is_bridge = is_bridge;
+    TopologyDetectionLink(EtherAddress *a, EtherAddress *b, bool is_bridge): _a(*a), _b(*b), _is_bridge(is_bridge) {
     }
 
     void serialize(struct td_link *tdl) {

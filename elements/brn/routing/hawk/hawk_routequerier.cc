@@ -39,6 +39,7 @@ CLICK_DECLS
 HawkRouteQuerier::HawkRouteQuerier() :
     _sendbuffer_timer(static_sendbuffer_timer_hook,(void*)this),
     _me(NULL),
+    _dht_storage(NULL),_dht_routing(NULL),_rt(NULL),_frt(NULL),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -94,7 +95,7 @@ HawkRouteQuerier::uninitialize()
 void
 HawkRouteQuerier::callback_func(void *e, DHTOperation *op)
 {
-  HawkRouteQuerier *s = (HawkRouteQuerier *)e;
+  HawkRouteQuerier *s = reinterpret_cast<HawkRouteQuerier *>(e);
   s->callback(op);
 }
 
@@ -146,7 +147,7 @@ HawkRouteQuerier::push(int, Packet *p_in)
     return;
   }
 
-  click_ether *ether = (click_ether *)p_in->data();  //better to use this, since ether_header is not always set.it also can be overwriten
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());  //better to use this, since ether_header is not always set.it also can be overwriten
 
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
@@ -173,45 +174,45 @@ char digest2[16*2 + 1];
   return;
 }
 
+/*
 void
-HawkRouteQuerier::send_packets(EtherAddress *dst, HawkRoutingtable::RTEntry */*entry*/ )
+HawkRouteQuerier::send_packets(EtherAddress *dst, HawkRoutingtable::RTEntry *entry )
 {
 //  PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
     //buffp = _packet_buffer.get(i);
 
-    //click_ether *ether = (click_ether *)buffp->_p->data();
+    //click_ether *ether = reinterpret_cast<click_ether *>(buffp->_p->data());
 
-   /* if ( memcmp(ether->ether_dhost, dst->data(),6) == 0 ) {
-      WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, buffp->_p);
+   // if ( memcmp(ether->ether_dhost, dst->data(),6) == 0 ) {
+   //   WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, buffp->_p);
 
-      _packet_buffer.del(i);
-      delete buffp;
+   //   _packet_buffer.del(i);
+   //   delete buffp;
 
-      output(0).push(dart_p);
-    }*/
+   //   output(0).push(dart_p);
+   // }
   }
 
   del_requests_for_ea(dst);
 }
+*/
 
 //-----------------------------------------------------------------------------
 // Timer-driven events
 //-----------------------------------------------------------------------------
 
-HawkRouteQuerier::RequestAddress *
+/*HawkRouteQuerier::RequestAddress *
 HawkRouteQuerier::requests_for_ea(EtherAddress *ea )
 {
-  HawkRouteQuerier::RequestAddress *rea;
-
   for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
-    rea = _request_list[i];
+    HawkRouteQuerier::RequestAddress *rea = _request_list[i];
     if ( memcmp(rea->_ea.data(), ea->data(),6) == 0 ) return rea;
   }
 
   return NULL;
 }
-
+*/
 void
 HawkRouteQuerier::del_requests_for_ea(EtherAddress *ea)
 {
@@ -219,12 +220,10 @@ HawkRouteQuerier::del_requests_for_ea(EtherAddress *ea)
 }
 
 void
-HawkRouteQuerier::del_requests_for_ea(uint8_t *ea)
+HawkRouteQuerier::del_requests_for_ea(const uint8_t *ea)
 {
-  HawkRouteQuerier::RequestAddress *rea;
-
   for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
-    rea = _request_list[i];
+    HawkRouteQuerier::RequestAddress *rea = _request_list[i];
     if ( memcmp(rea->_ea.data(), ea, 6) == 0 ) {
       _request_list.erase(_request_list.begin() + i);
       return;
@@ -235,6 +234,7 @@ HawkRouteQuerier::del_requests_for_ea(uint8_t *ea)
 /*
  * start issuing requests for a host.
  */
+/*
 void
 HawkRouteQuerier::start_issuing_request(EtherAddress *dst)
 {
@@ -263,12 +263,13 @@ HawkRouteQuerier::start_issuing_request(EtherAddress *dst)
     _sendbuffer_timer.schedule_after_msec(BRN_HAWK_SENDBUFFER_TIMER_INTERVAL);
   }
 }
+*/
 
 /* functions to manage the packet_timeouts*/
 void
 HawkRouteQuerier::static_sendbuffer_timer_hook(Timer *, void *v)
 {
-  HawkRouteQuerier *rt = (HawkRouteQuerier*)v;
+  HawkRouteQuerier *rt = reinterpret_cast<HawkRouteQuerier*>(v);
   rt->sendbuffer_timer_hook();
 }
 
@@ -277,13 +278,12 @@ HawkRouteQuerier::sendbuffer_timer_hook()
 {
   BRN_DEBUG("Packet Timeout. Check for packets.");
 
-  PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
-    buffp = _packet_buffer.get(i);
+    PacketSendBuffer::BufferedPacket *buffp = _packet_buffer.get(i);
     if ( buffp->timeout() ) {
       BRN_DEBUG("Kill packet");
 
-      click_ether *ether = (click_ether *)buffp->_p->data();
+      const click_ether *ether = reinterpret_cast<const click_ether *>(buffp->_p->data());
       del_requests_for_ea(ether->ether_dhost);
 
       buffp->_p->kill();
@@ -303,7 +303,7 @@ enum {H_DEBUG};
 static String
 read_handler(Element *e, void * vparam)
 {
-  HawkRouteQuerier *rq = (HawkRouteQuerier *)e;
+  HawkRouteQuerier *rq = reinterpret_cast<HawkRouteQuerier *>(e);
 
   switch ((intptr_t)vparam) {
     case H_DEBUG: {
@@ -316,7 +316,7 @@ read_handler(Element *e, void * vparam)
 static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  HawkRouteQuerier *rq = (HawkRouteQuerier *)e;
+  HawkRouteQuerier *rq = reinterpret_cast<HawkRouteQuerier *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

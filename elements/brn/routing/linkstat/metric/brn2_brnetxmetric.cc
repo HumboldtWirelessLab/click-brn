@@ -39,7 +39,7 @@ CLICK_DECLS
 
 BRN2ETXMetric::BRN2ETXMetric()
   : BRN2GenericMetric(),
-    _link_table(0)
+    _link_table(NULL)
 {
   BRNElement::init();
 }
@@ -52,9 +52,9 @@ void *
 BRN2ETXMetric::cast(const char *n)
 {
   if (strcmp(n, "BRN2ETXMetric") == 0)
-    return (BRN2ETXMetric *) this;
+    return dynamic_cast<BRN2ETXMetric *>(this);
   else if (strcmp(n, "BRN2GenericMetric") == 0)
-    return (BRN2GenericMetric *) this;
+    return dynamic_cast<BRN2GenericMetric *>(this);
   else
     return 0;
 }
@@ -68,7 +68,7 @@ BRN2ETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (res < 0) return res;
 
-  if (_link_table && _link_table->cast("Brn2LinkTable") == 0) {
+  if (_link_table && _link_table->cast("Brn2LinkTable") == NULL) {
     return errh->error("Brn2LinkTable element is not a Brn2LinkTable");
   }
   return 0;

@@ -212,19 +212,22 @@ DHTOperation::set_src_address_of_operation(uint8_t *ea)
 int
 DHTOperation::serialize(uint8_t **buffer, uint16_t *len) //TODO: hton for lens
 {
-  uint8_t *pbuffer = *buffer;
-  int plen;
+  int plen = SERIALIZE_STATIC_SIZE + header.valuelen + header.keylen;
+  uint8_t *pbuffer = new uint8_t[plen];
 
-  plen = SERIALIZE_STATIC_SIZE + header.valuelen + header.keylen;
-  *len = plen;
-  pbuffer = new uint8_t[plen];
-
-  if ( serialize_buffer(pbuffer,plen) == -1 )
-  {
-//  click_chatter("Unable to seralize DHT");
-    delete[] pbuffer;
-    *len = 0;
+  if (pbuffer != NULL) {
+    if (serialize_buffer(pbuffer,plen) == -1) {
+      //click_chatter("Unable to seralize DHT");
+      delete[] pbuffer;
+      pbuffer = NULL;
+      plen = 0;
+    }
+  } else {
+    plen = 0;
   }
+
+  *len = plen;
+  *buffer = pbuffer;
 
   return 0;
 }

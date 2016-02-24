@@ -44,6 +44,8 @@ class BatmanFailureDetection : public BRNElement {
 
      BatmanSrcInfo(): _loop_detected(0) {
        memset(_packet_ids,0, sizeof(_packet_ids));
+       memset(_packet_ttls,0, sizeof(_packet_ttls));
+       memset(_packet_retries,0, sizeof(_packet_retries));
      }
 
      int packet_error_type(uint16_t packet_id, Timestamp *now, int max_time_diff, uint8_t ttl, bool update = true) {

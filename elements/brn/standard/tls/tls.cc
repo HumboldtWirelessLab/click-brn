@@ -53,12 +53,13 @@
 CLICK_DECLS
 
 TLS::TLS()
+ : role(CLIENT),ctx(NULL),curr(NULL),session(NULL)
 {
 	BRNElement::init();
 }
 
 TLS::~TLS() {
-	for (HashMap<EtherAddress, com_obj*>::const_iterator it = com_table.begin(); it.live(); it++) {
+	for (HashMap<EtherAddress, com_obj*>::const_iterator it = com_table.begin(); it.live(); ++it) {
 		it.value()->~com_obj();
 	}
 	com_table.clear();
@@ -167,7 +168,6 @@ int TLS::initialize(ErrorHandler *) {
 }
 
 void TLS::push(int port, Packet *p) {
-	com_obj *tmp;
 	EtherAddress dst_addr;
 	switch(port) {
 	case 0: /*data from network*/	dst_addr = BRNPacketAnno::src_ether_anno(p); break;
@@ -177,7 +177,9 @@ void TLS::push(int port, Packet *p) {
 
 	// **************** Dynamic SSL-object selection ******************
 	// ****************************************************************
-	tmp = com_table.find(dst_addr);
+	com_obj **p_tmp = com_table.findp(dst_addr);
+	com_obj *tmp = NULL;
+	if ( p_tmp != NULL ) tmp = *p_tmp;
 	switch(role) {
 	case SERVER:
 		if(tmp) {
@@ -330,7 +332,7 @@ void TLS::encrypt(Packet *p) {
 void TLS::decrypt() {
 	int size = SSL_pending(curr->conn);
 
-	data_t *data = (data_t *)malloc(size);
+	data_t *data = reinterpret_cast<data_t *>(malloc(size));
 	if(!data) {
 		BRN_ERROR("SSL_CONN::receive no memory allocated.");
 		print_err();
@@ -507,26 +509,26 @@ int pem_passwd_cb(char *buf, int size, int , void *password) {
 }
 
 static String handler_triggered_handshake(Element *, void *) {
-	// TLS *tls = (TLS *)e;
+	// TLS *tls = reinterpret_cast<TLS *>(e);
 	// to test this, make do_handshake public!
 	// tls->do_handshake();
 	return String();
 }
 
 static String handler_triggered_shutdown(Element *e, void *) {
-	TLS *tls = (TLS *)e;
+	TLS *tls = reinterpret_cast<TLS *>(e);
 	tls->shutdown_tls();
 	return String();
 }
 
 static String handler_triggered_is_shutdown(Element *e, void *) {
-	TLS *tls = (TLS *)e;
+	TLS *tls = reinterpret_cast<TLS *>(e);
 	tls->is_shutdown();
 	return String();
 }
 
 static String handler_get_traffic_cnt(Element *e, void *) {
-	TLS *tls = (TLS *)e;
+	TLS *tls = reinterpret_cast<TLS *>(e);
 	click_chatter("traffic_cnt: %d", tls->get_traffic_cnt());
 	return String();
 }

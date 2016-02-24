@@ -22,11 +22,11 @@ BrnFloodingRate::BrnFloodingRate()
    _linkstat(NULL),
    _cst(NULL),
    _fl_rate_strategy(FLOODINGRATE_SINGLE_MAXRATE),
+   mcs_zero(0),
    _dflt_retries(7),
    _no_pkts(0),
    _saved_power_sum(0)
 {
-  mcs_zero = MCS(0);
   _default_strategy = RATESELECTION_FLOODING;
 }
 
@@ -34,7 +34,7 @@ void *
 BrnFloodingRate::cast(const char *name)
 {
   if (strcmp(name, "BrnFloodingRate") == 0)
-    return (BrnFloodingRate *) this;
+    return dynamic_cast<BrnFloodingRate *>(this);
 
   return RateSelection::cast(name);
 }
@@ -359,7 +359,7 @@ BrnFloodingRate::get_group_info(int mode, Vector<EtherAddress> &group, MCS *best
 
     BRN_DEBUG("Size: %d",erate_map.size());
 
-    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live(); i++) {
+    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live();++i) {
       BrnRateSize brs = i.key();
       int effective_rate = i.value();
       int count = rate_counter.find(brs);
@@ -401,7 +401,7 @@ BrnFloodingRate::get_group_info(int mode, Vector<EtherAddress> &group, MCS *best
 
     BRN_DEBUG("Size: %d",erate_map.size());
 
-    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live(); i++) {
+    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live();++i) {
       BrnRateSize brs = i.key();
       int effective_rate = i.value();
       int count = rate_counter.find(brs);
@@ -496,7 +496,7 @@ BrnFloodingRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
 {
   StringAccum sa;
 
-//  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+//  DstInfo *nfo = reinterpret_cast<DstInfo*>(nri->_rs_data);
 
   return sa.take_string();
 }
@@ -527,7 +527,7 @@ enum { H_STATS};
 static String
 BrnFloodingRate_read_param(Element *e, void *thunk)
 {
-  BrnFloodingRate *f = (BrnFloodingRate *)e;
+  BrnFloodingRate *f = reinterpret_cast<BrnFloodingRate *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return f->print_stats(0);
@@ -540,7 +540,7 @@ BrnFloodingRate_read_param(Element *e, void *thunk)
 static int
 BrnFloodingRate_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BrnFloodingRate *f = (BrnFloodingRate *)e;
+  BrnFloodingRate *f = reinterpret_cast<BrnFloodingRate *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_INFO: {

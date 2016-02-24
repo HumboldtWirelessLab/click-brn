@@ -34,7 +34,7 @@ void *
 GPSMap::cast(const char *n)
 {
   if (strcmp(n, "GPSMap") == 0)
-    return (GPSMap *)this;
+    return dynamic_cast<GPSMap *>(this);
   return 0;
 }
 
@@ -54,7 +54,7 @@ GPSMap::run_timer(Timer*)
 
   Timestamp now = Timestamp::now();
 
-  for (TimestampMapIter iter = _time_map.begin(); iter.live(); iter++) {
+  for (TimestampMapIter iter = _time_map.begin(); iter.live(); ++iter) {
     BRN_DEBUG("remove due to timeout: %s",iter.key().unparse().c_str());
     if ( (now-iter.value()).msecval() > _timeout ) remove(iter.key());
   }
@@ -84,12 +84,12 @@ enum {H_MAP, H_INSERT};
 String
 GPSMap::read_handler(Element *e, void *thunk)
 {
-  GPSMap *gpsmap = (GPSMap *)e;
+  GPSMap *gpsmap = reinterpret_cast<GPSMap *>(e);
   switch ((uintptr_t) thunk) {
     case H_MAP: {
       StringAccum sa;
       sa << "<gps_map id=\"" << gpsmap->get_node_name() << "\" count=\"" << gpsmap->_map.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
-      for (EtherGPSMapIter iter = gpsmap->_map.begin(); iter.live(); iter++) {
+      for (EtherGPSMapIter iter = gpsmap->_map.begin(); iter.live(); ++iter) {
         GPSPosition gps = iter.value();
         EtherAddress ea = iter.key();
         Timestamp ts = gpsmap->_time_map.find(ea);
@@ -112,7 +112,7 @@ GPSMap::read_handler(Element *e, void *thunk)
 static int
 insert_node(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  GPSMap *gpsmap = (GPSMap *)e;
+  GPSMap *gpsmap = reinterpret_cast<GPSMap *>(e);
 
   GPSPosition pos;
   EtherAddress ea;

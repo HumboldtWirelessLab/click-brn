@@ -40,10 +40,11 @@ SchemeList::parse_schemes(String s_schemes, Element *element, ErrorHandler* errh
   }
 
   for (uint16_t i = 0; i < schemes.size(); i++) {
-    Element *e = cp_element(schemes[i], element, errh);
-    Scheme *_scheme = (Scheme *)e->cast("Scheme");
-
-    //click_chatter("Scheme: %d (%p)",_scheme->get_strategy(),_scheme);
+    Element *e = cp_element(schemes[i], element, errh, NULL);
+    if ( e == NULL ) {
+      continue;
+    }
+    Scheme *_scheme = reinterpret_cast<Scheme*>((e->cast("Scheme")));
 
     if (!_scheme) {
       return errh->error("Element %s is not a '%s'",schemes[i].c_str(),_element_class.c_str());

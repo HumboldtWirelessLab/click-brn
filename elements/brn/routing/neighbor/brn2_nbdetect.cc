@@ -34,7 +34,8 @@
 
 CLICK_DECLS
 
-NeighborDetect::NeighborDetect()
+NeighborDetect::NeighborDetect():
+  _nblist(NULL)
 {
   BRNElement::init();
 }
@@ -63,7 +64,7 @@ NeighborDetect::initialize(ErrorHandler *)
 Packet *
 NeighborDetect::simple_action(Packet *p_in)
 {
-  const click_ether *ether = (click_ether *)p_in->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->ether_header());
 
   if (ether) _nblist->insert(EtherAddress(ether->ether_shost), BRNPacketAnno::devicenumber_anno(p_in));
 

@@ -53,7 +53,7 @@ OLSRCompactAssociationInfoBase::add(IPAddress network_addr, IPAddress netmask)
 	
 	// find where we can insert our new entry. 
 	CompactSet::iterator iter = _compactSet->begin();
-	while ((iter != _compactSet->end()) && ( htonl(ippair._from.addr()) > htonl(iter->_from.addr()) )) iter++;
+	while ((iter != _compactSet->end()) && ( htonl(ippair._from.addr()) > htonl(iter->_from.addr()) )) ++iter;
 
 	// insert the entry
 	CompactSet::iterator curr = _compactSet->insert(iter, ippair);
@@ -105,19 +105,17 @@ OLSRCompactAssociationInfoBase::remove(IPAddress network_addr, IPAddress netmask
 
 	// find where we can insert our new entry. 
 	CompactSet::iterator iter = _compactSet->begin();
-	while ( (iter != _compactSet->end()) && !(ippair._from.matches_prefix(iter->_from , iter->_to)) ) iter++;
-	
-	OLSRIPPair left;
-	OLSRIPPair right;
-	IPAddress new_mask;
-	uint32_t bit;
+	while ( (iter != _compactSet->end()) && !(ippair._from.matches_prefix(iter->_from , iter->_to)) ) ++iter;
 	
   	click_chatter("erasing %s %s\n", iter->_from.unparse_with_mask(iter->_to).c_str(), network_addr.unparse_with_mask(netmask).c_str());
   	if (*iter == ippair) _compactSet->erase(iter);
 	else {
+                OLSRIPPair left;
+                OLSRIPPair right;
+
 		while (true) {
-			new_mask = IPAddress::make_prefix(iter->_to.mask_to_prefix_len()+1);
-			bit = 1 << (32 - (iter->_to.mask_to_prefix_len()+1));
+			IPAddress new_mask = IPAddress::make_prefix(iter->_to.mask_to_prefix_len()+1);
+			uint32_t bit = 1 << (32 - (iter->_to.mask_to_prefix_len()+1));
 			left._from = iter->_from;
 			left._to = new_mask;
 			right._from = IPAddress(ntohl(htonl(iter->_from.addr()) | bit));
@@ -165,7 +163,7 @@ OLSRCompactAssociationInfoBase::print_compact_set()
 {
   if (! _compactSet->empty() ){
     click_chatter("Compact Set:\n");
-    for ( CompactSet::iterator iter = _compactSet->begin(); iter != _compactSet->end(); iter++){
+    for ( CompactSet::iterator iter = _compactSet->begin(); iter != _compactSet->end(); ++iter){
       click_chatter("\tNetwork: %s\n", iter->_from.unparse_with_mask(iter->_to).c_str());
     }
   }

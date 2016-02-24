@@ -28,12 +28,24 @@
 
 CLICK_DECLS
 
-KeyServer::KeyServer()
-	: _debug(false),
-	  session_timer(session_trigger, this),
-	  epoch_timer(epoch_trigger, this),
-	  keyman(),
-	  BUF_keyman()
+KeyServer::KeyServer() :
+  _me(NULL),
+  _wepencap(NULL),
+  _wepdecap(NULL),
+  _tls(NULL),
+  _start_time(0),
+  session_timer(session_trigger, this),
+  epoch_timer(epoch_trigger, this),
+  start_flag(false),
+  keyman(),
+  BUF_keyman(),
+  _key_list_cardinality(0),
+  _key_timeout(0),
+  bb_status(false),
+  bb_join_cnt(0),
+  key_inst_cnt(0),
+  cnt_bb_entrypoints(0),
+  cnt_bb_exitpoints(0)
 {
 	BRNElement::init();
 }
@@ -126,7 +138,7 @@ void KeyServer::push(int port, Packet *p) {
 }
 
 void KeyServer::handle_kdp_req(Packet *p) {
-	kdp_req *req = (kdp_req *)p->data();
+	const kdp_req *req = reinterpret_cast<const kdp_req *>(p->data());
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 
 	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
@@ -288,7 +300,7 @@ String KeyServer::stats() {
 enum { H_STATS};
 
 static String keyserver_read_param(Element *e, void *thunk) {
-	KeyServer *bn = (KeyServer *)e;
+	KeyServer *bn = reinterpret_cast<KeyServer *>(e);
 
 	switch ((uintptr_t) thunk) {
 	case H_STATS: {

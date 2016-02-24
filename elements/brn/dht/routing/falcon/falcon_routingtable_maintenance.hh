@@ -54,8 +54,6 @@ class FalconRoutingTableMaintenance : public BRNElement
     int _start;
     int _update_interval;
 
-    int _debug;
-
     int _rounds_to_passive_monitoring;
     int _current_round2pm;
     int _opti;

@@ -49,10 +49,8 @@ class BRN2ARPClient : public BRNElement {
 
    Timestamp _time_start;
 
-   BRN2ARPClientRequest( int _ip )
+   explicit BRN2ARPClientRequest( int _ip ): ip_add(_ip), _time_start(Timestamp::now())
    {
-     _time_start = Timestamp::now();
-     ip_add = IPAddress(_ip);
    }
 
    ~BRN2ARPClientRequest()

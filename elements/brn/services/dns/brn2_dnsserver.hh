@@ -69,18 +69,15 @@ class BRN2DNSServer : public BRNElement {
 
     Packet *_client_packet;
 
-    DNSClientInfo()
+    DNSClientInfo(): _id(0), _ip(), _domain(), _client_packet(NULL)
+
     {
-      memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
+      memset(_chaddr,0,sizeof(_chaddr));
     }
 
-    DNSClientInfo(Packet *p,IPAddress ip, String domain)
+    DNSClientInfo(Packet *p,IPAddress ip, String domain): _id(0), _ip(ip), _domain(domain), _client_packet(p)
     {
-      _ip = ip;
-      memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
-      _client_packet = p;
-      _domain = domain;
-      _id = 0;
+      memset(_chaddr,0,sizeof(_chaddr));
     }
 
     ~DNSClientInfo()

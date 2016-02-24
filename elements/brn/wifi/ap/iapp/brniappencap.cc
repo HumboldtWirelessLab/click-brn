@@ -85,7 +85,7 @@ enum {H_DEBUG};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappEncap *td = (BrnIappEncap *)e;
+  BrnIappEncap *td = reinterpret_cast<BrnIappEncap *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -98,7 +98,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappEncap *f = (BrnIappEncap *)e;
+  BrnIappEncap *f = reinterpret_cast<BrnIappEncap *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
@@ -121,7 +121,7 @@ BrnIappEncap::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Packet* 
+WritablePacket* 
 BrnIappEncap::create_handover_notify(
   EtherAddress  client, 
   EtherAddress  apNew, 
@@ -134,9 +134,9 @@ BrnIappEncap::create_handover_notify(
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
   WritablePacket* p = Packet::make(size);
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
   // Fill iapp header
@@ -178,9 +178,9 @@ BrnIappEncap::create_handover_reply(
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
   WritablePacket* p = Packet::make(size);
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   click_brn_iapp_ho*  pHo    = &pIapp->payload.ho;
 
   // Fill iapp header
@@ -230,9 +230,9 @@ BrnIappEncap::create_handover_data(
                                   sizeof(click_brn) + 
                                   sizeof(click_ether));
   
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   click_brn_iapp_ho*  pHo    = &pIapp->payload.ho;
 
   // Fill iapp header
@@ -276,9 +276,9 @@ BrnIappEncap::create_handover_routeupdate(
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
   WritablePacket* p = Packet::make(size);
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
   // Fill iapp header
@@ -323,9 +323,9 @@ BrnIappEncap::create_iapp_hello(
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
   WritablePacket* p = Packet::make(size);
-  click_ether*        pEther = (click_ether*)p->data();
-  click_brn*          pBrn   = (click_brn*)(pEther+1);
-  click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
+  click_ether*        pEther = reinterpret_cast<click_ether*>(p->data());
+  click_brn*          pBrn   = reinterpret_cast<click_brn*>((pEther+1));
+  click_brn_iapp*     pIapp  = reinterpret_cast<click_brn_iapp*>((pBrn+1));
   click_brn_iapp_he*  pHe    = &pIapp->payload.he;
 
   // Fill iapp header

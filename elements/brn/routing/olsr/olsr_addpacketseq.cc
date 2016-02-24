@@ -7,7 +7,7 @@
 
 CLICK_DECLS
 
-OLSRAddPacketSeq::OLSRAddPacketSeq()
+OLSRAddPacketSeq::OLSRAddPacketSeq(): _seq_num(0)
 {
 }
 
@@ -39,10 +39,11 @@ OLSRAddPacketSeq::initialize(ErrorHandler *)
 void 
 OLSRAddPacketSeq::push(int, Packet *packet)
 {
-   olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+  WritablePacket *p_out = packet->uniqueify();
+  olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( p_out->data());
   pkt_hdr->pkt_seq = htons( get_seq_num() );
 
-  output(0).push(packet);
+  output(0).push(p_out);
  }
 
 

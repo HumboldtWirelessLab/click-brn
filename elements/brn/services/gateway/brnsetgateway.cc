@@ -49,7 +49,9 @@
 CLICK_DECLS
 
 
-BRNSetGateway::BRNSetGateway() {}
+BRNSetGateway::BRNSetGateway() :
+ _debug(0),_gw(NULL),_routing_maintenance(NULL)
+{}
 
 BRNSetGateway::~BRNSetGateway() {}
 
@@ -94,7 +96,7 @@ BRNSetGateway::choose_gateway() {
 	// Should remember a list of best gateways?
 
   // iterate over known gateways
-  for (BRNGatewayList::const_iterator i = list_of_gws->begin(); i.live(); i++) {
+  for (BRNGatewayList::const_iterator i = list_of_gws->begin(); i.live();++i) {
    // is connection to this gateway better or equal than a already found one
    // equal is added to ensure that the values are copied even, if the gateway is reachable with 0xFFFFFFFF
    // (which may mean, that we just don't know this node yet; but since it reaches the dht it must be rachable at all)
@@ -130,7 +132,7 @@ BRNSetGateway::choose_gateway() {
      // packet for checking the route
      if (WritablePacket* p = Packet::make(sizeof(click_ether) + sizeof(click_brn) + sizeof(brn_gateway))) {
        // set ether header
-       click_ether *ether = (click_ether *) p->data();
+       click_ether *ether = reinterpret_cast<click_ether *>( p->data());
        ether->ether_type = htons(ETHERTYPE_BRN);
 
        memcpy(ether->ether_shost, _gw->_my_eth_addr.data(), 6);
@@ -141,7 +143,7 @@ BRNSetGateway::choose_gateway() {
 
 
        // set brn header
-       click_brn* brn = (click_brn*) (p->data() + sizeof(click_ether));
+       click_brn* brn = reinterpret_cast<click_brn*>( (p->data() + sizeof(click_ether)));
 
        brn->src_port = BRN_PORT_GATEWAY;
        brn->dst_port = BRN_PORT_GATEWAY;
@@ -150,7 +152,7 @@ BRNSetGateway::choose_gateway() {
        brn->body_length = htons(sizeof(brn_gateway));
 
        // set brn gateway header
-       //brn_gateway* brn_gw = (brn_gateway*) (p->data() + sizeof(click_ether) + sizeof(click_brn));
+       //brn_gateway* brn_gw = reinterpret_cast<brn_gateway*>( (p->data() + sizeof(click_ether) + sizeof(click_brn)));
 
        // set failed to sent this packet to internet
        //brn_gw->failed = 0;
@@ -218,7 +220,7 @@ BRNSetGateway::push(int port, Packet *p) {
   UNREFERENCED_PARAMETER(port);
 
   // checking headers
-  click_ether* ether = (click_ether*) p->ether_header();
+  const click_ether* ether = reinterpret_cast<const click_ether*>( p->ether_header());
 
   BRN_CHECK_EXPR_RETURN(ether == NULL,
             ("Ether header not available. Killing packet."), p->kill(); return;);
@@ -227,7 +229,7 @@ BRNSetGateway::push(int port, Packet *p) {
             ("No IP packet. Killing it. I should get non-IP packets. "
              "Error in click configuration."), p->kill(); return;);
 
-  click_ip *ip = (click_ip *) p->ip_header();
+  const click_ip *ip = reinterpret_cast<const click_ip *>( p->ip_header());
 
   BRN_CHECK_EXPR_RETURN(ip == NULL, ("No IP header found. Killing it."), p->kill(); return;);
 

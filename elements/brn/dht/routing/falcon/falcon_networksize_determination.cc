@@ -19,6 +19,7 @@
 CLICK_DECLS
 
 FalconNetworkSizeDetermination::FalconNetworkSizeDetermination():
+  _frt(NULL),
   _networksize(1)
 {
   BRNElement::init();
@@ -111,8 +112,6 @@ FalconNetworkSizeDetermination::handle_nws(Packet *packet)
   uint32_t size;
   uint8_t position;
 
-  DHTnode *route_next;
-
   BRN_DEBUG("handle_nws");
 
   DHTProtocolFalcon::get_nws_info(packet, &src, &size);
@@ -122,7 +121,7 @@ FalconNetworkSizeDetermination::handle_nws(Packet *packet)
     _networksize = size;
     packet->kill();
   } else {
-    route_next = get_responsibly_node_FT( src._md5_digest, &position);
+    DHTnode *route_next = get_responsibly_node_FT( src._md5_digest, &position);
 
     if ( route_next == NULL ) {
       BRN_ERROR("Didn't find responsible Node");
@@ -157,7 +156,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  FalconNetworkSizeDetermination *nws = (FalconNetworkSizeDetermination *)e;
+  FalconNetworkSizeDetermination *nws = reinterpret_cast<FalconNetworkSizeDetermination *>(e);
 
   switch ((uintptr_t) thunk)
   {
@@ -169,7 +168,7 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
-  FalconNetworkSizeDetermination *nws = (FalconNetworkSizeDetermination *)e;
+  FalconNetworkSizeDetermination *nws = reinterpret_cast<FalconNetworkSizeDetermination *>(e);
 
   nws->request_nws();
 

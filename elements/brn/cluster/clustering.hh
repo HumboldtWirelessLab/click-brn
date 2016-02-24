@@ -15,10 +15,7 @@ public:
   public:
 	  Cluster():_cluster_id(0), _clusterhead(), _member() {}
 
-	  Cluster(EtherAddress ea, uint32_t id) {
-		  _cluster_id = id;
-		  _clusterhead = ea;
-		  _member = Vector<EtherAddress>();
+	  Cluster(EtherAddress ea, uint32_t id) : _cluster_id(id), _clusterhead(ea), _member(Vector<EtherAddress>()) {
 	  }
 
 	  void setInfo(EtherAddress ea, uint32_t id) {

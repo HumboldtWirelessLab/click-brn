@@ -60,10 +60,10 @@ StoreIPEthernet::simple_action(Packet *p_in)
 {
   BRN_DEBUG("simple_action()");
 
-  const click_ether *ether = (click_ether *)p_in->data();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());
   EtherAddress src_ether_addr(ether->ether_shost);
 
-  const click_ip *ip = (click_ip *)(p_in->data() + sizeof(click_ether));
+  const click_ip *ip = reinterpret_cast<const click_ip *>((p_in->data() + sizeof(click_ether)));
   IPAddress src_ip_addr(ip->ip_src);
 
   if (!((src_ip_addr.addr() == 0) || (~src_ip_addr.addr() == 0) || (src_ether_addr.is_broadcast()))) {

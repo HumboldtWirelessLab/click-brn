@@ -35,15 +35,15 @@ CLICK_DECLS
 
 
 DibadawnPacket::DibadawnPacket()
+ : isForward(false), hops(0), createdByInvalidPacket(false)
 {
   setVersion();
   sumForwardDelay = 0;
   lastForwardDelayMs = 0;
-  createdByInvalidPacket = false;
 }
 
 DibadawnPacket::DibadawnPacket(Packet &brn_packet)
-{
+:createdByInvalidPacket(false){
   if (!isValid(brn_packet))
   {
     createdByInvalidPacket = true;
@@ -104,7 +104,7 @@ size_t DibadawnPacket::deserialzeData(const uint8_t *src)
   return(offset);
 }
 
-DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward)
+DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward): createdByInvalidPacket(false)
 {
   setVersion();
   searchId = id;
@@ -316,7 +316,7 @@ bool DibadawnPacket::hasSameCycle(DibadawnPayloadElement& elem)
 
 void DibadawnPacket::removeCycle(DibadawnPayloadElement &elem)
 {
-  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); it++)
+  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); ++it)
   {
     DibadawnPayloadElement& elem2 = *it;
     if (elem2.isBridge)
@@ -332,7 +332,7 @@ void DibadawnPacket::removeCycle(DibadawnPayloadElement &elem)
 
 bool DibadawnPacket::hasBridgePayload()
 {
-  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); it++)
+  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); ++it)
   {
     DibadawnPayloadElement& elem = *it;
     if (elem.isBridge)

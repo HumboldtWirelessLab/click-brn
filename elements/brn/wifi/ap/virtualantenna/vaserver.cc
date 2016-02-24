@@ -61,7 +61,7 @@ VAServer::run_timer(Timer *)
 {
   _rt_update_timer.schedule_after_msec(_rt_update_interval);
 
-  for (VAClientMapIter iter = va_cl_info_map.begin(); iter.live(); iter++) {
+  for (VAClientMapIter iter = va_cl_info_map.begin(); iter.live(); ++iter) {
     VAClientInfo *vaci = iter.value();
 
     IPAddress *best = select_ap(vaci->_ip);
@@ -91,7 +91,7 @@ VAServer::push( int /*port*/, Packet *packet )
     click_chatter("CSI,%s,%s,%d,%d,%d,%d,%d,%d,%d", Timestamp::now().unparse().c_str(), csi_node.unparse().c_str(),
                                                     csi_p->eff_snrs_int[0][0], csi_p->eff_snrs_int[1][0],
                                                     csi_p->eff_snrs_int[2][0], csi_p->eff_snrs_int[3][0],
-                                                    csi_p->eff_snrs_int[4][0], csi_p->eff_snrs_int[7][0],
+                                                    csi_p->eff_snrs_int[4][0], csi_p->eff_snrs_int[5][0],
                                                     csi_p->eff_snrs_int[6][0]);
   }
 
@@ -180,16 +180,15 @@ VAServer::select_ap(IPAddress client)
 
   switch (_strategy) {
     case VIRTUAL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
-      uint32_t min_snr = 0;
       uint32_t max_min_snr_overall = 0;
 
-      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); iter++) {
+      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); ++iter) {
         CSI *csi = iter.value();
 
         //for ( int i = 0; i < MAX_NUM_RATES; i++) {
           int i = FIRST_MIMO3;
 
-          min_snr = 0;
+          uint32_t min_snr = 0;
 
           for ( int s = 0; s < 4; s++) {
             if ( (csi->_eff_snrs[i][s] < min_snr) ||  (min_snr == 0))
@@ -211,7 +210,7 @@ VAServer::select_ap(IPAddress client)
 
       uint32_t max_data_rate_all = 0; // best data rate among all APs
 
-      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); iter++) { // for each available AP
+      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); ++iter) { // for each available AP
         CSI *csi = iter.value();
 
         CSI *best_csi_ap = NULL;
@@ -326,18 +325,18 @@ VAServer::stats()
   sa << "<vaserver node=\"" << BRN_NODE_NAME << "\" >\n";
   sa << "\t<aps count=\"" << va_ant_info_map.size() << "\">\n";
 
-  for (VAInfoMapIter iter = va_ant_info_map.begin(); iter.live(); iter++) {
+  for (VAInfoMapIter iter = va_ant_info_map.begin(); iter.live(); ++iter) {
     VAAntennaInfo *vai = iter.value();
     sa << "\t\t<ap addr=\"" << vai->_ip.unparse() << "\" />\n";
   }
 
   sa << "\t</aps>\n\t<clients count=\"" << va_cl_info_map.size() << "\">\n";
 
-  for (VAClientMapIter iter = va_cl_info_map.begin(); iter.live(); iter++) {
+  for (VAClientMapIter iter = va_cl_info_map.begin(); iter.live(); ++iter) {
     VAClientInfo *vaci = iter.value();
     sa << "\t\t<client addr=\"" << vaci->_ip.unparse() << "\" >\n";
 
-    for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); iter++) {
+    for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); ++iter) {
       CSI *csi = iter.value();
       sa << "\t\t\t<ap addr=\"" << csi->_to.unparse() << "\" >\n";
 
@@ -369,7 +368,7 @@ enum {H_STATS};
 static String
 VAServer_read_param(Element *e, void *thunk)
 {
-  VAServer *vas = (VAServer *)e;
+  VAServer *vas = reinterpret_cast<VAServer *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS: return vas->stats();
   }

@@ -58,10 +58,8 @@ class EventHandler : public BRNElement {
 
     EventData _event_data;
 
-    DetectedEvent(EtherAddress src, int id, int distance = 0) {
-      _src = src;
-      _id = id;
-      _distance = distance;
+    DetectedEvent(EtherAddress src, int id, int distance = 0): _src(src), _id(id), _distance(distance)
+    {
     }
 
     void setEventData(String data) {
@@ -101,7 +99,7 @@ class EventHandler : public BRNElement {
 
   EventList _evli;
 
-  void clear_eventlist();
+  //void clear_eventlist();
   void add_event(EtherAddress src, int id, int distance);
   bool contains_event(EtherAddress src, int id);
 

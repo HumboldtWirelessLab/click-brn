@@ -42,6 +42,8 @@ Seismo::Seismo():
   _record_data(true),
   _local_info(NULL),
   _tag_len(SEISMO_TAG_LENGTH_LONG),
+  _last_systemtime(0),
+  _data_file_interval(0),
   _data_file_index(0),
   _data_file_timer(this)
 {
@@ -50,7 +52,7 @@ Seismo::Seismo():
 
 Seismo::~Seismo()
 {
-  for (NodeStatsIter iter = _node_stats_tab.begin(); iter.live(); iter++) {
+  for (NodeStatsIter iter = _node_stats_tab.begin(); iter.live(); ++iter) {
     EtherAddress id = iter.key();
     SrcInfo *src = _node_stats_tab.find(id);
     delete src;
@@ -181,7 +183,7 @@ Seismo::push(int port, Packet *p)
     src_node_id = EtherAddress();
 
   } else {           //remote port
-    click_ether *annotated_ether = (click_ether *)p->ether_header();
+    const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(p->ether_header());
     src_node_id = EtherAddress(annotated_ether->ether_shost);
   }
 
@@ -286,7 +288,7 @@ Seismo::push(int port, Packet *p)
 static String
 read_handler(Element *e, void */*thunk*/)
 {
-  Seismo *si = (Seismo*)e;
+  Seismo *si = reinterpret_cast<Seismo*>(e);
   Timestamp now = Timestamp::now();
 
   if (si->_node_stats_tab.size() == 0) {
@@ -297,7 +299,7 @@ read_handler(Element *e, void */*thunk*/)
   StringAccum sa;
 
   sa << "<seismo>\n";
-  for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
+  for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); ++iter) {
 
     EtherAddress id = iter.key();
     SrcInfo *src = si->_node_stats_tab.find(id);
@@ -324,12 +326,12 @@ read_handler(Element *e, void */*thunk*/)
 static String
 latest_handler(Element *e, void */*thunk*/)
 {
-  Seismo *si = (Seismo*)e;
+  Seismo *si = reinterpret_cast<Seismo*>(e);
   StringAccum sa;
   Timestamp now = Timestamp::now();
 
   sa << "<seismo_channel_infos>\n";
-  for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
+  for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); ++iter) {
 
     EtherAddress id = iter.key();
     SrcInfo *src = si->_node_stats_tab.find(id);
@@ -377,7 +379,7 @@ static String _seismo_stats_tags[2][5] = { { "channel_infos>", "\t<channel_info 
 static String
 local_latest_handler(Element *e, void */*thunk*/)
 {
-  Seismo *si = (Seismo*)e;
+  Seismo *si = reinterpret_cast<Seismo*>(e);
   StringAccum sa;
 
   sa << "<" << _seismo_stats_tags[si->_tag_len][0] << _seismo_stats_tags[si->_tag_len][4];
@@ -414,7 +416,7 @@ local_latest_handler(Element *e, void */*thunk*/)
 static String
 read_tag_param(Element *e, void */*thunk*/)
 {
-  Seismo *si = (Seismo*)e;
+  Seismo *si = reinterpret_cast<Seismo*>(e);
   StringAccum sa;
 
   if (si->_tag_len == SEISMO_TAG_LENGTH_LONG) {
@@ -429,7 +431,7 @@ read_tag_param(Element *e, void */*thunk*/)
 static int
 write_tag_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  Seismo *si = (Seismo*)e;
+  Seismo *si = reinterpret_cast<Seismo*>(e);
   String s = cp_uncomment(in_s);
 
   bool shorttag;

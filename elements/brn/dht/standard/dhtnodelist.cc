@@ -46,11 +46,9 @@ DHTnodelist::~DHTnodelist()
 
 int DHTnodelist::add_dhtnode(DHTnode *_new_node)
 {
-  DHTnode *node;
-
   if ( _new_node != NULL )
   {
-    node = get_dhtnode(_new_node);
+    DHTnode *node = get_dhtnode(_new_node);
     if ( node != NULL ) erase_dhtnode(&(node->_ether_addr));
 
     _nodelist.push_back(_new_node);
@@ -156,11 +154,9 @@ void DHTnodelist::clear(int start_index, int end_index)
 
 void DHTnodelist::del()
 {
-  DHTnode *node;
-
   for( int i = _nodelist.size()-1; i >= 0; i--)
   {
-    node = _nodelist[i];
+    DHTnode *node = _nodelist[i];
     delete node;
   }
 

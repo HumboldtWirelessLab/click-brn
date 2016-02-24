@@ -102,7 +102,6 @@ protected:
 // Data
 //------------------------------------------------------------------------------
 public:
-  int               _debug;
   bool              _optimize;
   EtherAddressQueue _sta_hello_queue;
 

@@ -27,7 +27,7 @@ CLICK_DECLS
 LibOS::LibOS()
   : _timer(this),
      next_pid(0)
-{
+,m_exported(NULL),start_task(NULL){
   BRNElement::init();
 }
 
@@ -310,7 +310,7 @@ LibOS::TaskStart (struct SimKernel *kernel, void (*callback)(void *), void *cont
 {
   click_chatter("%s",__func__);
 
-  LibOS *libos = (LibOS*)kernel;
+  LibOS *libos = reinterpret_cast<LibOS*>(kernel);
 
   libos->next_pid++;
 
@@ -321,7 +321,7 @@ struct SimTask *
 LibOS::TaskCurrent (struct SimKernel *kernel)
 {
   click_chatter("%s",__func__);
-  LibOS *libos = (LibOS*)kernel;
+  LibOS *libos = reinterpret_cast<LibOS*>(kernel);
   return libos->start_task;
 }
 
@@ -535,12 +535,12 @@ LibOS::PollEvent (int flag, void *context)
  * when ending the DCE process which is currently polling.
  *
  */
-struct poll_table_ref
+/*struct poll_table_ref
 {
   int ret;
   void *opaque;
 };
-
+*/
 int
 LibOS::Poll(struct SimSocket *socket, void/*PollTable*/* ptable)
 {
@@ -577,7 +577,7 @@ enum {
 static String
 read_param(Element *e, void *vparam)
 {
-  LibOS *f = (LibOS *)e;
+  LibOS *f = reinterpret_cast<LibOS *>(e);
   switch((intptr_t)vparam) {
     case H_STATUS:
       return f->status();

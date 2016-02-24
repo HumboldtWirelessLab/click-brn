@@ -78,9 +78,12 @@ class SeismoInfoBlock {
 
     uint16_t _next_systemtime_index;
 
-    SeismoInfoBlock(uint32_t block_index) :_next_value_index(0),_next_systemtime_index(0)
+    explicit SeismoInfoBlock(uint32_t block_index) : _block_index(block_index), _next_value_index(0), _next_systemtime_index(0)
     {
-      _block_index = block_index;
+      memset(_time,0,sizeof(_time));
+      memset(_systime,0,sizeof(_systime));
+      memset(_channel_values,0,sizeof(_channel_values));
+      memset(_channels,0,sizeof(_channels));
       memset(_channel_mean,0,sizeof(_channel_mean));
     }
 
@@ -154,7 +157,7 @@ class SrcInfo {
     uint32_t _next_seismo_info_block_for_handler;
     uint32_t _max_seismo_info_blocks;
 
-    SrcInfo() {
+    SrcInfo(): _last_update_time(0)  {
       update_gps(-1,-1,-1,-1);
 
       _sampling_rate = -1;
@@ -171,7 +174,7 @@ class SrcInfo {
       _first_time = 0;
     }
 
-    SrcInfo(int gps_lat, int gps_long, int gps_alt, int gps_hdop, int sampling_rate, int channels) {
+    SrcInfo(int gps_lat, int gps_long, int gps_alt, int gps_hdop, int sampling_rate, int channels) : _last_update_time(0) {
       _sampling_rate = sampling_rate;
       _channels = channels;
 

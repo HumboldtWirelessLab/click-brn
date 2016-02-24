@@ -33,10 +33,8 @@ class DibadawnLinkStatistic
 {
     struct NeighborLink
     {
-        NeighborLink(EtherAddress addr)
+        explicit NeighborLink(EtherAddress _addr): addr(_addr), numRx(0)
         {
-            this->addr = addr;
-            numRx = 0;
         }
         
         EtherAddress addr;

@@ -101,18 +101,17 @@ BroadcastMultiplexer::pull(int)
 Packet *
 BroadcastMultiplexer::smaction(Packet *p_in, bool is_push)
 {
-  const EtherAddress *ea;
-
   EtherAddress src;
 
   if ( _use_anno ) src = EtherAddress(BRNPacketAnno::src_ether_anno(p_in));
-  else src = EtherAddress(((click_ether *)p_in->data())->ether_shost);
+  else src = EtherAddress((reinterpret_cast<const click_ether *>(p_in->data()))->ether_shost);
 
   if ((!src.is_broadcast())) {   //src address looks valid, so no need to send it on all devices
     return p_in;
   } else {                       //forward packet using all devices which allow broadcast
     int f;
     BRN2Device *first_device = NULL;
+    const EtherAddress *ea;
 
     for ( f = 0; f < _me->countDevices(); f++) {
       if ( _me->getDeviceByIndex(f)->allow_broadcast() ) {
@@ -131,9 +130,9 @@ BroadcastMultiplexer::smaction(Packet *p_in, bool is_push)
         if ( _use_anno ) {
           BRNPacketAnno::set_src_ether_anno(p_copy, *ea);
         } else {
-          click_ether *ether = (click_ether *) p_copy->data();
+          const click_ether *ether = reinterpret_cast<const click_ether *>(p_copy->data());
 
-          memcpy(ether->ether_shost,ea->data(),6);
+          memcpy((void*)ether->ether_shost,ea->data(),6);
         }
 
         if ( is_push ) output(0).push(p_copy);      //push element: push all packets
@@ -147,9 +146,9 @@ BroadcastMultiplexer::smaction(Packet *p_in, bool is_push)
       if ( _use_anno ) {
         BRNPacketAnno::set_src_ether_anno(p_in, *ea);
       } else {
-        click_ether *ether = (click_ether *) p_in->data();
+        const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());
 
-        memcpy(ether->ether_shost,ea->data(),6);
+        memcpy((void*)ether->ether_shost,ea->data(),6);
       }
     } else {
       return NULL;

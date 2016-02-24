@@ -55,8 +55,8 @@ UnicastFlooding::UnicastFlooding():
   _cnt_rewrites(0),
   _cnt_bcasts(0),
   _cnt_bcasts_empty_cs(0),
-  _cnt_reject_on_empty_cs(0)
-{
+  _cnt_reject_on_empty_cs(0),
+  _last_tx_bcast_id(0){
   BRNElement::init();
   static_dst_mac = brn_etheraddress_broadcast;
 }
@@ -198,9 +198,6 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
   uint16_t assigned_nodes = 0;
 
   BroadcastNode *bcn = _flooding_db->get_broadcast_node(&src);
-
-   int min_tx_count;
-   int min_tx_count_index;
 
   /* check wether bcn-pkt mark as stopped (txabort) */
   if ( bcn->is_stopped(bcast_id) ) {
@@ -396,12 +393,12 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
       case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
         break;
 
-      case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
+      case UNICAST_FLOODING_ALL_UNICAST: { // static rewriting
 
         BRN_DEBUG("Send unicast to all neighbours");
 
-        min_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[0]);
-        min_tx_count_index = 0;
+        int min_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[0]);
+        int min_tx_count_index = 0;
 
         for ( int i = 1; i < candidate_set.size()-1; i++) {
           int node_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[i]);
@@ -412,7 +409,7 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
         }
         next_hop = candidate_set[min_tx_count_index];
         break;
-
+      }
       case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
         next_hop = candidate_set[_fhelper->find_best(*me, candidate_set)];
         break;
@@ -651,7 +648,7 @@ enum { H_REWRITE_STATS, H_REWRITE_STRATEGY, H_REWRITE_PRESELECTION, H_REWRITE_ST
 static String
 read_param(Element *e, void *thunk)
 {
-  UnicastFlooding *rewriter = (UnicastFlooding *)e;
+  UnicastFlooding *rewriter = reinterpret_cast<UnicastFlooding *>(e);
   StringAccum sa;
 
   switch ((uintptr_t) thunk)
@@ -709,7 +706,7 @@ read_param(Element *e, void *thunk)
 static int 
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  UnicastFlooding *rewriter = (UnicastFlooding *)e;
+  UnicastFlooding *rewriter = reinterpret_cast<UnicastFlooding *>(e);
   String s = cp_uncomment(in_s);
 
   switch((intptr_t)vparam) {

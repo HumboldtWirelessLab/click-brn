@@ -57,7 +57,7 @@ class BRN2DHCPPrint : public Element {
   static void print(Packet *p_in);
 
  private:
-   char *print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data);
+   char *print_hw_addr (const uint8_t, const uint8_t hlen, const unsigned char *data);
   //
   //member
   //

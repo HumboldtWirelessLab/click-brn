@@ -15,7 +15,7 @@
 
 CLICK_DECLS
 
-BoMinstrel::BoMinstrel()
+BoMinstrel::BoMinstrel() : _last_bo(0),_last_bo_exp(0)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_MINSTREL;
@@ -33,7 +33,7 @@ BoMinstrel::~BoMinstrel()
 void * BoMinstrel::cast(const char *name)
 {
   if (strcmp(name, "BoMinstrel") == 0)
-    return (BoMinstrel *) this;
+    return dynamic_cast<BoMinstrel *>(this);
 
   return BackoffScheme::cast(name);
 }

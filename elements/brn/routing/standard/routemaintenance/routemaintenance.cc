@@ -41,6 +41,7 @@ CLICK_DECLS
 
 RoutingMaintenance::RoutingMaintenance()
   : _node_identity(NULL),
+    _lt(NULL),
     _routing_table(NULL),
     _routing_algo(NULL)
 {
@@ -55,8 +56,8 @@ RoutingMaintenance::~RoutingMaintenance()
 int
 RoutingMaintenance::initialize (ErrorHandler *)
 {
-  _lt->add_informant((BrnLinkTableChangeInformant*)this);
-  
+  _lt->add_informant(dynamic_cast<BrnLinkTableChangeInformant*>(this));
+
   return 0;
 }
 
@@ -64,7 +65,7 @@ void *
 RoutingMaintenance::cast(const char *n)
 {
   if (strcmp(n, "RoutingMaintenance") == 0)
-    return (RoutingMaintenance *) this;
+    return dynamic_cast<RoutingMaintenance *>(this);
   else
     return 0;
 }
@@ -208,7 +209,7 @@ RoutingMaintenance::print_routes(bool from_me)
 
   Vector<EtherAddress> ether_addrs;
 
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
+  for (HTIter iter = _lt->_hosts.begin(); iter.live(); ++iter)
     ether_addrs.push_back(iter.key());
 
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
@@ -263,7 +264,7 @@ RoutingMaintenance::print_stats()
 static String
 RoutingMaintenance_read_param(Element *e, void *thunk)
 {
-  RoutingMaintenance *td = (RoutingMaintenance *)e;
+  RoutingMaintenance *td = reinterpret_cast<RoutingMaintenance *>(e);
     switch ((uintptr_t) thunk) {
     case H_ROUTES_TO: return td->print_routes(false);
     case H_ROUTES_FROM: return td->print_routes(true);
@@ -276,7 +277,7 @@ RoutingMaintenance_read_param(Element *e, void *thunk)
 static int
 RoutingMaintenance_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  RoutingMaintenance *f = (RoutingMaintenance *)e;
+  RoutingMaintenance *f = reinterpret_cast<RoutingMaintenance *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
     case H_BEST_ROUTE:

@@ -37,7 +37,7 @@ BRNCorrelatedDrop::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 BRNCorrelatedDrop::simple_action(Packet *p)
 {
-  click_ether *ether = (click_ether *) p->data();
+  const click_ether *ether = reinterpret_cast<const click_ether *>( p->data());
   EtherAddress src = EtherAddress(ether->ether_shost);
   //EtherAddress src = BRNPacketAnno::src_ether_anno(p);
 

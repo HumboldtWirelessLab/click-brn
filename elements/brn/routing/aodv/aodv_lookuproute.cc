@@ -15,7 +15,8 @@
 
 CLICK_DECLS
 AODVLookUpRoute::AODVLookUpRoute():
-	neighbour_table(0)
+	neighbour_table(NULL),
+	myIP(NULL)
 {
 }
 

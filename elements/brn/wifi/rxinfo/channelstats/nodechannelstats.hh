@@ -33,20 +33,35 @@ class NodeChannelStats
     uint32_t _buffer_size;
     uint32_t _index;
 
-    Packet **_packet_buffer;                 //packet from the neighbours
+    Vector<Packet*> _packet_buffer;          //packet from the neighbours
     NeighbourStatsMap *_nstats_buffer;       //infos, about the neighbours (list of maps). size of list is time backwards.
 
   public:
     EtherTimestampMap _last_neighbor_update; //time, when the node notice the neighbor last time
     uint32_t _used;
 
-    NodeChannelStats(uint32_t size) {
-      _buffer_size = size;
-      _index = 0;
-      _used = 0;
-      _packet_buffer = new Packet*[size];
-      _nstats_buffer = new NeighbourStatsMap[size];
-      memset(_packet_buffer, 0, size * sizeof(Packet*));
+    explicit NodeChannelStats(uint32_t size) : _buffer_size(size), _index(0),
+                                               _nstats_buffer(NULL), _last_neighbor_update(), _used(0)
+    {
+      _packet_buffer.resize(_buffer_size, NULL);
+      _nstats_buffer = new NeighbourStatsMap[_buffer_size];
+    }
+
+    NodeChannelStats(const NodeChannelStats &ncs) : _buffer_size(ncs._buffer_size), _index(ncs._index),
+                                                    _nstats_buffer(NULL), _last_neighbor_update(),_used(ncs._used)
+    {
+      _packet_buffer.resize(_buffer_size, NULL);
+      _nstats_buffer = new NeighbourStatsMap[_buffer_size];
+    }
+
+    ~NodeChannelStats() {
+      delete[] _nstats_buffer;
+      for ( uint32_t i = 0; i < _buffer_size; i++) {
+        if ( _packet_buffer[i] != NULL ) {
+          _packet_buffer[i]->kill();
+          _packet_buffer[i] = NULL;
+        }
+      }
     }
 
     struct local_airtime_stats *get_last_stats() {
@@ -99,7 +114,7 @@ class NodeChannelStats
     int get_neighbours_with_max_age(int age, Vector<EtherAddress> *ea_vec) {
       int no_neighbours = 0;
       Timestamp now = Timestamp::now();
-      for ( EtherTimestampMapIter nt_iter = _last_neighbor_update.begin(); nt_iter != _last_neighbor_update.end(); nt_iter++ ) {
+      for ( EtherTimestampMapIter nt_iter = _last_neighbor_update.begin(); nt_iter != _last_neighbor_update.end(); ++nt_iter ) {
         if ( (now - nt_iter.value()).msecval() < age ) {
           ea_vec->push_back(nt_iter.key());
           no_neighbours++;

@@ -34,8 +34,8 @@
 CLICK_DECLS
 
 BRN2ToStations::BRN2ToStations()
-  : _debug(BrnLogger::DEFAULT)
-{
+  : _debug(BrnLogger::DEFAULT),
+    _stations(NULL){
 }
 
 BRN2ToStations::~BRN2ToStations()
@@ -69,7 +69,7 @@ BRN2ToStations::push(int, Packet *p_in)
   BRN_DEBUG(" * push called()");
 
   // use ether annotation
-  click_ether *ether = (click_ether *) p_in->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>( p_in->ether_header());
 
   if (!ether)
   {
@@ -102,7 +102,7 @@ BRN2ToStations::push(int, Packet *p_in)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2ToStations *on = (BRN2ToStations *)e;
+  BRN2ToStations *on = reinterpret_cast<BRN2ToStations *>(e);
   return String(on->_debug) + "\n";
 }
 
@@ -110,7 +110,7 @@ static int
 write_debug_param(const String &in_s, Element *e, void *,
 		      ErrorHandler *errh)
 {
-  BRN2ToStations *on = (BRN2ToStations *)e;
+  BRN2ToStations *on = reinterpret_cast<BRN2ToStations *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

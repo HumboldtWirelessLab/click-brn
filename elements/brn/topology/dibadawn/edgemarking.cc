@@ -30,34 +30,38 @@
 
 CLICK_DECLS
 
-DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& id, bool isBridge, EtherAddress& nodeA, EtherAddress& nodeB, bool isTrusted)
+DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& _id, bool _isBridge, EtherAddress& _nodeA, EtherAddress& _nodeB, bool _isTrusted)
+ : time(Timestamp::now()),
+   id(_id),
+   isBridge(_isBridge),
+   nodeA(_nodeA),
+   nodeB(_nodeB),
+   isTrusted(_isTrusted),
+   competence(1.0)
 {
-  this->id = id;
-  this->isBridge = isBridge;
-  this->nodeA = nodeA;
-  this->nodeB = nodeB;
-  this->isTrusted = isTrusted;
-      
-  this->time = Timestamp::now();
-  this->competence = 1.0;
 }
 
-DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& id, bool isBridge, EtherAddress& nodeA, EtherAddress& nodeB, double competence)
+DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& _id, bool _isBridge, EtherAddress& _nodeA, EtherAddress& _nodeB, double _competence)
+ : time(Timestamp::now()),
+   id(_id),
+   isBridge(_isBridge),
+   nodeA(_nodeA),
+   nodeB(_nodeB),
+   isTrusted(false),
+   competence(_competence)
 {
-  this->id = id;
-  this->isBridge = isBridge;
-  this->nodeA = nodeA;
-  this->nodeB = nodeB;
-  this->competence = competence;
-  
-  this->isTrusted = false;
-  this->time = Timestamp::now();
 }
 
 
 DibadawnEdgeMarking::DibadawnEdgeMarking()
+ : time(Timestamp::now()),
+   id(),
+   isBridge(false),
+   nodeA(),
+   nodeB(),
+   isTrusted(false),
+   competence(0)
 {
-  isTrusted = false;
 }
 
 CLICK_ENDDECLS

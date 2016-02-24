@@ -54,7 +54,7 @@ class GabrielGraph : public BRNElement {
   void calc_neighbors();
   uint32_t metric2dist_sqr(uint32_t metric);
 
-  static void static_calc_neighbors(Timer *, void *e) { ((GabrielGraph *) e)->calc_neighbors(); }
+  static void static_calc_neighbors(Timer *, void *e) { ( reinterpret_cast<GabrielGraph *>(e))->calc_neighbors(); }
 
   Timer _timer;
 

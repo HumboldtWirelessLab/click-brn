@@ -22,9 +22,9 @@ void *
 SimpleFlooding::cast(const char *name)
 {
   if (strcmp(name, "SimpleFlooding") == 0)
-    return (SimpleFlooding *) this;
+    return dynamic_cast<SimpleFlooding *>(this);
   else if (strcmp(name, "FloodingPolicy") == 0)
-         return (FloodingPolicy *) this;
+         return dynamic_cast<FloodingPolicy *>(this);
        else
          return NULL;
 }
@@ -81,7 +81,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  SimpleFlooding *sfl = (SimpleFlooding *)e;
+  SimpleFlooding *sfl = reinterpret_cast<SimpleFlooding *>(e);
 
   switch ((uintptr_t) thunk)
   {

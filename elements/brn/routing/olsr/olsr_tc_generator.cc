@@ -15,8 +15,17 @@
 
 CLICK_DECLS
 
-OLSRTCGenerator::OLSRTCGenerator()
-		: _timer(this)
+OLSRTCGenerator::OLSRTCGenerator() :
+  _period(0),
+  _top_hold_time(0),
+  _additional_TC_msg(false),
+  _vtime(0),
+  _ansn(0),
+  _timer(this),
+  _neighborInfo(NULL),
+  _node_is_mpr(false),
+  _full_link_state(false),
+  _mpr_full_link_state(false)
 {
 }
 
@@ -124,9 +133,9 @@ OLSRTCGenerator::generate_tc()
 		HashMap<IPAddress, void *> *neighbor_set = _neighborInfo->get_neighbor_set();
 		if (! neighbor_set->empty())
 		{
-			for (HashMap<IPAddress, void *>::iterator iter = neighbor_set->begin(); iter != neighbor_set->end(); iter++)
+			for (HashMap<IPAddress, void *>::iterator iter = neighbor_set->begin(); iter != neighbor_set->end(); ++iter)
 			{
-				neighbor_data *nbr = (neighbor_data *) iter.value();
+				neighbor_data *nbr = reinterpret_cast<neighbor_data *>( iter.value());
 				if (nbr->N_status == OLSR_SYM_NEIGH || nbr->N_status == OLSR_MPR_NEIGH)
 				{
 					num_to_advertise++;
@@ -152,7 +161,7 @@ OLSRTCGenerator::generate_tc()
 	}
 	memset(packet->data(), 0, packet->length());
 	//   packet->set_perfctr_anno(cycles);
-	olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+	olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( packet->data());
 	pkt_hdr->pkt_length = 0; //added in OLSRForward
 	pkt_hdr->pkt_seq = 0; //added in OLSRForward
 
@@ -161,7 +170,7 @@ OLSRTCGenerator::generate_tc()
 	packet->set_timestamp_anno(now);
 
 
-	olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) (pkt_hdr + 1);
+	olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( (pkt_hdr + 1));
 	msg_hdr->msg_type = OLSR_TC_MESSAGE;
 	msg_hdr->vtime = _vtime;
 	msg_hdr->msg_size = htons(sizeof(olsr_msg_hdr) + sizeof(olsr_tc_hdr)+ num_to_advertise*sizeof(in_addr));
@@ -170,7 +179,7 @@ OLSRTCGenerator::generate_tc()
 	msg_hdr->hop_count = 0;
 	msg_hdr->msg_seq = 0; //added in OLSRForward element
 
-	olsr_tc_hdr *tc_hdr = (olsr_tc_hdr *) (msg_hdr + 1);
+	olsr_tc_hdr *tc_hdr = reinterpret_cast<olsr_tc_hdr *>( (msg_hdr + 1));
 	tc_hdr->ansn = htons( get_ansn() );
 	tc_hdr->reserved = 0;
 
@@ -178,10 +187,10 @@ OLSRTCGenerator::generate_tc()
 	{
 		if (_mpr_full_link_state)
 		{
-			in_addr * address = (in_addr *) (tc_hdr + 1);
-			for (HashMap<IPAddress, void *>::iterator iter = advertise_set->begin(); iter != advertise_set->end(); iter++)
+			in_addr * address = reinterpret_cast<in_addr *>( (tc_hdr + 1));
+			for (HashMap<IPAddress, void *>::iterator iter = advertise_set->begin(); iter != advertise_set->end(); ++iter)
 			{
-				neighbor_data *nbr = (neighbor_data *) iter.value();
+				neighbor_data *nbr = reinterpret_cast<neighbor_data *>( iter.value());
 				if (nbr->N_status == OLSR_SYM_NEIGH || nbr->N_status == OLSR_MPR_NEIGH)
 				{
 					*address = nbr->N_neigh_main_addr.in_addr();
@@ -191,10 +200,10 @@ OLSRTCGenerator::generate_tc()
 		}
 		else
 		{
-			in_addr *address = (in_addr *) (tc_hdr + 1);
-			for (HashMap<IPAddress, void *>::iterator iter = advertise_set->begin(); iter != advertise_set->end(); iter++)
+			in_addr *address = reinterpret_cast<in_addr *>( (tc_hdr + 1));
+			for (HashMap<IPAddress, void *>::iterator iter = advertise_set->begin(); iter != advertise_set->end(); ++iter)
 			{
-				mpr_selector_data *mpr_selector = (mpr_selector_data *) iter.value();
+				mpr_selector_data *mpr_selector = reinterpret_cast<mpr_selector_data *>( iter.value());
 				*address = mpr_selector->MS_main_addr.in_addr();
 				address++;
 			}
@@ -208,13 +217,13 @@ OLSRTCGenerator::generate_tc()
 	if (! neighbor_set->empty())
 	{
 		
-		for (HashMap<IPAddress, void *>::iterator iter = neighbor_set->begin(); iter; iter++)
+		for (HashMap<IPAddress, void *>::iterator iter = neighbor_set->begin(); iter; ++iter)
 		{
-			neighbor_data *nbr = (neighbor_data *) iter.value();
+			neighbor_data *nbr = reinterpret_cast<neighbor_data *>( iter.value());
 			if (nbr->N_status == OLSR_SYM_NEIGH || nbr->N_status == OLSR_MPR_NEIGH) {
 				in_addr *address;
 				if (num_sym_nbr == 0) {
-					address = (in_addr *) (tc_hdr + 1);
+					address = reinterpret_cast<in_addr *>( (tc_hdr + 1));
 				} else {
 					address++;
 				}
@@ -251,11 +260,11 @@ OLSRTCGenerator::generate_tc_when_not_mpr()
 		}
 		memset(packet->data(), 0, packet->length());
 		//   packet->set_perfctr_anno(cycles);
-		olsr_pkt_hdr *pkt_hdr =(olsr_pkt_hdr *) packet->data();
+		olsr_pkt_hdr *pkt_hdr =reinterpret_cast<olsr_pkt_hdr *>( packet->data());
 		pkt_hdr->pkt_length = 0; //added in OLSRForward
 		pkt_hdr->pkt_seq = 0; //added in OLSRForward
 
-		olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) (pkt_hdr + 1);
+		olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( (pkt_hdr + 1));
 		msg_hdr->msg_type = OLSR_TC_MESSAGE;
 		msg_hdr->vtime = _vtime;
 		msg_hdr->msg_size = htons(sizeof(olsr_msg_hdr) + sizeof(olsr_tc_hdr));
@@ -264,7 +273,7 @@ OLSRTCGenerator::generate_tc_when_not_mpr()
 		msg_hdr->hop_count = 0;
 		msg_hdr->msg_seq = 0; //added in OLSRForward element
 
-		olsr_tc_hdr *tc_hdr = (olsr_tc_hdr *) (msg_hdr + 1);
+		olsr_tc_hdr *tc_hdr = reinterpret_cast<olsr_tc_hdr *>( (msg_hdr + 1));
 		tc_hdr->ansn = htons( get_ansn() );
 		tc_hdr->reserved = 0;
 

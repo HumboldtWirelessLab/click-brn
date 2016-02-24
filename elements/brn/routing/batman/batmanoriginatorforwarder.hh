@@ -33,20 +33,26 @@ class BatmanOriginatorForwarder : public BRNElement {
     uint8_t _rev_psr;
     Timestamp _last_rev_psr;
 
-    BatmanNeighbourInfo(): _originator_ids(NULL) {
-      _originator_ids = NULL;
+    BatmanNeighbourInfo(): _originator_interval(0), _originator_ids(NULL), _originator_ids_size(0), _originator_ids_index(0), _no_originator_ids(0), _rev_psr(0) {
+    }
+
+    BatmanNeighbourInfo(const BatmanNeighbourInfo &bni) : _originator_interval(bni._originator_interval),
+                                                          _originator_ids_size(bni._originator_ids_size), _originator_ids_index(bni._originator_ids_index),
+                                                          _no_originator_ids(bni._no_originator_ids), _rev_psr(bni._rev_psr) {
+      _originator_ids = (uint32_t*)malloc(_originator_ids_size * sizeof(uint32_t));
+      memset(_originator_ids, 0, _originator_ids_size*sizeof(uint32_t));
     }
 
     BatmanNeighbourInfo(int originator_ids_size, uint32_t interval):
+      _originator_interval(interval),
       _originator_ids(NULL),
-      _originator_ids_size(0)
+      _originator_ids_size(originator_ids_size),
+      _originator_ids_index(0),
+      _no_originator_ids(0),
+      _rev_psr(0)
     {
       _originator_ids = (uint32_t*)malloc(originator_ids_size * sizeof(uint32_t));
       memset(_originator_ids, 0, originator_ids_size*sizeof(uint32_t));
-      _originator_ids_size = originator_ids_size;
-      _originator_ids_index = 0;
-      _no_originator_ids = 0;
-      _originator_interval = interval;
     }
 
     ~BatmanNeighbourInfo() {

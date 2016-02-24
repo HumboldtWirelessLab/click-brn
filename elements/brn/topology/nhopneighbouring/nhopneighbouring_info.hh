@@ -32,16 +32,10 @@ class NHopNeighbouringInfo : public BRNElement {
 
     Timestamp _last_seen;
 
-    NeighbourInfo() {
-      _ea = ETHERADDRESS_BROADCAST;
-      _hops = 0;
-      _last_seen = Timestamp::now();
+    NeighbourInfo(): _ea(ETHERADDRESS_BROADCAST), _hops(0), _last_seen(Timestamp::now()) {
     }
 
-    NeighbourInfo(const EtherAddress *ea, uint32_t hops) {
-      _ea = *ea;
-      _hops = hops;
-      _last_seen = Timestamp::now();
+    NeighbourInfo(const EtherAddress *ea, uint32_t hops) : _ea(*ea), _hops(hops), _last_seen(Timestamp::now())  {
     }
 
     void update(uint8_t hops, Timestamp last_seen) {
@@ -62,16 +56,10 @@ class NHopNeighbouringInfo : public BRNElement {
 
     Vector<EtherAddress> _his_neighbours;
 
-    ForeignNeighbourInfo() {
-      _ea = ETHERADDRESS_BROADCAST;
-      _hops = 0;
-      _last_seen = Timestamp::now();
+    ForeignNeighbourInfo() : _ea(ETHERADDRESS_BROADCAST), _hops(0), _last_seen(Timestamp::now()) {
     }
 
-    ForeignNeighbourInfo(const EtherAddress *ea) {
-      _ea = *ea;
-      _hops = 0;
-      _last_seen = Timestamp::now();
+    explicit ForeignNeighbourInfo(const EtherAddress *ea) : _ea(*ea), _hops(0), _last_seen(Timestamp::now())  {
     }
 
     void update(uint8_t hops, Vector<EtherAddress> *his_neighbours) {

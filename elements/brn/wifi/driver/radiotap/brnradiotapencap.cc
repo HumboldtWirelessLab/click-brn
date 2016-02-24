@@ -76,8 +76,8 @@ struct click_radiotap_header {
 
 
 BrnRadiotapEncap::BrnRadiotapEncap():
-  _mcs_known( IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_FMT | IEEE80211_RADIOTAP_MCS_HAVE_FEC )
-{
+  _mcs_known( IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_FMT | IEEE80211_RADIOTAP_MCS_HAVE_FEC ),
+  _debug(false){
 }
 
 BrnRadiotapEncap::~BrnRadiotapEncap()
@@ -187,7 +187,7 @@ enum {H_DEBUG};
 static String
 BrnRadiotapEncap_read_param(Element *e, void *thunk)
 {
-  BrnRadiotapEncap *td = (BrnRadiotapEncap *)e;
+  BrnRadiotapEncap *td = reinterpret_cast<BrnRadiotapEncap *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
 	return String(td->_debug) + "\n";
@@ -199,7 +199,7 @@ static int
 BrnRadiotapEncap_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BrnRadiotapEncap *f = (BrnRadiotapEncap *)e;
+  BrnRadiotapEncap *f = reinterpret_cast<BrnRadiotapEncap *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

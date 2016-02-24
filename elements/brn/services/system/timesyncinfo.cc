@@ -121,7 +121,7 @@ TimeSyncInfo::read_syncinfo()
 static String
 read_handler(Element *e, void *thunk)
 {
-  TimeSyncInfo *tsi = (TimeSyncInfo *)e;
+  TimeSyncInfo *tsi = reinterpret_cast<TimeSyncInfo *>(e);
 
   switch ((uintptr_t) thunk) {
     case H_TIMESYNCINFO: {

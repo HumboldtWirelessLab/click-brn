@@ -50,7 +50,7 @@ void
 NHopNeighbouringProtocol::unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops)
 {
   struct nhopn_header *nhopn_h = (struct nhopn_header *)p->data();
-  click_ether *ether = (click_ether *)p->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->ether_header());
 
   *no_neighbours = ntohs(nhopn_h->no_neighbours);
   *hop_limit = nhopn_h->hop_limit;
@@ -108,7 +108,7 @@ void
 NHopNeighbouringCompressedProtocol::unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit)
 {
   struct compressed_nhopn_header *nhopn_h = (struct compressed_nhopn_header *)p->data();
-  click_ether *ether = (click_ether *)p->ether_header();
+  click_ether *ether = reinterpret_cast<click_ether *>(p->ether_header());
 
   *no_neighbours = ntohs(nhopn_h->no_neighbours);
   *hop_limit = nhopn_h->hop_limit;

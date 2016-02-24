@@ -5,7 +5,19 @@ CLICK_DECLS
 
 LZW::LZW()
 {
-  //TODO: Handle malloc-error
+  code_value= new int32_t[TABLE_SIZE];
+  prefix_code=new uint32_t[TABLE_SIZE];
+  append_character=new unsigned char[TABLE_SIZE];
+  decode_stack=new unsigned char[LZW_DECODE_STACK_SIZE];
+
+  if (code_value==NULL || prefix_code==NULL || append_character==NULL || decode_stack==NULL)
+    click_chatter("Fatal error allocating table space!\n");
+  else
+    reset_tables();
+}
+
+LZW::LZW(const LZW &/*lzw*/)
+{
   code_value= new int32_t[TABLE_SIZE];
   prefix_code=new uint32_t[TABLE_SIZE];
   append_character=new unsigned char[TABLE_SIZE];
@@ -101,13 +113,12 @@ LZW::find_match(uint32_t hash_prefix, uint32_t hash_character)
 uint32_t
 LZW::input_code(unsigned char *input, int32_t *pos, int32_t inputlen)
 {
-  uint32_t c;
   uint32_t return_value;
 
   while (input_bit_count <= 24)
   {
     if ( *pos >= inputlen ) return MAX_VALUE;
-    c = input[*pos];
+    uint32_t c = input[*pos];
     *pos = *pos + 1;
     input_bit_buffer |= c << (24-input_bit_count);
     input_bit_count += 8;
@@ -123,14 +134,12 @@ LZW::input_code(unsigned char *input, int32_t *pos, int32_t inputlen)
 void
 LZW::output_code(unsigned char *output, int32_t *pos, uint32_t code, int32_t max_outputlen)
 {
-  unsigned char outc;
-
   output_bit_buffer |= code << (32-BITS-output_bit_count);
   output_bit_count += BITS;
 
   while (output_bit_count >= 8)
   {
-    outc = output_bit_buffer >> 24;
+    unsigned char outc = output_bit_buffer >> 24;
 //  click_chatter("Out: %d",outc);
     output[*pos] = outc;
     *pos = *pos + 1;
@@ -153,9 +162,7 @@ int
 LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int max_outputlen)
 {
   uint32_t next_code;
-  uint32_t character;
   uint32_t string_code;
-  uint32_t index = 0;
   int32_t inputpos;
   int32_t outputpos;
   int32_t i;
@@ -181,8 +188,8 @@ LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int max_o
   while (inputpos < inputlen)
   {
 //  click_chatter("Inputpos: %d",inputpos);
-    character = input[inputpos]; inputpos++;
-    index = find_match(string_code,character);/* See if the string is in */
+    uint32_t character = input[inputpos]; inputpos++;
+    uint32_t index = find_match(string_code,character);/* See if the string is in */
     if (code_value[index] != -1)            /* the table.  If it is,   */
       string_code=code_value[index];        /* get the code value.  If */
     else                                    /* the string is not in the*/

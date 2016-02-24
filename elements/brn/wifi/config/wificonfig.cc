@@ -11,9 +11,8 @@ WifiConfig::WifiConfig():
 {
 }
 
- WifiConfig::WifiConfig(String dev_name)
+ WifiConfig::WifiConfig(String dev_name): device_name(dev_name)
 {
-  device_name = dev_name;
 }
 
 WifiConfig::~WifiConfig()

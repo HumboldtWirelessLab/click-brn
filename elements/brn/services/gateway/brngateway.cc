@@ -185,7 +185,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
     sa << "Gateway list (" << gw->_known_gateways.size() <<") (next update in " << gw->_timer_refresh_known_gateways.expiry() - Timestamp::now() << "s)\n"
        << "BRNGateway\t\tMetric\tIP address\tBehind NAT?\n";
     // iterate over all known gateways
-    for (BRNGatewayList::const_iterator i = gw->_known_gateways.begin(); i.live(); i++) {
+    for (BRNGatewayList::const_iterator i = gw->_known_gateways.begin(); i.live(); ++i) {
       BRNGatewayEntry gwe = i.value();
       sa << i.key().unparse().c_str() << "\t"
          << (uint32_t) gwe.get_metric() << "\t"
@@ -346,7 +346,7 @@ BRNGateway::get_gateways() {
 void
 BRNGateway::dht_callback_func(void *e, DHTOperation *op)
 {
-  BRNGateway *s = (BRNGateway *)e;
+  BRNGateway *s = reinterpret_cast<BRNGateway *>(e);
   BRNGateway::RequestInfo *request_info = s->get_request_by_dht_id(op->get_id());
 
   if ( request_info != NULL ) {
@@ -454,7 +454,6 @@ BRNGateway::get_gwe_from_value(uint8_t *value, int valuelen, BRNGatewayEntry */*
 void
 BRNGateway::update_gateway_in_dht(RequestInfo *request_info, DHTOperation *req, BRNGatewayEntry gwe) {
 
-
   if ( request_info == NULL ) {
     BRN_INFO("Sending read packet");
     DHTOperation *new_req = new DHTOperation();
@@ -469,6 +468,11 @@ BRNGateway::update_gateway_in_dht(RequestInfo *request_info, DHTOperation *req, 
 
     dht_request(new_request_info, new_req);
   } else {
+    if ( req == NULL ) {
+      BRN_ERROR("Update Gateway in dht return Null-Operation");
+      return;
+    }
+
     if ( request_info->_mode == GRM_READ_BEFORE_UPDATE ) {
       if ( req->header.status == DHT_STATUS_OK ) {
         BRN_DEBUG("UPDATE GATEWAY");
@@ -561,6 +565,12 @@ BRNGateway::remove_gateway_from_dht(RequestInfo *request_info, DHTOperation *req
     dht_request(new_request_info,new_req);
     pending_remove = false;
   } else {
+
+    if ( req == NULL ) {
+      BRN_ERROR("req is NULL");
+      return;
+    }
+
     if ( request_info->_mode == GRM_REMOVE ) {
       pending_remove = false;
       return;
@@ -611,18 +621,27 @@ BRNGateway::remove_gateway_from_dht(RequestInfo *request_info, DHTOperation *req
 void
 BRNGateway::get_getways_from_dht(RequestInfo *request_info, DHTOperation *req)
 {
-
   BRN_INFO("Sending dht get packet");
   if ( request_info == NULL ) {
     DHTOperation *req = new DHTOperation();
     RequestInfo *request_info = new RequestInfo(GRM_READ);
+
+    if ((req == NULL) || (request_info==NULL)) {
+      BRN_ERROR("New DHT request failed");
+      return;
+    }
 
     req->read((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY));
     req->max_retries = 2;
     req->set_replica(0);
     dht_request(request_info,req);
   } else {
-    BRN_INFO("GOT all bateways");
+    if (req == NULL) {
+      BRN_ERROR("DHT request failed");
+      return;
+    }
+
+    BRN_INFO("GOT all gateways");
     switch ( req->header.status ) {
       case DHT_STATUS_OK:
         update_gateways_from_dht_response(req->value, req->header.valuelen);

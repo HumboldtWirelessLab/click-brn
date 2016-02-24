@@ -20,6 +20,7 @@
 CLICK_DECLS
 
 DHTStorageSimpleRoutingUpdateHandler::DHTStorageSimpleRoutingUpdateHandler():
+  _db(NULL),
   _dht_routing(NULL),
   _debug(BrnLogger::DEFAULT),
   _moved_id(0),
@@ -53,7 +54,7 @@ int DHTStorageSimpleRoutingUpdateHandler::configure(Vector<String> &conf, ErrorH
 
 static void notify_callback_func(void *e, int status)
 {
-  DHTStorageSimpleRoutingUpdateHandler *s = (DHTStorageSimpleRoutingUpdateHandler *)e;
+  DHTStorageSimpleRoutingUpdateHandler *s = reinterpret_cast<DHTStorageSimpleRoutingUpdateHandler *>(e);
   s->handle_notify_callback(status);
 }
 
@@ -124,7 +125,6 @@ void DHTStorageSimpleRoutingUpdateHandler::push( int port, Packet *packet )
 uint32_t
 DHTStorageSimpleRoutingUpdateHandler::handle_node_update()
 {
-  BRNDB::DBrow *_row;
   DHTnode *next;
   DHTMovedDataInfo *mdi;
   WritablePacket *data_p, *p;
@@ -135,7 +135,7 @@ DHTStorageSimpleRoutingUpdateHandler::handle_node_update()
   }
 
   for ( int i = 0; i < _db->size(); i++ ) {
-    _row = _db->getRow(i);
+    BRNDB::DBrow *_row = _db->getRow(i);
 
     BRN_DEBUG("Row replica: %d",_row->replica);
 
@@ -172,20 +172,19 @@ DHTStorageSimpleRoutingUpdateHandler::handle_node_update()
   return 0;
 }
 
+/*
 DHTStorageSimpleRoutingUpdateHandler::DHTMovedDataInfo*
 DHTStorageSimpleRoutingUpdateHandler::get_move_info(EtherAddress *ea)
 {
-  DHTMovedDataInfo *mdi;
-
   for( int i = 0; i < _md_queue.size(); i++ )
   {
-    mdi = _md_queue[i];
+    DHTMovedDataInfo *mdi = _md_queue[i];
     if ( memcmp(ea->data(),mdi->_target.data(),6) == 0 ) return mdi;
   }
 
   return NULL;
 }
-
+*/
 void
 DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
 {
@@ -247,24 +246,21 @@ DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
 void
 DHTStorageSimpleRoutingUpdateHandler::handle_ack_for_moved_data(Packet *p)
 {
-  BRNDB::DBrow *_row;
   uint32_t moveid = DHTProtocolStorageSimple::get_ack_movid(p); //points to header (moveid)
 
   BRN_DEBUG("Search in table for move_id: %d.",moveid);
 
   for ( int i = _db->size() - 1 ; i >= 0; i-- ) {
-    _row = _db->getRow(i);
+    BRNDB::DBrow *_row = _db->getRow(i);
 
     if ( _row->move_id == moveid ) {
       _db->delRow(i);
     }
   }
 
-  DHTMovedDataInfo *mdi;
-
   for( int i = _md_queue.size() - 1; i >= 0; i-- )
   {
-    mdi = _md_queue[i];
+    DHTMovedDataInfo *mdi = _md_queue[i];
     if ( moveid == mdi->_movedID ) {
       delete _md_queue[i];
       _md_queue.erase(_md_queue.begin() + i);
@@ -277,7 +273,7 @@ DHTStorageSimpleRoutingUpdateHandler::handle_ack_for_moved_data(Packet *p)
 void
 DHTStorageSimpleRoutingUpdateHandler::data_move_timer_hook(Timer *, void *f)
 {
-  DHTStorageSimpleRoutingUpdateHandler *dhtss = (DHTStorageSimpleRoutingUpdateHandler *)f;
+  DHTStorageSimpleRoutingUpdateHandler *dhtss = reinterpret_cast<DHTStorageSimpleRoutingUpdateHandler *>(f);
   dhtss->check_moved_data();
 }
 
@@ -289,10 +285,7 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
     return;
   }
 
-  DHTMovedDataInfo *mdi;
   Timestamp now = Timestamp::now();
-  BRNDB::DBrow *_row = NULL;
-  int timediff;
 /*  int a = 0;
   while(a < _md_queue.size())
 {
@@ -304,9 +297,9 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
 }*/
   for( int i = (_md_queue.size() - 1); i >= 0; i-- )
   {
-    mdi = _md_queue[i];
+    DHTMovedDataInfo *mdi = _md_queue[i];
 
-    timediff = (now - mdi->_move_time).msecval();
+    int timediff = (now - mdi->_move_time).msecval();
 
     if ( timediff >= 2000 ) {
       BRN_DEBUG("TIMEOUT for moveid %d",mdi->_movedID);
@@ -319,12 +312,19 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
         mdi->_tries++;
         mdi->_move_time = now;
 
+        BRNDB::DBrow *_row = NULL;
         for ( int i = _db->size() - 1 ; i >= 0; i-- ) {
           _row = _db->getRow(i);
-		
+
           if ( _row->move_id == mdi->_movedID ) break;
         }
-   //     if (_db->size() == 0) return;
+
+        if ( _row == NULL ) {
+			BRN_ERROR("Found no row to move");
+			continue;
+		}
+
+        //     if (_db->size() == 0) return;
         //TODO search for better and move to this (maybe there was an update since last move
         WritablePacket *data_p = DHTProtocolStorageSimple::new_data_packet(&_dht_routing->_me->_ether_addr, _row->move_id, 1,
             _row->serializeSize());
@@ -346,7 +346,7 @@ void
 DHTStorageSimpleRoutingUpdateHandler::set_move_timer()
 {
   DHTMovedDataInfo *mdi;
-  int min_time, ac_time;
+  int min_time;
 
   Timestamp now = Timestamp::now();
 
@@ -359,7 +359,7 @@ DHTStorageSimpleRoutingUpdateHandler::set_move_timer()
   for( int i = 1; i < _md_queue.size(); i++ )
   {
     mdi = _md_queue[i];
-    ac_time = 2000 - (now - mdi->_move_time).msecval();
+    int ac_time = 2000 - (now - mdi->_move_time).msecval();
     if ( ac_time < min_time ) min_time = ac_time;
   }
 

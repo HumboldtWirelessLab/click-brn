@@ -8,15 +8,15 @@
 CLICK_DECLS
 
 FlowControlInfo::FlowControlInfo():
+  _flowid(0),
+  _max_window_size(DEFAULT_MAX_WINDOW_SIZE),
+  _cur_window_size(_max_window_size),
   _window_start_index(0),
   _window_next_index(0),
   _min_seq(0),
   _next_seq(0),
   _rtt(0)
 {
-  _flowid = 0;
-  _max_window_size = DEFAULT_MAX_WINDOW_SIZE;
-  _cur_window_size = _max_window_size;
   _packet_window = new Packet*[DEFAULT_MAX_WINDOW_SIZE];
   _ack_window = new bool[DEFAULT_MAX_WINDOW_SIZE];
   _packet_times = new Timestamp[DEFAULT_MAX_WINDOW_SIZE];
@@ -28,16 +28,31 @@ FlowControlInfo::FlowControlInfo():
   }
 }
 
+FlowControlInfo::FlowControlInfo(const FlowControlInfo &fci):
+  _packet_window(fci._packet_window),
+  _ack_window(fci._ack_window),
+  _packet_times(fci._packet_times),
+  _flowid(fci._flowid),
+  _max_window_size(fci._max_window_size),
+  _cur_window_size(fci._cur_window_size),
+  _window_start_index(fci._window_start_index),
+  _window_next_index(fci._window_next_index),
+  _min_seq(fci._min_seq),
+  _next_seq(fci._next_seq),
+  _rtt(fci._rtt)
+{
+}
+
 FlowControlInfo::FlowControlInfo(uint16_t flowid):
+  _flowid(flowid),
+  _max_window_size(DEFAULT_MAX_WINDOW_SIZE),
+  _cur_window_size(_max_window_size),
   _window_start_index(0),
   _window_next_index(0),
   _min_seq(0),
   _next_seq(0),
   _rtt(0)
 {
-  _flowid = flowid;
-  _max_window_size = DEFAULT_MAX_WINDOW_SIZE;
-  _cur_window_size = _max_window_size;
   _packet_window = new Packet*[DEFAULT_MAX_WINDOW_SIZE];
   _ack_window = new bool[DEFAULT_MAX_WINDOW_SIZE];
   _packet_times = new Timestamp[DEFAULT_MAX_WINDOW_SIZE];

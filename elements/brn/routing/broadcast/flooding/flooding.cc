@@ -41,10 +41,13 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _fhelper(NULL),
+  : _me(NULL),
+    _fhelper(NULL),
     _flooding_db(NULL),
+    _flooding_policy(NULL),
     _flooding_passiveack(NULL),
     _bcast_id(0),
+    _extra_data_size(0),
     _passive_last_node(false),
     _passive_last_node_rx_acked(false),
     _passive_last_node_assign(false),
@@ -70,11 +73,16 @@ Flooding::Flooding()
     _flooding_rx_ack(0),
     _flooding_lower_layer_reject(0),
     _abort_tx_mode(0),
+    _tx_aborts(0),
+    _tx_aborts_errors(0),
     _scheme_array(NULL),
+    _max_scheme_id(0),
+    _flooding_strategy(0),
     _rd_queue(NULL)
 {
   BRNElement::init();
   reset_last_tx();
+  memset(&extra_data,0,sizeof(extra_data));
 }
 
 Flooding::~Flooding()
@@ -113,7 +121,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 static int
 static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
-  return ((Flooding*)e)->retransmit_broadcast(p, src, bcast_id);
+  return(reinterpret_cast<Flooding*>(e))->retransmit_broadcast(p, src, bcast_id);
 }
 
 /**
@@ -132,7 +140,7 @@ Flooding::initialize(ErrorHandler *errh)
   parse_schemes(_scheme_string, errh);
   _flooding_policy = get_flooding_scheme(_flooding_strategy);
 
-  _flooding_policy->set_flooding((Flooding*)this);
+  _flooding_policy->set_flooding(dynamic_cast<Flooding*>(this));
 
   return 0;
 }
@@ -154,7 +162,7 @@ Flooding::push( int port, Packet *packet )
 {
   BRN_DEBUG("Flooding: PUSH\n");
 
-  click_ether *ether;
+  const click_ether *ether;
   struct click_brn_bcast *bcast_header;
 
   EtherAddress src;
@@ -169,7 +177,7 @@ Flooding::push( int port, Packet *packet )
   int result;
 
   if ( port != 0 ) {
-    ether = (click_ether *)packet->ether_header();
+    ether = reinterpret_cast<const click_ether *>(packet->ether_header());
     rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
     fwd = EtherAddress(ether->ether_shost);
 
@@ -183,7 +191,7 @@ Flooding::push( int port, Packet *packet )
     Timestamp now = Timestamp::now();
     BRN_DEBUG("Flooding: PUSH vom Client\n");
 
-    ether = (click_ether *)packet->data();
+    ether = reinterpret_cast<const click_ether *>(packet->data());
     src = EtherAddress(ether->ether_shost);
 
     _bcast_id++;
@@ -204,10 +212,10 @@ Flooding::push( int port, Packet *packet )
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
-    extra_data_size = BCAST_MAX_EXTRA_DATA_SIZE;
+    _extra_data_size = BCAST_MAX_EXTRA_DATA_SIZE;
 
     _flooding_policy->init_broadcast(&src,(uint32_t)_bcast_id,
-                                     &extra_data_size, extra_data, &forwarder, &passiveack);
+                                     &_extra_data_size, extra_data, &forwarder, &passiveack);
 
     if ( !forwarder.empty() ) {
       new_bcn->_fix_target_set = true;
@@ -217,20 +225,20 @@ Flooding::push( int port, Packet *packet )
     }
 
     // prepare packet, including extra data
-    if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
+    if ( _extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) _extra_data_size = 0;
 
-    BRN_DEBUG("Extra Data Init: %d",extra_data_size);
+    BRN_DEBUG("Extra Data Init: %d",_extra_data_size);
 
     packet->pull(6);                                                           //remove mac Broadcast-Address
 
-    WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast) + extra_data_size); //add BroadcastHeader
+    WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast) + _extra_data_size); //add BroadcastHeader
 
     bcast_header = (struct click_brn_bcast *)(new_packet->data());
     bcast_header->bcast_id = htons(_bcast_id);
     bcast_header->flags = 0;
-    bcast_header->extra_data_size = extra_data_size;
+    bcast_header->extra_data_size = _extra_data_size;
 
-    if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size);
+    if ( _extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, _extra_data_size);
 
     if ( ttl == 0 ) BRNPacketAnno::set_ttl_anno(packet,DEFAULT_TTL);
 
@@ -285,10 +293,10 @@ Flooding::push( int port, Packet *packet )
      * TODO: push to piggybackelement
      */
 
-    extra_data_size = BCAST_MAX_EXTRA_DATA_SIZE;  //the policy can use 256 Byte
+    _extra_data_size = BCAST_MAX_EXTRA_DATA_SIZE;  //the policy can use 256 Byte
 
     uint8_t *rxdata = NULL;
-    if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
+    if ( rxdatasize > 0 ) rxdata = reinterpret_cast<uint8_t*>(&(bcast_header[1])); 
 
     /*int abort_reason = */FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
 
@@ -389,15 +397,15 @@ Flooding::push( int port, Packet *packet )
     Vector<EtherAddress> passiveack;
 
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(devicenr)->getEtherAddress(), p_bcast_id,
-                                                             is_known, c_fwds, rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size,
+                                                             is_known, c_fwds, rxdatasize/*rx*/, rxdata /*rx*/, &_extra_data_size,
                                                              extra_data, &forwarder, &passiveack);
 
     if (forward) _flooding_db->add_node_info(&src,(int32_t)p_bcast_id, &fwd, forward, true, false, false); //set forward flag
 
-    if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
+    if ( _extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) _extra_data_size = 0;
 
     BRN_DEBUG("Extra Data Forward: %d in %d out Forward %d", 
-              rxdatasize, extra_data_size, (int)(forward?(1):(0)));
+              rxdatasize, _extra_data_size, (int)(forward?(1):(0)));
 
     /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
 
@@ -476,17 +484,17 @@ Flooding::push( int port, Packet *packet )
 
       if ( rxdatasize > 0 ) packet->pull(rxdatasize);           //remove rx data
 
-      if ( extra_data_size > 0 )
-        if ( packet->push(extra_data_size) == NULL) //add space for new stuff (txdata)
+      if ( _extra_data_size > 0 )
+        if ( packet->push(_extra_data_size) == NULL) //add space for new stuff (txdata)
           BRN_ERROR("packet->push failed");
 
       bcast_header = (struct click_brn_bcast *)(packet->data());
 
       bcast_header->bcast_id = htons(p_bcast_id);
       bcast_header->flags = flags;
-      bcast_header->extra_data_size = extra_data_size;
+      bcast_header->extra_data_size = _extra_data_size;
 
-      if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size);
+      if ( _extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, _extra_data_size);
 
       if ( _flooding_passiveack != NULL )
         _flooding_passiveack->packet_enqueue(packet, &src, p_bcast_id, &passiveack, -1);
@@ -793,7 +801,7 @@ Flooding::parse_schemes(String s_schemes, ErrorHandler* errh)
 
   for (uint16_t i = 0; i < schemes.size(); i++) {
     Element *e = cp_element(schemes[i], this, errh);
-    FloodingPolicy *flooding_scheme = (FloodingPolicy *)e->cast("FloodingPolicy");
+    FloodingPolicy *flooding_scheme = reinterpret_cast<FloodingPolicy *>(e->cast("FloodingPolicy"));
 
     if (!flooding_scheme) {
       return errh->error("Element %s is not a 'FloodingPolicy'",schemes[i].c_str());
@@ -871,13 +879,13 @@ Flooding::stats()
 static String
 read_stats_param(Element *e, void *)
 {
-  return ((Flooding *)e)->stats();
+  return(reinterpret_cast<Flooding *>(e))->stats();
 }
 
 static int 
 write_reset_param(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
-  ((Flooding *)e)->reset();
+ (reinterpret_cast<Flooding *>(e))->reset();
 
   return 0;
 }

@@ -34,7 +34,7 @@
 CLICK_DECLS
 
 BatmanRoutingTable::BatmanRoutingTable():
-  _originator_mode(BATMAN_ORIGINATORMODE_COMPRESSED)
+   _linktable(NULL),_nodeid(NULL), _originator_mode(BATMAN_ORIGINATORMODE_COMPRESSED)
 {
   BRNElement::init();
 }
@@ -110,7 +110,7 @@ BatmanRoutingTable::update_originator(EtherAddress src, EtherAddress fwd, uint32
 void
 BatmanRoutingTable::get_nodes_to_be_forwarded(int originator_id, BatmanNodePList *bnl)
 {
-  for (BatmanNodeMapIter i = _nodemap.begin(); i.live(); i++) {
+  for (BatmanNodeMapIter i = _nodemap.begin(); i.live();++i) {
     BatmanNode *bn = _nodemap.findp(i.key());
     if ( bn->should_be_forwarded(originator_id) ) bnl->push_back(bn);
   }
@@ -129,7 +129,7 @@ BatmanRoutingTable::print_rt()
   sa << " >\n\t<nodes count=\"" << _nodemap.size() << "\" >\n";
 
 
-  for (BatmanNodeMapIter i = _nodemap.begin(); i.live(); i++) {
+  for (BatmanNodeMapIter i = _nodemap.begin(); i.live();++i) {
     BatmanNode *bn = _nodemap.findp(i.key());
     BatmanForwarderEntry *bfe = getBestForwarder(bn->_addr);
 
@@ -161,7 +161,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  BatmanRoutingTable *brt = (BatmanRoutingTable *)e;
+  BatmanRoutingTable *brt = reinterpret_cast<BatmanRoutingTable *>(e);
 
   switch ((uintptr_t) thunk)
   {

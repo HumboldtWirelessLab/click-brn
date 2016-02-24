@@ -41,9 +41,7 @@
 
 CLICK_DECLS
 
-DHTUserspace::DHTUserspace()
-  //_debug(Brn2Logger::DEFAULT)
-{
+DHTUserspace::DHTUserspace(): _debug(0), _dht_storage(NULL) {
 }
 
 DHTUserspace::~DHTUserspace()
@@ -81,7 +79,7 @@ DHTUserspace::initialize(ErrorHandler *)
 
 static void callback_func(void *e, DHTOperation *op)
 {
-  DHTUserspace *s = (DHTUserspace *)e;
+  DHTUserspace *s = reinterpret_cast<DHTUserspace *>(e);
   DHTUserspace::UserspaceClientInfo *client_info = s->get_client_by_dht_id(op->get_id());
 
   if ( client_info != NULL ) {
@@ -128,16 +126,13 @@ DHTUserspace::handle_dht_reply(UserspaceClientInfo *client_info, DHTOperation *o
 void
 DHTUserspace::push( int port, Packet *p_in )
 {
-//  int result = -1;
-  char key[100];
-  char *want_key;
-
   BRN_DEBUG("DHTUserspace: PUSH an Port %d",port);
 
   if ( port == 0 )
   {
+    char key[100];
     struct dht_op_header *h = (struct dht_op_header*)p_in->data();
-    want_key = (char*)&(p_in->data()[sizeof(struct dht_op_header)]);
+    char *want_key = (char*)&(p_in->data()[sizeof(struct dht_op_header)]);
     memcpy(key,want_key,h->key_len);
     key[h->key_len] ='\0';
 
@@ -179,7 +174,7 @@ enum { H_SERVER_INFO, H_DEBUG };
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTUserspace *td = (DHTUserspace *)e;
+  DHTUserspace *td = reinterpret_cast<DHTUserspace *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -192,7 +187,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
             ErrorHandler *errh)
 {
-  DHTUserspace *f = (DHTUserspace *)e;
+  DHTUserspace *f = reinterpret_cast<DHTUserspace *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {    //debug
@@ -209,7 +204,7 @@ write_param(const String &in_s, Element *e, void *vparam,
 static String
 DHTUserspace_read_param(Element */*e*/, void *thunk)
 {
-//  DHTUserspace *dus = (DHTUserspace *)e;
+//  DHTUserspace *dus = reinterpret_cast<DHTUserspace *>(e);
 
   switch ((uintptr_t) thunk)
   {

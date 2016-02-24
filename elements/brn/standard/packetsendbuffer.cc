@@ -28,13 +28,12 @@ PacketSendBuffer::addPacket_ms(Packet *p, int time_diff_ms, int port)
 int
 PacketSendBuffer::getTimeToNext()
 {
-  struct timeval _next_send;
-  struct timeval _time_now;
-  long next_jitter;
-
   if ( queue.size() == 0 ) return(-1);
   else
   {
+     struct timeval _next_send;
+     struct timeval _time_now;
+
     _next_send.tv_sec = queue[0]->_send_time.tv_sec;
     _next_send.tv_usec = queue[0]->_send_time.tv_usec;
 
@@ -50,7 +49,7 @@ PacketSendBuffer::getTimeToNext()
 
     _time_now = Timestamp::now().timeval();
 
-    next_jitter = diff_in_ms(_next_send, _time_now);
+    long next_jitter = diff_in_ms(_next_send, _time_now);
 
     if ( next_jitter <= 1 ) return(1); //TODO: why 1 ?
     else return( next_jitter );

@@ -4,11 +4,12 @@
 
 CLICK_DECLS
 
-BitfieldStreamArray::BitfieldStreamArray(unsigned char* field, int len ) {
-  _field = field;
-  _max_len = len;
-  _position = 0;
+BitfieldStreamArray::BitfieldStreamArray(unsigned char* field, int len ) : _field(field),_max_len(len),_position(0) {
   _bitfield = new Bitfield(field,len);
+}
+
+BitfieldStreamArray::BitfieldStreamArray(const BitfieldStreamArray &bfsa): _field(bfsa._field),_max_len(bfsa._max_len),_position(0) {
+  _bitfield = new Bitfield(_field,_max_len);
 }
 
 BitfieldStreamArray::~BitfieldStreamArray() {

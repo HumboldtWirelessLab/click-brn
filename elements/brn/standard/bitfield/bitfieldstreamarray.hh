@@ -8,6 +8,7 @@ CLICK_DECLS
 class BitfieldStreamArray {
  public:
   BitfieldStreamArray(unsigned char* field, int len );
+  BitfieldStreamArray(const BitfieldStreamArray &bfsa);
   ~BitfieldStreamArray();
 
   void writeBits( int value, int bits);

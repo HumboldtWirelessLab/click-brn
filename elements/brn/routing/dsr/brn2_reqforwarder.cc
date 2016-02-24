@@ -154,15 +154,15 @@ BRN2RequestForwarder::push(int, Packet *p_in)
   BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
   const EtherAddress *device_addr = indev->getEtherAddress(); //ether addr of the interface the packet is coming from
 
-  const click_ether *ether = (const click_ether *)p_in->ether_header();
-  click_brn *brn = (click_brn *)p_in->data();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->ether_header());
+  const click_brn *brn = reinterpret_cast<const click_brn *>(p_in->data());
   // rreq received from this node (last hop)
   EtherAddress prev_node(ether->ether_shost);
 
   BRN_DEBUG("* receiving dsr_rreq packet (packet_anno %s)",
             _me->getDeviceByNumber(devicenumber)->getDeviceName().c_str());
 
-  const click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>((p_in->data() + sizeof(click_brn)));
 
   assert(brn_dsr->dsr_type == BRN_DSR_RREQ);
 
@@ -524,8 +524,8 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
 
   BRN_DEBUG("Headersize: %d brn+dsr: %d",p->length(),sizeof(click_brn) + sizeof(click_brn_dsr));
 
-  click_brn *brn = (click_brn *)p->data();
-  click_brn_dsr *dsr_rreq = (click_brn_dsr *)(p->data() + sizeof(click_brn));
+  click_brn *brn = reinterpret_cast<click_brn *>(p->data());
+  click_brn_dsr *dsr_rreq = reinterpret_cast<click_brn_dsr *>((p->data() + sizeof(click_brn)));
 
   int hop_count = dsr_rreq->dsr_hop_count;
 
@@ -538,7 +538,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
 
   // new hop is the address of the last node
   //EtherAddress hop(ether->ether_shost);
-  click_ether *ether = (click_ether *)p->ether_header();
+  click_ether *ether = reinterpret_cast<click_ether *>(p->ether_header());
 
   // rreq received from this node ...
   EtherAddress prev_node(ether->ether_shost);
@@ -786,7 +786,7 @@ void
 BRN2RequestForwarder::static_rreq_retransmit_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  BRN2RequestForwarder *rreq_fwd = (BRN2RequestForwarder *)f;
+  BRN2RequestForwarder *rreq_fwd = reinterpret_cast<BRN2RequestForwarder *>(f);
   rreq_fwd->rreq_retransmit_timer_hook();
 }
 
@@ -845,7 +845,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  BRN2RequestForwarder *rreq = (BRN2RequestForwarder *)e;
+  BRN2RequestForwarder *rreq = reinterpret_cast<BRN2RequestForwarder *>(e);
   StringAccum sa;
 
   switch ((uintptr_t) thunk)
@@ -877,7 +877,7 @@ BRN2RequestForwarder::get_trackroutemap() {
 
   sa << "<routemap id=\"" << BRN_NODE_NAME << "\" trackmapsize=\"" << _track_route_map.size() << "\">\n";
 
-  for (TrackRouteMapIter iter = _track_route_map.begin(); iter.live(); iter++) {
+  for (TrackRouteMapIter iter = _track_route_map.begin(); iter.live(); ++iter) {
     EtherAddress ea = iter.key();
     RouteRequestInfo *rri = iter.value();
 

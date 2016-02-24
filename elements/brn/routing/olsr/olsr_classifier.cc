@@ -11,6 +11,7 @@ CLICK_DECLS
 
 
 OLSRClassifier::OLSRClassifier()
+:_localIfInfoBase(NULL),_duplicateSet(NULL)
 {
 }
 

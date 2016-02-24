@@ -40,7 +40,6 @@ public:
 
     BIGNUM *_modulus;
     BIGNUM *_share;
-	int _debug;
     unsigned int _share_id;
 private:
     EtherAddress _me;

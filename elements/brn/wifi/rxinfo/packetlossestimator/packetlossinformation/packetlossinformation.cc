@@ -166,7 +166,7 @@ enum {H_PLI_PRINT,H_PLI_RESET,H_PLI_HIDDEN_NODE,H_PLI_INRANGE};
 
 static String PacketLossInformation_read_param(Element *e, void *thunk)
 {
-	PacketLossInformation *f = (PacketLossInformation *)e;
+	PacketLossInformation *f = reinterpret_cast<PacketLossInformation *>(e);
 	switch ((uintptr_t) thunk) {
 		case H_PLI_PRINT:
 			return f->print();
@@ -177,7 +177,7 @@ static String PacketLossInformation_read_param(Element *e, void *thunk)
 
 static int PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-	PacketLossInformation *f = (PacketLossInformation *)e;
+	PacketLossInformation *f = reinterpret_cast<PacketLossInformation *>(e);
 	String s = cp_uncomment(in_s);
 	unsigned int value = 0;
 	switch((intptr_t)vparam) {

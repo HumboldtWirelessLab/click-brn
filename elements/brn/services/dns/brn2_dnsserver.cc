@@ -45,6 +45,7 @@ CLICK_DECLS
 BRN2DNSServer::BRN2DNSServer() :
   _dhcpsubnetlist(NULL),
   //_vlantable(NULL),
+  _dht_storage(NULL),
   _server_redirect(false)
 {
   BRNElement::init();
@@ -95,7 +96,7 @@ BRN2DNSServer::initialize(ErrorHandler *)
 
 static void callback_func(void *e, DHTOperation *op)
 {
-  BRN2DNSServer *s = (BRN2DNSServer *)e;
+  BRN2DNSServer *s = reinterpret_cast<BRN2DNSServer *>(e);
   BRN2DNSServer::DNSClientInfo *client_info = s->get_client_by_dht_id(op->get_id());
 
   if ( client_info != NULL ) {
@@ -228,7 +229,7 @@ enum { H_SERVER_INFO};
 static String
 BRN2DNSServer_read_param(Element *e, void *thunk)
 {
-  BRN2DNSServer *dns = (BRN2DNSServer *)e;
+  BRN2DNSServer *dns = reinterpret_cast<BRN2DNSServer *>(e);
 
   switch ((uintptr_t) thunk)
   {

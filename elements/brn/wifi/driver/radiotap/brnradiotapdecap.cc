@@ -180,11 +180,11 @@ freq2channel(int freq, bool debug)
 {
   if ( debug ) click_chatter("Freq: %d",freq);
 
-  int32_t low_index = 0, next_index = 0;
+  int32_t low_index = 0;
   int32_t high_index = 37;
 
   while ( low_index < high_index ) {
-    next_index = (high_index + low_index) >> 1;
+    int32_t next_index = (high_index + low_index) >> 1;
     if ( freq == frequ_array[next_index] ) return channel_array[next_index];
     if ( freq > frequ_array[next_index] ) low_index = next_index + 1;
     else high_index = next_index - 1;
@@ -212,7 +212,7 @@ const char *byte_to_binary(int x)
     return b;
 }
 
-BrnRadiotapDecap::BrnRadiotapDecap()
+BrnRadiotapDecap::BrnRadiotapDecap():_debug(false)
 {
 }
 
@@ -373,7 +373,7 @@ enum {H_DEBUG};
 static String
 BrnRadiotapDecap_read_param(Element *e, void *thunk)
 {
-  BrnRadiotapDecap *td = (BrnRadiotapDecap *)e;
+  BrnRadiotapDecap *td = reinterpret_cast<BrnRadiotapDecap *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
 	return String(td->_debug) + "\n";
@@ -385,7 +385,7 @@ static int
 BrnRadiotapDecap_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BrnRadiotapDecap *f = (BrnRadiotapDecap *)e;
+  BrnRadiotapDecap *f = reinterpret_cast<BrnRadiotapDecap *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

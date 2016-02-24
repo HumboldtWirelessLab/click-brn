@@ -66,16 +66,9 @@ class DHTUserspace : public Element {
 
     Packet *_client_packet;
 
-    UserspaceClientInfo(Packet *p, IPAddress ip, uint16_t port)
-    {
-      _ip = ip;
-      _port = port;
-      _client_packet = p;
-      _id = 0;
-    }
+    UserspaceClientInfo(Packet *p, IPAddress ip, uint16_t port): _id(0), _ip(ip), _port(port), _client_packet(p) {}
 
-    ~UserspaceClientInfo()
-    {
+    ~UserspaceClientInfo() {
       if ( _client_packet != NULL ) _client_packet->kill();
     }
 

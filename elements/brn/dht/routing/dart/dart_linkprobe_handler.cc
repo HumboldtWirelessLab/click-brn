@@ -72,14 +72,14 @@ DartLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 static int
 tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t size)
 {
-  DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
+  DartLinkProbeHandler *dhtd = reinterpret_cast<DartLinkProbeHandler*>(element);
   return dhtd->lpSendHandler(buffer, size);
 }
 
 static int
 rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size, bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate)
 {
-  DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
+  DartLinkProbeHandler *dhtd = reinterpret_cast<DartLinkProbeHandler*>(element);
   if ( (fwd_rate < 10) || (rev_rate < 10) ) is_neighbour = false;
   return dhtd->lpReceiveHandler(buffer, size, is_neighbour);
 }
@@ -94,22 +94,21 @@ int
 DartLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 {
   int len;
-DHTnodelist nodes;
-int send_nodes;
+  DHTnodelist nodes;
+  int send_nodes;
 
   if ( ! _drt->_validID ) return -1;  //return -1 to signal that we have no information
 
   BRN_DEBUG("Pack Linkprobe data.");
 
-    send_nodes = MIN(MIN(_no_nodes_per_lp, _drt->_neighbours.size()),
-/*DHTProtocolDart::max_no_nodes_in_lp(size)*/ 5);
-    DHTnode* next ; 
-    for (int32_t i = 0; i < send_nodes; i++ ) {
-      _neighbour_nodes_index = ( _neighbour_nodes_index + 1 ) % _drt->_neighbours.size();
-       next = _drt->_neighbours[_neighbour_nodes_index]->neighbour;//.get_dhtnode(_neighbour_nodes_index);
-      if (memcmp(_drt->_me->_ether_addr.data(),next->_ether_addr.data(),6) != 0)
-      nodes.add_dhtnode(next);
-    }
+  send_nodes = MIN(MIN(_no_nodes_per_lp, _drt->_neighbours.size()),
+  /*DHTProtocolDart::max_no_nodes_in_lp(size)*/ 5);
+  for (int32_t i = 0; i < send_nodes; i++ ) {
+    _neighbour_nodes_index = ( _neighbour_nodes_index + 1 ) % _drt->_neighbours.size();
+     DHTnode *next = _drt->_neighbours[_neighbour_nodes_index]->neighbour;//.get_dhtnode(_neighbour_nodes_index);
+    if (memcmp(_drt->_me->_ether_addr.data(),next->_ether_addr.data(),6) != 0)
+    nodes.add_dhtnode(next);
+  }
 
   len = DHTProtocolDart::pack_lp((uint8_t*)buffer, size, _drt->_me, &nodes, _drt->_ident);
   return len;
@@ -120,12 +119,14 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighb
 {
 //  int len;
   DHTnode first;
-  DHTnode* node;
   DHTnodelist nodes;
   EtherAddress ident = EtherAddress();
   BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
   /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes,&ident);
-      if ( _drt->_ds->_lt->get_host_metric_to_me(first._ether_addr) < 300 ) is_neighbour = true; else is_neighbour = false; 
+
+  if ( _drt->_ds->_lt->get_host_metric_to_me(first._ether_addr) < 300 ) is_neighbour = true;
+  else is_neighbour = false;
+
  /*  if (is_neighbour && memcmp(_drt->_ident,ident.data(),6) != 0){
    BRN_DEBUG("Receive ident : %s",ident.unparse().c_str());
 	EtherAddress my_ident = EtherAddress();
@@ -143,22 +144,22 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighb
  }
 }*/
 
-  if(is_neighbour /*&& memcmp(_drt->_ident,ident.data(),6) == 0*/){
-  
-  BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
-  _drt->add_neighbour(&first);
-  
-  //dont update my own ID cause this is already done with table_maintenance
-  for(int i=0;i<nodes.size();i++){
-      node = nodes.get_dhtnode(i);
-    if(memcmp(_drt->_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0){
-     nodes.erase_dhtnode(&(node->_ether_addr));break;
-   }
+  if (is_neighbour /*&& memcmp(_drt->_ident,ident.data(),6) == 0*/) {
+
+    BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
+    _drt->add_neighbour(&first);
+
+    //dont update my own ID cause this is already done with table_maintenance
+    for(int i=0;i<nodes.size();i++){
+      DHTnode *node = nodes.get_dhtnode(i);
+      if(memcmp(_drt->_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0){
+        nodes.erase_dhtnode(&(node->_ether_addr));break;
+      }
+    }
+    _drt->add_nodes(&nodes);
+    //important to do this after add_nodes cause cloning nodes is in add_nodes
+    _drt->add_neighbours_neighbour(&first,&nodes);
   }
-  _drt->add_nodes(&nodes);
-  //important to do this after add_nodes cause cloning nodes is in add_nodes
-  _drt->add_neighbours_neighbour(&first,&nodes);
-}
   /* Just add. No other element need to be informed. So don't cal drt->update here.*/
 
   nodes.del();

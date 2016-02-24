@@ -15,7 +15,11 @@
 
 CLICK_DECLS
 
-BRN2ModelFlow::BRN2ModelFlow()
+BRN2ModelFlow::BRN2ModelFlow():
+  packet_size_vector_len(0),
+  packet_sizes(NULL),
+  packet_time_vector_len(0),
+  interpacket_time(NULL)
 {
   BRNElement::init();
 }

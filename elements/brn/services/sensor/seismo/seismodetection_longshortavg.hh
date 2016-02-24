@@ -112,11 +112,13 @@ class SlidingWindow {
 
   }
 
-  SlidingWindow(uint32_t window_size, int32_t history_size): _raw(NULL), _fixed_value(NULL) {
+  SlidingWindow(uint32_t window_size, int32_t history_size): _calc_min_max(false), _raw(NULL), _fixed_value(NULL), _samplerate(0)
+  {
     init(window_size, history_size);
   }
 
-  SlidingWindow(): _raw(NULL), _fixed_value(NULL) {
+  SlidingWindow(): _calc_min_max(false), _raw(NULL), _fixed_value(NULL), _samplerate(0)
+  {
     init(SEISMO_REPORT_DEFAULT_SHORT_INTERVAL,SEISMO_REPORT_DEFAULT_LONG_INTERVAL);
   }
 
@@ -318,14 +320,14 @@ class SeismoAlarmLTASTAInfo {
       _sq_avg_long = sq_avg_long;
       _sq_avg_short = sq_avg_short;
       _insert = insert;
-      /*_down_stdev_long;
-      _down_stdev_short;
-      _down_avg_long;
-      _down_avg_short;
-      _down_sq_avg_long;
-      _down_sq_avg_short;
-      _down_ratio;
-      */
+      _down_stdev_long = 0;
+      _down_stdev_short = 0;
+      _down_avg_long = 0;
+      _down_avg_short = 0;
+      _down_sq_avg_long = 0;
+      _down_sq_avg_short = 0;
+      _down_ratio = 0;
+      _sampletime = 0;
     }
 
     void update(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,

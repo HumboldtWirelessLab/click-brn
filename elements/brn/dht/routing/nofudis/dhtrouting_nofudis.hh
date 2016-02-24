@@ -63,7 +63,7 @@ class DHTRoutingNoFuDis : public DHTRouting
     Timer _packet_buffer_timer;
     static void static_lookup_timer_hook(Timer *, void *);
     static void static_packet_buffer_timer_hook(Timer *, void *);
-    void set_lookup_timer();
+    //void set_lookup_timer();
 
     int _update_interval;
 

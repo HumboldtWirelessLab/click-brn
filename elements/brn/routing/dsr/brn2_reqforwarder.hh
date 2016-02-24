@@ -82,12 +82,14 @@ class BRN2RequestForwarder : public BRNElement {
 
    public:
 
-    RouteRequestInfo(EtherAddress *src, uint16_t max_age ) {
-      _src = EtherAddress(src->data());
+    RouteRequestInfo(EtherAddress *src, uint16_t max_age ): _src(*src), _max_age(max_age)
+    {
       memset(_id_list, 0, sizeof(_id_list));
       _id_list[0] = 1; //set entry 0 to 1 so that it is mark as unused (1 & METRIC_LIST_MASK) != 0)
+      memset(_metric_list, 0, sizeof(_metric_list));
+      memset(_passive_ack_vector_list, 0, sizeof(_passive_ack_vector_list));
       memset(_passive_ack_retry_list, 0, sizeof(_passive_ack_retry_list));
-      _max_age = max_age;
+      memset(_last_hop_opt, 0, sizeof(_last_hop_opt));
     }
 
     inline uint16_t get_current_metric(uint16_t req_id, Timestamp *now) {
@@ -143,13 +145,11 @@ class BRN2RequestForwarder : public BRNElement {
     EtherAddress _src;
     uint16_t _rreq_id;
 
-    RReqRetransmitInfo(Packet *p, EtherAddress *ea, uint16_t rreq_id) {
+    RReqRetransmitInfo(Packet *p, EtherAddress *ea, uint16_t rreq_id) : _p(p), _src(ea->data()), _rreq_id(rreq_id)
+    {
       if ( p == NULL ) {
         click_chatter("Insert NULL packet");
       }
-      _p = p;
-      _src = EtherAddress(ea->data());
-      _rreq_id = rreq_id;
     }
 
     Packet* get_packet(bool clone) {
@@ -194,7 +194,7 @@ class BRN2RequestForwarder : public BRNElement {
 
   void run_timer(Timer *timer);
 
-public: 
+public:
   //
   //member
   //

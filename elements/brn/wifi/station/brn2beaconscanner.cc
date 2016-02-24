@@ -94,7 +94,7 @@ BRN2BeaconScanner::chk_beacon_timeout() {
 	 */
 	uint32_t timenow_msec = Timestamp::now().msecval();
 
-	for (APIter iter = _aps.begin(); iter.live(); iter++) {
+	for (APIter iter = _aps.begin(); iter.live(); ++iter) {
 		vap ap = iter.value();
 
 		//BRN_DEBUG("INFO bi: %d last_rx: %d ts: %d", (uint32_t)ap._beacon_int, ap._last_rx.msecval(), Timestamp::now().msecval());
@@ -337,7 +337,7 @@ BRN2BeaconScanner::scan_string()
   StringAccum sa;
   Timestamp now = Timestamp::now();
   sa << "size " << _aps.size() << "\n";
-  for (APIter iter = _aps.begin(); iter.live(); iter++) {
+  for (APIter iter = _aps.begin(); iter.live(); ++iter) {
     click_chatter("next ap");
     vap ap = iter.value();
     sa << ap._eth << " ";
@@ -392,10 +392,10 @@ BRN2BeaconScanner::scan_string2()
   StringAccum sa;
   Timestamp now = Timestamp::now();
   sa << "size " << _aps.size() << "\n";
-  for (PAPIter iter = _paps.begin(); iter.live(); iter++) {
+  for (PAPIter iter = _paps.begin(); iter.live(); ++iter) {
     pap acpap = iter.value();
 
-    for (VAPIter viter = acpap._vaps.begin(); viter.live(); viter++) {
+    for (VAPIter viter = acpap._vaps.begin(); viter.live(); ++viter) {
       click_chatter("next ap");
       vap ap = viter.value();
       sa << ap._eth << " ";
@@ -458,7 +458,7 @@ enum {H_DEBUG, H_SCAN,H_SCAN2, H_RESET};
 static String 
 BRN2BeaconScanner_read_param(Element *e, void *thunk)
 {
-  BRN2BeaconScanner *td = (BRN2BeaconScanner *)e;
+  BRN2BeaconScanner *td = reinterpret_cast<BRN2BeaconScanner *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
         return String(td->_debug) + "\n";
@@ -474,7 +474,7 @@ static int
 BRN2BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
         ErrorHandler *errh)
 {
-  BRN2BeaconScanner *f = (BRN2BeaconScanner *)e;
+  BRN2BeaconScanner *f = reinterpret_cast<BRN2BeaconScanner *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

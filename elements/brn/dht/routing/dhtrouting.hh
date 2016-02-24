@@ -73,9 +73,8 @@ class DHTRouting : public BRNElement
     }
 
     void notify_callback(int status) {
-      CallbackFunction *cbf;
       for ( int i = 0; i < _callbacklist.size(); i++ ) {
-        cbf = _callbacklist[i];
+        CallbackFunction *cbf = _callbacklist[i];
 
         (*cbf->_info_func)(cbf->_info_obj, status);
       }
@@ -83,9 +82,9 @@ class DHTRouting : public BRNElement
 
     virtual void add_handlers();
 
-    bool is_me(EtherAddress *addr) { return ( *addr == _me->_ether_addr ); }
-    bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
-    bool is_me(DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
+    bool is_me(const EtherAddress *addr) { return ( *addr == _me->_ether_addr ); }
+    bool is_me(const uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
+    bool is_me(const DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
 
     DHTnode *_me;
 };

@@ -17,7 +17,7 @@
 
 CLICK_DECLS
 AODVGenerateRREP::AODVGenerateRREP():
-	neighbour_table(0)
+	neighbour_table(0), setrrepheaders(NULL),myIP(NULL)
 {
 }
 
@@ -40,7 +40,7 @@ AODVGenerateRREP::configure(Vector<String> &conf, ErrorHandler *errh)
 void AODVGenerateRREP::push (int port, Packet * rreq){
 	assert(port == 0);
 
-	aodv_rreq_header * rreq_header = (aodv_rreq_header*) (rreq->data() + aodv_headeroffset);
+	const aodv_rreq_header * rreq_header = reinterpret_cast<const aodv_rreq_header*>(rreq->data() + aodv_headeroffset);
 //	bool imdestination = (rreq_header->destination == *myIP);
 	bool imdestination = false;
 	if (imdestination) neighbour_table->updateMySequenceNumber(ntohl(rreq_header->destinationseqnr)); //RFC 6.1
@@ -55,7 +55,7 @@ void AODVGenerateRREP::push (int port, Packet * rreq){
 		return;
 	}
 	memset(packet->data(), 0, packet->length());
-	aodv_rrep_header * header = (aodv_rrep_header *) packet->data();
+	aodv_rrep_header * header = reinterpret_cast<aodv_rrep_header *>( packet->data());
 	header->type = AODV_RREP_MESSAGE;
 	header->rareserved = AODV_HELLO_RARESERVED;
 	header->reservedprefixsz = AODV_HELLO_RESERVEDPREFIXSZ;
@@ -99,7 +99,7 @@ void AODVGenerateRREP::push (int port, Packet * rreq){
 		int packet_size = sizeof(aodv_rrep_header);
 		WritablePacket * grrep = Packet::make(aodv_headeroffset,0,packet_size, tailroom);
 		
-		aodv_rrep_header * header = (aodv_rrep_header *) grrep->data();
+		aodv_rrep_header * header = reinterpret_cast<aodv_rrep_header *>( grrep->data());
 		header->type = AODV_RREP_MESSAGE;
 		header->rareserved = AODV_HELLO_RARESERVED;
 		header->reservedprefixsz = AODV_HELLO_RESERVEDPREFIXSZ;

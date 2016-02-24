@@ -39,8 +39,13 @@
 
 CLICK_DECLS
 
-BRN2DHCPClient::BRN2DHCPClient()
-  : _timer(this)
+BRN2DHCPClient::BRN2DHCPClient() :
+  _ip_range(0),
+  _start_time(0),
+  _interval(0),
+  range_index(0),
+  _timer(this),
+  count_configured_clients(0),_active(false)
 {
   BRNElement::init();
 }
@@ -121,9 +126,6 @@ void
 BRN2DHCPClient::run_timer(Timer* )
 {
   //BRN_DEBUG("BRN2DHCPClient: Run_Timer");
-
-  Packet *packet_out;
-
   _timer.reschedule_after_msec(_interval);
   assert((int)range_index < request_queue.size());
 
@@ -136,7 +138,7 @@ BRN2DHCPClient::run_timer(Timer* )
           if ( (request_queue[range_index]._last_action != DHCPDISCOVER) ||
                ((Timestamp::now() - request_queue[range_index]._last_action_time).msecval() > 500) )
           {
-            packet_out = dhcpdiscover(&request_queue[range_index]);
+            Packet *packet_out = dhcpdiscover(&request_queue[range_index]);
             if ( packet_out != NULL )  output(0).push(packet_out);
           }
           break;
@@ -147,7 +149,7 @@ BRN2DHCPClient::run_timer(Timer* )
           if ( (request_queue[range_index]._last_action != DHCPREQUEST) ||
                ((Timestamp::now() - request_queue[range_index]._last_action_time).msecval() > 500) )
           {
-            packet_out = dhcprequest(&request_queue[range_index]);
+            Packet *packet_out = dhcprequest(&request_queue[range_index]);
             if ( packet_out != NULL )  output(1).push(packet_out);
           }
           break;
@@ -317,7 +319,7 @@ BRN2DHCPClient::dhcpbound(DHCPClientInfo *client_info)
 
 }
 
-
+/*
 Packet *
 BRN2DHCPClient::dhcprenewing()
 {
@@ -362,6 +364,7 @@ BRN2DHCPClient::dhcpinform()
 {
   return(NULL);
 }
+*/
 
 int
 BRN2DHCPClient::search_dhcpclient_by_xid(int xid)
@@ -410,7 +413,7 @@ enum {
 static String 
 read_param(Element *e, void */*thunk*/)
 {
-  BRN2DHCPClient *td = (BRN2DHCPClient *)e;
+  BRN2DHCPClient *td = reinterpret_cast<BRN2DHCPClient *>(e);
   return td->print_stats();
 
 }
@@ -419,7 +422,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BRN2DHCPClient *f = (BRN2DHCPClient *)e;
+  BRN2DHCPClient *f = reinterpret_cast<BRN2DHCPClient *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_HW_ADDR:

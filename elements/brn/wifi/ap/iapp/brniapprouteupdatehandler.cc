@@ -51,6 +51,8 @@ CLICK_DECLS
 BrnIappRouteUpdateHandler::BrnIappRouteUpdateHandler() :
   _debug(BrnLogger::DEFAULT),
   _id(NULL),
+  _assoc_list(NULL),
+  _link_table(NULL),
   _encap(NULL),
   _hello_handler(NULL)
 {
@@ -145,8 +147,8 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
     ("invalid argument"), if (p) p->kill(); return;);
 
   // Note: the link table update is done in peek()
-  click_brn_iapp*     pIapp   = (click_brn_iapp*)p->data();
-  click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
+  const click_brn_iapp*     pIapp   = reinterpret_cast<const click_brn_iapp*>(p->data());
+  const click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
 
   BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_HRU != pIapp->type,
     ("got invalid iapp type %d", pIapp->type), if (p) p->kill(); return;);
@@ -174,7 +176,7 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
   }
 
   // get the ether header
-  click_ether* ether = (click_ether*) p->ether_header();
+  const click_ether* ether = reinterpret_cast<const click_ether*>( p->ether_header());
   BRN_CHECK_EXPR_RETURN(NULL == ether, 
     ("missing ether header"), p->kill();return;);
 
@@ -197,7 +199,7 @@ enum {H_DEBUG};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappRouteUpdateHandler *td = (BrnIappRouteUpdateHandler *)e;
+  BrnIappRouteUpdateHandler *td = reinterpret_cast<BrnIappRouteUpdateHandler *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -210,7 +212,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappRouteUpdateHandler *f = (BrnIappRouteUpdateHandler *)e;
+  BrnIappRouteUpdateHandler *f = reinterpret_cast<BrnIappRouteUpdateHandler *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

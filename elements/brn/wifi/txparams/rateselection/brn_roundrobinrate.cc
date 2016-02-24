@@ -24,7 +24,7 @@ void *
 BrnRoundRobinRate::cast(const char *name)
 {
   if (strcmp(name, "BrnRoundRobinRate") == 0)
-    return (BrnRoundRobinRate *) this;
+    return dynamic_cast<BrnRoundRobinRate *>(this);
 
   return RateSelection::cast(name);
 }
@@ -91,7 +91,7 @@ enum { H_STATS};
 static String
 BrnRoundRobinRate_read_param(Element */*e*/, void *thunk)
 {
-  //BrnRoundRobinRate *td = (BrnRoundRobinRate *)e;
+  //BrnRoundRobinRate *td = reinterpret_cast<BrnRoundRobinRate *>(e);
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return String();

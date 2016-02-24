@@ -41,9 +41,7 @@ class SeismoAlarm {
 
     void *_detection_info;
 
-    SeismoAlarm() {
-      _start = _end = Timestamp::now();
-      _detection_info = NULL;
+    SeismoAlarm(): _start(Timestamp::now()), _end(Timestamp::now()), _id(0), _detection_info(NULL) {
     }
 
     void end_alarm() {

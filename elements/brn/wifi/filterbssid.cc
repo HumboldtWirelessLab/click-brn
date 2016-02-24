@@ -127,9 +127,8 @@ FilterBSSID::push(int, Packet *p)
   }
 
   if (_winfo_list != NULL ) {
-    BRN2WirelessInfoList::WifiInfo *wi;
     for ( int i = 0; i < _winfo_list->countWifiInfo(); i++ ) {
-      wi = _winfo_list->getWifiInfo(i);
+      BRN2WirelessInfoList::WifiInfo *wi = _winfo_list->getWifiInfo(i);
       if ( wi->_bssid == bssid ) {
         output(0).push(p);
         return;
@@ -156,7 +155,7 @@ enum {H_ACTIVE};
 static String 
 FilterBSSID_read_param(Element *e, void *thunk)
 {
-  FilterBSSID *td = (FilterBSSID *)e;
+  FilterBSSID *td = reinterpret_cast<FilterBSSID *>(e);
   switch ((uintptr_t) thunk) {
   case H_ACTIVE:
     return String(td->_active) + "\n";
@@ -168,7 +167,7 @@ static int
 FilterBSSID_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  FilterBSSID *f = (FilterBSSID *)e;
+  FilterBSSID *f = reinterpret_cast<FilterBSSID *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
   case H_ACTIVE: {    //debug

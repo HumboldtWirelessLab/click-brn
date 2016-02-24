@@ -171,8 +171,12 @@ class MultiFlowHandler {
     //bool _can_pull[2]; 
 
     private: 
-    class Port { 
-	public: 
+    class Port {
+	public:
+
+      Port() : _local(NULL), _neighbor(NULL),_remote_port(0),_local_port(0), _dispatch_mode(0) {
+      }
+
 	operator MultiFlowHandler * () { return _neighbor;} 
 	operator bool() { return _neighbor;} 
 	void connect(MultiFlowHandler * mfh, int port) { 

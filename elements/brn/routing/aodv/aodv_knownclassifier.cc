@@ -15,7 +15,7 @@
 
 CLICK_DECLS
 AODVKnownClassifier::AODVKnownClassifier()
-{
+:neighbour_table(NULL),myIP(NULL){
 }
 
 AODVKnownClassifier::~AODVKnownClassifier()
@@ -38,7 +38,7 @@ void AODVKnownClassifier::push (int port, Packet * p){
 	assert(p);
 	WritablePacket * packet = p->uniqueify();
 	assert(packet);
-	aodv_rreq_header * rreq = (aodv_rreq_header*) (packet->data() + aodv_headeroffset);
+	aodv_rreq_header * rreq = reinterpret_cast<aodv_rreq_header*>( (packet->data() + aodv_headeroffset));
 	
 	uint32_t rreqid = ntohl(rreq->rreqid);
 	
@@ -96,7 +96,7 @@ void AODVKnownClassifier::push (int port, Packet * p){
 */}
 
 void AODVKnownClassifier::handleExpiry(Timer*, void * data){
-	TimerData * timerdata = (TimerData*) data;
+	TimerData * timerdata = reinterpret_cast<TimerData*>( data);
 	assert(timerdata);
 	timerdata->known->expire(timerdata->key);
 	delete timerdata;

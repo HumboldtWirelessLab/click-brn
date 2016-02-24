@@ -43,7 +43,7 @@ HawkForwarder::HawkForwarder()
     _opt_first_dst(false),
     _opt_better_finger(false),
     _opt_successor_forward(false),
-    _me()
+    _me(), _falconrouting(NULL),_rt(NULL),_frt(NULL)
 {
 
 }
@@ -101,7 +101,7 @@ HawkForwarder::push(int port, Packet *p_in)
 
   EtherAddress next(header->_next_etheraddress);
 
-  click_ether *annotated_ether = (click_ether *)p_in->ether_header();
+  const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(p_in->ether_header());
   EtherAddress last_addr(annotated_ether->ether_shost);
   BRN_DEBUG("Me: %s src: %s dst: %s last: %s next: %s",_me->getNodeName().c_str(),
                                                        src_addr.unparse().c_str(),
@@ -141,7 +141,6 @@ BRN_DEBUG("got packet with metric %d", header->_metric);
     //and do it also with last hop cause he must be a neighbour
     _rt->addEntry(&(last_addr),header->_src_nodeid,16,&(last_addr),last_metric);
   }
-  EtherAddress * next_phy_hop = NULL;
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
 
@@ -190,14 +189,15 @@ BRN_DEBUG("got packet with metric %d", header->_metric);
 	//i'm next overlay hop
       HawkProtocol::clear_next_hop(p_in);
     }
-    
+
     HawkProtocol::set_rew_metric(p_in,header->_rew_metric - 1);
     //check first if i have a direct route in my routingtable and take this
     // before checking next link to next overlay
-    if(!HawkProtocol::has_next_hop(p_in))
-       next_phy_hop = _rt->getNextHop(&dst_addr);
-        if(_rt->_use_metric && next_phy_hop != NULL)HawkProtocol::set_rew_metric(p_in,(_rt->getEntry(&dst_addr))->_metric);
-	 if(next_phy_hop != NULL) header->_flags = 1;//mark direct route
+	EtherAddress *next_phy_hop = NULL;
+
+    if(!HawkProtocol::has_next_hop(p_in)) next_phy_hop = _rt->getNextHop(&dst_addr);
+    if(_rt->_use_metric && next_phy_hop != NULL) HawkProtocol::set_rew_metric(p_in,(_rt->getEntry(&dst_addr))->_metric);
+    if(next_phy_hop != NULL) header->_flags = 1;//mark direct route
     if (next_phy_hop == NULL && HawkProtocol::has_next_hop(p_in)){
         if(_opt_first_dst){
           next_phy_hop = _rt->getNextHop(&dst_addr);
@@ -326,9 +326,9 @@ BRN_DEBUG("got packet with metric %d", header->_metric);
 
       if ( next_phy_hop == NULL ) {
         BRN_ERROR("No valid next hop found. Discard packet.");
-	 HawkRoutingtable::RTEntry *entry;
+
   	 for(int i = 0; i < _rt->_rt.size(); i++) {
-    		entry = _rt->_rt[i];
+    		HawkRoutingtable::RTEntry *entry = _rt->_rt[i];
 	  	BRN_DEBUG("entry node=%s, next_hop=%s", entry->_dst.unparse().c_str(),entry->_next_phy_hop.unparse().c_str());
     		BRN_DEBUG(" next_overlay=%s",entry->_next_hop.unparse().c_str());
   	 }
@@ -355,14 +355,14 @@ BRN_DEBUG("got packet with metric %d", header->_metric);
 static String
 read_debug_param(Element *e, void *)
 {
-  HawkForwarder *sf = (HawkForwarder *)e;
+  HawkForwarder *sf = reinterpret_cast<HawkForwarder *>(e);
   return String(sf->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  HawkForwarder *sf = (HawkForwarder *)e;
+  HawkForwarder *sf = reinterpret_cast<HawkForwarder *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

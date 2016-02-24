@@ -136,7 +136,7 @@ class Flooding : public BRNElement {
   uint16_t _bcast_id;
 
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
-  uint32_t extra_data_size;
+  uint32_t _extra_data_size;
 
   /** infos about passive packet (port 4) which will be handled by port 1 (like rx) mostly **/
   bool _passive_last_node;

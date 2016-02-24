@@ -134,7 +134,6 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
   CachedNeighborsMetricList* own_cnml = _fhelper->get_filtered_neighbors(me);
 
   int own_benefit = 0;
-  int benefit = 0;
 
   int higher_prio = 0; //0 -> highest prio ..... bigger -> lower prio
   int same_prio = 0;
@@ -154,7 +153,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
       //BRN_ERROR("own metric: %d", FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])));
 
       CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(own_cnml->_neighbors[x]);
-      benefit = 0;
+      int benefit = 0;
 
       /*
       BRN_ERROR("Neighbours Prob: %d own metric: %d b: %d", neighbors_prob, FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])),
@@ -185,7 +184,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
 
     BenefitMapIter bmIter = benefit_map.begin();
 
-    for( ; bmIter != benefit_map.end(); bmIter++) {
+    for( ; bmIter != benefit_map.end(); ++bmIter) {
       int32_t cur_benefits = bmIter.value();
 
       if (active_passive_prio) {

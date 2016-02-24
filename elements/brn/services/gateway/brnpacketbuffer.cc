@@ -32,8 +32,11 @@
 CLICK_DECLS
 
 BRNPacketBuffer::BRNPacketBuffer() :
-  _stamp(0)
-  {}
+  _debug(0),
+  _stamp(0),
+  _trigger(NULL)
+{
+}
 
 BRNPacketBuffer::~BRNPacketBuffer() {}
 
@@ -48,7 +51,7 @@ BRNPacketBuffer::configure(Vector<String> &conf, ErrorHandler *errh) {
 
   if (_stamp <= 0)
     return errh->error("time (ms) must be > 0");
-     
+
   if (_trigger->cast("BRNSetGatewayOnFlow") == 0) {
     return errh->error("No element of type BRNSetGatewayOnFlow specified.");
   }
@@ -59,33 +62,35 @@ BRNPacketBuffer::configure(Vector<String> &conf, ErrorHandler *errh) {
 int
 BRNPacketBuffer::initialize(ErrorHandler *errh) {
   (void) (errh);
-    
+
   return 0;
 }
 
 void
 BRNPacketBuffer::push(int, Packet *p) {
   BRN_DEBUG("Getting packet.");
-  
+
   // test, if packet needs to be buffered
   if (_trigger->buffer_packet(p))
   {
     // put it in bucket
     uint32_t bucket = _trigger->get_bucket(p);
     PacketBuffer *buffer;
-    
+
     if ((buffer = _buffer.findp(bucket)) != NULL) {
       // bucket already known => just store packet
-      buffer->push_back(p);
-      
+      buffer->push_back(BufferedPacket(p));
+
       BRN_DEBUG("Buffering packet with pointer 0x%x.", p);
     }
     else {
       // create buffer
-      assert(_buffer.insert(bucket, PacketBuffer()) == true);
-      
+      if ( ! _buffer.insert(bucket, PacketBuffer()) ) {
+        BRN_ERROR("Insert of packet into buffer failed");
+      }
+
       // ... and insert packet
-      _buffer.findp(bucket)->push_back(p);
+      _buffer.findp(bucket)->push_back(BufferedPacket(p));
       
       // ... and start timer
       Timer *t = new Timer(this);

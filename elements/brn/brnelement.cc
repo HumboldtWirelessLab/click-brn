@@ -80,7 +80,7 @@ enum {H_DEBUG};
 static String
 read_brnelement(Element *e, void *thunk)
 {
-  BRNElement *td = (BRNElement *)e;
+  BRNElement *td = reinterpret_cast<BRNElement *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -92,7 +92,7 @@ read_brnelement(Element *e, void *thunk)
 static int
 write_brnelement(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BRNElement *f = (BRNElement *)e;
+  BRNElement *f = reinterpret_cast<BRNElement *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {    //debug

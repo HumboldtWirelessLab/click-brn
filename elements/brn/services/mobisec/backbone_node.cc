@@ -35,15 +35,36 @@
 
 CLICK_DECLS
 
-BackboneNode::BackboneNode()
-	: _debug(false),
-	  session_timer(session_trigger, this),
-	  epoch_timer(epoch_trigger, this),
-	  kdp_timer(kdp_trigger, this),
-	  keyman(),
-	  BUF_keyman()
+BackboneNode::BackboneNode() :
+  _me(NULL),
+  _tls(NULL),
+  _wifidev_client(NULL),
+  _ap_q(NULL),
+  _client_q(NULL),
+  _wepencap(NULL),
+  _wepdecap(NULL),
+  _dev_control_up(NULL),
+  _dev_control_down(NULL),
+  _dev_control_down2(NULL),
+  _start_time(0),
+  session_timer(session_trigger, this),
+  epoch_timer(epoch_trigger, this),
+  kdp_timer(kdp_trigger, this),
+  tolerance(0),
+  backoff(0),
+  retry_cnt_down(0),
+  req_id(0),
+  keyman(),
+  BUF_keyman(),
+  _key_timeout(0),
+  bb_status(false),
+  bb_join_cnt(0),
+  kdp_retry_cnt(0),
+  key_inst_cnt(0),
+  cnt_bb_entrypoints(0),
+  cnt_bb_exitpoints(0)
 {
-	BRNElement::init();
+  BRNElement::init();
 }
 
 BackboneNode::~BackboneNode() {
@@ -187,7 +208,7 @@ void BackboneNode::snd_kdp_req() {
 	BRNPacketAnno::set_ether_anno(p, *(_me->getServiceAddress()), _ks_addr, ETHERTYPE_BRN);
 
 	// Enrich packet with information.
-	kdp_req *req = (kdp_req *)p->data();
+	kdp_req *req = reinterpret_cast<kdp_req *>(p->data());
 	req->node_id = *(_me->getServiceAddress());
 	req->req_id = req_id++;
 
@@ -202,8 +223,7 @@ void BackboneNode::snd_kdp_req() {
 void BackboneNode::handle_kdp_reply(Packet *p) {
 	HandlerCall::call_read(_tls, "traffic_cnt", NULL);
 
-	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
-	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
+	const crypto_ctrl_data *hdr = reinterpret_cast<const crypto_ctrl_data *>(p->data());
 
 	// Make a scummy check for packet repetition
 	if (hdr->timestamp == BUF_keyman.get_validity_start_time()) {
@@ -223,21 +243,31 @@ void BackboneNode::handle_kdp_reply(Packet *p) {
 	// We got some key material, switch to backbone network
 	switch_dev(dev_ap);
 
+
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
-		data_t *seed = (data_t *)payload;
+		WritablePacket *wp = p->uniqueify();
+		unsigned char *payload = &(wp->data()[sizeof(crypto_ctrl_data)]);
+		data_t *seed = reinterpret_cast<data_t *>(payload);
+
 		BRN_DEBUG("Constructing and installing key list");
 		BUF_keyman.install_keylist_cli_driv(seed);
 
+		wp->kill();
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		data_t *keylist_string = (data_t *)payload;
+		WritablePacket *wp = p->uniqueify();
+		unsigned char *payload = &(wp->data()[sizeof(crypto_ctrl_data)]);
+		data_t *keylist_string = reinterpret_cast<data_t *>(payload);
 		BRN_DEBUG("Installing key list");
 		BUF_keyman.install_keylist_srv_driv(keylist_string);
+
+		wp->kill();
+	} else {
+    	p->kill();
 	}
 
 	if(BUF_keyman.get_keylist().size() != BUF_keyman.get_cardinality()) {
 		BRN_ERROR("KEYLIST ERROR %d != %d", BUF_keyman.get_keylist().size(), BUF_keyman.get_cardinality());
-		p->kill();
 		return;
 	}
 
@@ -252,8 +282,6 @@ void BackboneNode::handle_kdp_reply(Packet *p) {
 	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
 	kdp_timer.reschedule_at(Timestamp::make_msec(BUF_keyman.get_validity_start_time() + keylist_livetime - tolerance));
 	retry_cnt_down = RETRY_CNT_DOWN; // reset retry countdown
-
-	p->kill();
 
 	// Todo: Need reliable transport
 	// Shutdown SSL because shutdown alert is sent over unreliable transport
@@ -390,7 +418,7 @@ void BackboneNode::reset_key_material() {
 enum {H_SND_KDP_REQ, H_STATS, H_RST_KEYS};
 
 static String backbone_read_param(Element *e, void *thunk) {
-	BackboneNode *bn = (BackboneNode *)e;
+	BackboneNode *bn = reinterpret_cast<BackboneNode *>(e);
 
 	switch ((uintptr_t) thunk) {
 	case H_SND_KDP_REQ: {

@@ -212,7 +212,7 @@ class BRNGateway : public BRNElement {
 
       Timestamp _request_time;
 
-      RequestInfo(uint32_t mode)
+      explicit RequestInfo(uint32_t mode)
       {
         _id = 0;
         _mode = mode;
@@ -325,7 +325,7 @@ class BRNGateway : public BRNElement {
     void take_state(Element *old_element, ErrorHandler *errh) {
         (void) errh;
 
-        BRNGateway* old_gw = (BRNGateway *) old_element;
+        BRNGateway* old_gw = reinterpret_cast<BRNGateway *>( old_element);
 
         // TODO
         // check if configuration is properly
@@ -441,7 +441,6 @@ class BRNGateway : public BRNElement {
      */
     const BRNGatewayList* get_gateways();
 
-    int _debug;
     DHTStorage *_dht_storage;
     static void dht_callback_func(void *e, DHTOperation *op);
     void dht_request(RequestInfo *request_info, DHTOperation *op);

@@ -16,12 +16,8 @@ public:
 
   DuplicatePair() : _address(), _seq_num() { }
 
-  DuplicatePair(IPAddress address, int seq_num) {
-      _address = address;
-      _seq_num = seq_num;
+  DuplicatePair(IPAddress address, int seq_num): _address(address), _seq_num(seq_num) {
   }
-
-
 };
 
 inline bool

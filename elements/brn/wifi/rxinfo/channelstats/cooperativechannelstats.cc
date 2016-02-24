@@ -119,7 +119,7 @@ void CooperativeChannelStats::send_message()
       struct neighbour_airtime_stats *nats = &(body->neighbour_stats);
 
       int n = 0;
-      for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+      for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); ++iter) {
          ChannelStats::SrcInfo *src = iter.value();
           EtherAddress ea = iter.key();
 
@@ -152,7 +152,7 @@ void CooperativeChannelStats::push(int, Packet *p)
     BRN_DEBUG("void CooperativeChannelStats::push (int, Packet *p)");
     BRN_INFO("received Packet-Length: %d", p->length());
 
-    click_ether *eh = (click_ether*) p->ether_header();
+    const click_ether *eh = reinterpret_cast<const click_ether*>( p->ether_header());
     EtherAddress src_ea = EtherAddress(eh->ether_shost);
 
     NodeChannelStats *ncs = _ncst.find(src_ea);
@@ -179,7 +179,7 @@ CooperativeChannelStats::get_neighbours_with_max_age(int age, Vector<EtherAddres
   int no_neighbours = 0;
   Timestamp now = Timestamp::now();
 
-  for ( NodeChannelStatsMapIter nt_iter = _ncst.begin(); nt_iter != _ncst.end(); nt_iter++ ) {
+  for ( NodeChannelStatsMapIter nt_iter = _ncst.begin(); nt_iter != _ncst.end(); ++nt_iter ) {
     if ( (now - nt_iter.value()->_last_update).msecval() < age ) {
       ea_vec->push_back(nt_iter.key());
       no_neighbours++;
@@ -204,7 +204,7 @@ String CooperativeChannelStats::stats_handler(int /*mode*/)
     sa << "<cooperativechannelstats" << " node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now();
     sa << "\" neighbours=\"" << _ncst.size() << "\" >\n";
 
-    for(NodeChannelStatsMapIter iter = _ncst.begin(); iter.live(); iter++) {
+    for(NodeChannelStatsMapIter iter = _ncst.begin(); iter.live(); ++iter) {
       NodeChannelStats *ncs = iter.value();
       EtherAddress ea = iter.key();
 
@@ -216,14 +216,14 @@ String CooperativeChannelStats::stats_handler(int /*mode*/)
 
 
       uint32_t duration_sum = 0;
-      for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); iter_m++) {
+      for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); ++iter_m) {
         struct neighbour_airtime_stats *n_nas = iter_m.value();
         duration_sum += (uint32_t)n_nas->_duration;
       }
 
       sa << "\t\t<last_record id=\"" << las->stats_id << "\" >\n";
 
-      for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); iter_m++) {
+      for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); ++iter_m) {
         EtherAddress n_ea = iter_m.key();
         struct neighbour_airtime_stats *n_nas = iter_m.value();
         uint32_t duration_percent = (uint32_t)n_nas->_duration * (uint32_t)100 / duration_sum;
@@ -247,7 +247,7 @@ String CooperativeChannelStats::stats_handler(int /*mode*/)
 static String CooperativeChannelStats_read_param(Element *e, void *thunk)
 {
     StringAccum sa;
-    CooperativeChannelStats *td = (CooperativeChannelStats *) e;
+    CooperativeChannelStats *td = reinterpret_cast<CooperativeChannelStats *>( e);
     switch((uintptr_t) thunk)
     {
       case H_STATS:

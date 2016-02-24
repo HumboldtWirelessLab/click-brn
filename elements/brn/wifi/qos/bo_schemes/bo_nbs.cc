@@ -36,7 +36,7 @@ BoNeighbours::~BoNeighbours()
 void * BoNeighbours::cast(const char *name)
 {
   if (strcmp(name, "BoNeighbours") == 0)
-    return (BoNeighbours *) this;
+    return dynamic_cast<BoNeighbours *>(this);
 
   return BackoffScheme::cast(name);
 }

@@ -59,7 +59,8 @@ BRN2SimpleFlow::BRN2SimpleFlow()
     _no_scheduled_immeditiately(0),
     _routing_peek(NULL),
     _link_table(NULL),
-    _flow_start_rand(0)
+    _flow_start_rand(0),
+    _model_flow(NULL)
 {
   BRNElement::init();
 }
@@ -96,7 +97,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 
 static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
 {
-  return ((BRN2SimpleFlow *)e)->handle_routing_peek(p, src, dst, brn_port);
+  return (reinterpret_cast<BRN2SimpleFlow *>(e))->handle_routing_peek(p, src, dst, brn_port);
 }
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
@@ -211,8 +212,6 @@ BRN2SimpleFlow::is_active(Flow *txFlow)
 void
 BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
 {
-  uint32_t interval;
-
   if ( is_active(fl) ) {
     BRN_DEBUG("Flow (active): Src: %s Dst: %s ID: %d interval: %d burst: %d duration: %d",
                fl->_src.unparse().c_str(), fl->_dst.unparse().c_str(), fl->_id, fl->_interval, fl->_burst, fl->_duration);
@@ -223,13 +222,13 @@ BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
       output(0).push(packet_out);
     }
 
-    interval = fl->_interval;
+    uint32_t interval = fl->_interval;
 
     if (interval == MAXIMUM_FLOW_PACKET_INTERVAL) {
       interval = _model_flow->getNextPacketTime();
     }
 
-    fl->_next_time = fl->_next_time + Timestamp::make_msec(fl->_interval/1000, fl->_interval%1000);
+    fl->_next_time = fl->_next_time + Timestamp::make_msec(interval/1000, interval%1000);
   }
 }
 
@@ -239,13 +238,11 @@ BRN2SimpleFlow::schedule_next()
   int shortest_next_time = -1;
   Timestamp now = Timestamp::now();
 
-  int next_time;
-
   BRN_DEBUG("NO. Flows: %d", _tx_flowMap.size());
   for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
 
-    next_time = (fl->_start_time - now).msecval();
+    int next_time = (fl->_start_time - now).msecval();
 
     BRN_DEBUG("Next start schedule: %d", next_time);
     if ( next_time > 0 ) {        //next action for flow is to start it
@@ -408,7 +405,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
       BRN_DEBUG("\tHop %d: %s (%d)",i,ea.unparse().c_str(),ntohs(pfh[i].metric));
     }
 
-    const click_ether *ether = (const click_ether *)packet->ether_header();
+    const click_ether *ether = reinterpret_cast<const click_ether *>(packet->ether_header());
     //EtherAddress psrc = EtherAddress(ether->ether_shost);
     EtherAddress pdst = EtherAddress(ether->ether_dhost);
     if ( ! (( pdst == (EtherAddress(pfh[incl_hops].ea))) || pdst.is_broadcast())) {
@@ -670,13 +667,9 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
 bool
 BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddress */*dst*/, int /*brn_port*/)
 {
-  uint16_t checksum;
-
-  // Here be dragons...
-
   p->pull(sizeof(struct click_brn));
 
-  const click_ether *ether = (const click_ether *)p->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->ether_header());
   EtherAddress psrc = EtherAddress(ether->ether_shost);
   EtherAddress pdst = EtherAddress(ether->ether_dhost);
 
@@ -695,7 +688,7 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   BRN_DEBUG("RoutingPeek: FlowID %d Packet: %d", ntohl(header->flowID), ntohl(header->packetID));
 
   BRN_DEBUG("call of handle_routing_peek(): %d %d %d",(uint32_t)header->flags,
-                                                      (header->flags|SIMPLEFLOW_FLAGS_IS_REPLY)?1:0
+                                                      (header->flags & SIMPLEFLOW_FLAGS_IS_REPLY)?1:0
                                                       ,size);
 
   BRN_DEBUG("last hop: %s %s",psrc.unparse().c_str(),pdst.unparse().c_str());
@@ -725,16 +718,18 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
     rh->metric_sum = htonl(ntohl(rh->metric_sum) + metric);
 
 #if HAVE_FAST_CHECKSUM
-    checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)),
+    uint16_t checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)),
                              (p->length() - (2 * sizeof(uint16_t))) >> 2 );
 #else
-    checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)),
+    uint16_t checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)),
                                  (p->length() - (2 * sizeof(uint16_t))));
 #endif
     header->crc = htons(checksum);
   }
 
-  p = p->push(sizeof(struct click_brn));
+  if ( p->push(sizeof(struct click_brn)) == NULL ) {
+    BRN_ERROR("Push error");
+  }
 
   return true;
 }

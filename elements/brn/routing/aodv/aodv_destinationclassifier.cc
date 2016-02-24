@@ -14,7 +14,7 @@
 
 CLICK_DECLS
 AODVDestinationClassifier::AODVDestinationClassifier()
-{
+:neighbour_table(NULL),myIP(NULL){
 }
 
 AODVDestinationClassifier::~AODVDestinationClassifier()

@@ -34,9 +34,17 @@ class DartRoutingTable : public Element
         public:
           DHTnode* neighbour;
           DHTnodelist* neighbours_neighbour;
-          DRTneighbour(DHTnode* a){
-           neighbour = a;
-           neighbours_neighbour = new DHTnodelist();
+          explicit DRTneighbour(DHTnode* a): neighbour(a) {
+            neighbours_neighbour = new DHTnodelist();
+          }
+
+          DRTneighbour(const DRTneighbour &drtn){
+            neighbour = drtn.neighbour;
+            neighbours_neighbour = new DHTnodelist();
+          }
+
+          ~DRTneighbour() {
+            delete neighbours_neighbour;
           }
         };
 
@@ -87,12 +95,13 @@ class DartRoutingTable : public Element
     DHTnodelist _allnodes;
     DartIDStore* _ds;
     //DHTnodelist _neighbours;
- 
+
     Vector<DRTneighbour*> _neighbours;
-     uint8_t _ident[6];
+    uint8_t _ident[6];
+
     int _debug;
 public:
-void setDartIDStorage(DartIDStore* t){_ds = t;}
+    void setDartIDStorage(DartIDStore* t){_ds = t;}
 };
 
 CLICK_ENDDECLS

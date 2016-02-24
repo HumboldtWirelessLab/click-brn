@@ -30,7 +30,7 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
 {
   int bitsPerNode, bitsPerTS, bitsPerLink;
   int invalidNode;
-  int bitLen,len,links, pindex,b;
+  int bitLen, len, pindex,b;
 
   Bitfield bitfield(packet,p_len);
 
@@ -43,7 +43,7 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
   bitLen += info->_header->_no_nodes * (bitsPerTS + bitsPerNode); //timestamp and stop marker for links
 
   for ( int i = 0; i < info->_header->_no_nodes; i++ ) {
-    links = 0;
+    int links = 0;
     for ( int j = 0; j < info->_header->_no_nodes; j++ )
       if ( info->_links[i * info->_header->_no_nodes + j] != 0 ) links++;
 
@@ -53,11 +53,12 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
   len = (bitLen + 7) / 8;
   if ( len > p_len ) return -1;
 
-  memset(packet,0,len);
   memcpy(packet, info->_header, sizeof(struct packed_link_header));
   pindex = sizeof(struct packed_link_header);
   memcpy(&(packet[pindex]), info->_macs, 6 * info->_header->_no_nodes );
   pindex += 6 * info->_header->_no_nodes;
+
+  if ( pindex < len ) memset(&(packet[pindex]), 0, (len-pindex)); //clear the rest
 
   pindex *= 8; //switch to bitarray
 
@@ -136,27 +137,23 @@ LPRProtocol::unpack(unsigned char *packet, int p_len) {
 int
 LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_len)
 {
-  int bitsPerNode, bitsPerTS, bitsPerDoubleLink; /*bitsPerLink*/
-  int invalidNode;
-  int bitLen, links, doubleLinks, pindex,b;
-  int overallLink;
-
   LZW lzw;
   int lzwsize = 0;
 
   Bitfield bitfield(packet,p_len);
 
-  bitsPerNode = calcNoBits(info->_header->_no_nodes);
-  invalidNode = (1 << bitsPerNode) - 1;
-  bitsPerTS = 8;
+  int bitsPerNode = calcNoBits(info->_header->_no_nodes);
+  int invalidNode = (1 << bitsPerNode) - 1;
+  int bitsPerTS = 8;
   //bitsPerLink = 4;
-  bitsPerDoubleLink = 7;
+  int bitsPerDoubleLink = 7;
 
-  bitLen = ( sizeof(struct packed_link_header) + (info->_header->_no_nodes * 6 ) ) * 8;  //header, macs
+/*
+  int bitLen = ( sizeof(struct packed_link_header) + (info->_header->_no_nodes * 6 ) ) * 8;  //header, macs
   bitLen += info->_header->_no_nodes * (bitsPerTS + bitsPerNode); //timestamp and stop marker for links
 
-  links = 0;
-  doubleLinks = 0;
+  int links = 0;
+  int doubleLinks = 0;
 
   for ( int i = 0; i < info->_header->_no_nodes; i++ ) {
     for ( int j = 0; j < info->_header->_no_nodes; j++ ) {
@@ -169,10 +166,11 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
 
   bitLen += links * (bitsPerNode + bitsPerDoubleLink);  //Src + link
   bitLen += (doubleLinks / 2) * (bitsPerNode + bitsPerDoubleLink);  //Src + link
-
-  memset(packet,0,p_len);
+*/
   memcpy(packet, info->_header, sizeof(struct packed_link_header));
-  pindex = sizeof(struct packed_link_header);
+  int pindex = sizeof(struct packed_link_header);
+
+  if ( pindex < p_len ) memset(&(packet[pindex]), 0, (p_len-pindex)); //clear the rest
 
   if ( info->_header->_version == VERSION_BASE_MAC_LZW )
     lzwsize = lzw.encode( (unsigned char*)info->_macs, 6 * info->_header->_no_nodes, &(packet[pindex + 2]), (p_len-pindex)-2 );
@@ -194,7 +192,7 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
 
   pindex *= 8; //switch to bitarray
 
-  for ( b = 0; b < info->_header->_no_nodes ; b++) {
+  for ( int b = 0; b < info->_header->_no_nodes ; b++) {
     bitfield.setValue(pindex, pindex + bitsPerTS - 1, info->_timestamp[b]);
     pindex += bitsPerTS;
   }
@@ -204,7 +202,7 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
       if ( ( info->_links[i * info->_header->_no_nodes + j] != 0 ) && ( ( i < j ) || ( info->_links[j * info->_header->_no_nodes + i] == 0 ) ) ) {
         bitfield.setValue(pindex, pindex + bitsPerNode - 1, j);
         pindex += bitsPerNode;
-        overallLink = info->_links[i * info->_header->_no_nodes + j];
+        int overallLink = info->_links[i * info->_header->_no_nodes + j];
         overallLink = ( 11 * overallLink ) + (int)(info->_links[j * info->_header->_no_nodes + i]);
         bitfield.setValue(pindex, pindex + bitsPerDoubleLink - 1, overallLink);
         pindex += bitsPerDoubleLink;
@@ -229,8 +227,6 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
 
   Bitfield bitfield(packet,p_len);
   LZW lzw;
-  int lzwsize;
-  int lzwsizecomp;
 
   memcpy(plh, packet, sizeof(struct packed_link_header));
   pli->_header = plh;
@@ -245,10 +241,10 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   pli->_macs = new struct etheraddr[pli->_header->_no_nodes];
 
   if ( pli->_header->_version == VERSION_BASE_MAC_LZW ) {
-    lzwsizecomp = packet[pindex] * 256;
+    int  lzwsizecomp = packet[pindex] * 256;
     lzwsizecomp += packet[pindex + 1];
 
-    lzwsize = lzw.decode(&(packet[pindex + 2]), lzwsizecomp, (unsigned char*)pli->_macs, 6*pli->_header->_no_nodes );
+    int lzwsize = lzw.decode(&(packet[pindex + 2]), lzwsizecomp, (unsigned char*)pli->_macs, 6*pli->_header->_no_nodes );
     pindex += lzwsizecomp + 2;
 //    click_chatter("Size: %d %d",lzwsize,lzwsizecomp);
     assert( lzwsize == (6 * pli->_header->_no_nodes));

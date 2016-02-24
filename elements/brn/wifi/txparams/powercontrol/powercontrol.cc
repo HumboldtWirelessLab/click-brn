@@ -16,9 +16,9 @@ void *
 PowerControl::cast(const char *name)
 {
   if (strcmp(name, "PowerControl") == 0)
-    return (PowerControl *) this;
+    return dynamic_cast<PowerControl *>(this);
   else if (strcmp(name, "Scheme") == 0)
-    return (Scheme *) this;
+    return dynamic_cast<Scheme *>(this);
   else
     return NULL;
 }

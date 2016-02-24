@@ -19,8 +19,8 @@ class FixPointNumber
  public:
 
   FixPointNumber();
-  FixPointNumber(int n);
-  FixPointNumber(String n);
+  explicit FixPointNumber(int n);
+  explicit FixPointNumber(String n);
 
   ~FixPointNumber();
 

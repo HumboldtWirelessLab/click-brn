@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 GeorQuerier::GeorQuerier()
-{
+:_rt(NULL),_nodeid(NULL){
   BRNElement::init();
 }
 
@@ -68,9 +68,8 @@ GeorQuerier::initialize(ErrorHandler *)
 void
 GeorQuerier::push( int port, Packet *packet )
 {
-  uint8_t *data;
   if ( port == 0 ) {                               //Etherpacket to forward
-    data = (uint8_t*)(packet->data());
+    const uint8_t *data = reinterpret_cast<const uint8_t*>(packet->data());
     EtherAddress dea = EtherAddress(data);        //get destination
     EtherAddress sea = EtherAddress(&data[6]);    //get source
 
@@ -79,13 +78,12 @@ GeorQuerier::push( int port, Packet *packet )
     GPSPosition *dpos = _rt->getPosition(&dea);
     GPSPosition *spos = _rt->getLocalPosition();
 
-    EtherAddress nextHop;
-    GPSPosition *nhpos;
-
     if ( dpos ) {
+      EtherAddress nextHop;
+
       BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
 
-      nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
+      GPSPosition *nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
 
       if (nhpos) {
         uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
@@ -124,14 +122,14 @@ GeorQuerier::push( int port, Packet *packet )
 static String
 read_debug_param(Element *e, void *)
 {
-  GeorQuerier *gf = (GeorQuerier *)e;
+  GeorQuerier *gf = reinterpret_cast<GeorQuerier *>(e);
   return String(gf->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  GeorQuerier *gf = (GeorQuerier *)e;
+  GeorQuerier *gf = reinterpret_cast<GeorQuerier *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

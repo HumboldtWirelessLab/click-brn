@@ -36,16 +36,11 @@ class BatmanRoutingTable : public BRNElement {
 
       uint32_t _last_originator_id;
 
-      BatmanForwarderEntry() {
-        _hops = _metric_fwd_src = _metric_to_fwd = _metric = _last_originator_id = 0;
-      }
+      BatmanForwarderEntry(): _forwarder(), _hops(0), _metric_fwd_src(0), _metric_to_fwd(0), _metric(0), _last_originator_id(0) {}
+      explicit BatmanForwarderEntry(EtherAddress addr): _forwarder(addr), _hops(0), _metric_fwd_src(0), _metric_to_fwd(0), _metric(0), _last_originator_id(0) {}
 
       ~BatmanForwarderEntry() {}
 
-      BatmanForwarderEntry(EtherAddress addr) {
-        _forwarder = addr;
-        _hops = _metric_fwd_src = _metric_to_fwd = _metric = _last_originator_id = 0;
-      }
 
       void update_entry(uint32_t originator_id, uint8_t hops, uint32_t metric_fwd_src, uint32_t metric_to_fwd) {
         _last_originator_id = originator_id;
@@ -79,8 +74,7 @@ class BatmanRoutingTable : public BRNElement {
 
     BatmanNode() {}
 
-    BatmanNode(EtherAddress addr) {
-      _addr = addr;
+    explicit BatmanNode(EtherAddress addr): _addr(addr) {
       reset();
     }
 
@@ -154,7 +148,7 @@ class BatmanRoutingTable : public BRNElement {
     }
 
     void update_best_fwd() {
-      for (BatmanForwarderMapIter i = _forwarder.begin(); i.live(); i++) {
+      for (BatmanForwarderMapIter i = _forwarder.begin(); i.live(); ++i) {
         BatmanForwarderEntry *bfe = _forwarder.findp(i.key());
 
         if ( ( bfe->_metric_fwd_src + bfe->_metric_to_fwd ) < _best_metric ) {

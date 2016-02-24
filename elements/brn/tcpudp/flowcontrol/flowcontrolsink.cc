@@ -145,7 +145,7 @@ FlowControlSink::push( int /*port*/, Packet *packet )
 void
 FlowControlSink::clear_flowtab()
 {
-  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+  for (FTIter iter = _flowtab.begin(); iter.live(); ++iter) {
     FlowControlInfo *fci = iter.value();
 
     delete fci;

@@ -102,12 +102,12 @@ class GPS : public BRNElement {
     _position.setGPS(lat,lon,alt);
   }
 
-  String _gpsdevice;
+  /*String _gpsdevice;
 
   IPAddress _gpsd_ip;
   int _gpsd_port;
 
-  int update_interval;
+  int update_interval;*/
 };
 
 CLICK_ENDDECLS

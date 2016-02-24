@@ -43,12 +43,12 @@ public:
 	void snd_kdp_req();
 
 	void jmp_next_session();
-	static void session_trigger(Timer *, void *element) { ((BackboneNode *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { (reinterpret_cast<BackboneNode *>(element))->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *, void *element) { ((BackboneNode *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { (reinterpret_cast<BackboneNode *>(element))->jmp_next_epoch(); }
 
-	static void kdp_trigger(Timer *, void *element) { ((BackboneNode *)element)->snd_kdp_req(); }
+	static void kdp_trigger(Timer *, void *element) { (reinterpret_cast<BackboneNode *>(element))->snd_kdp_req(); }
 
 	void reset_key_material();
 
@@ -73,7 +73,6 @@ private:
 	Element *_dev_control_down;
 	Element *_dev_control_down2;
 
-	int _debug;
 	int _start_time;
 
 	enum dev_type {dev_ap, dev_client};

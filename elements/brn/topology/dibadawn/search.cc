@@ -53,7 +53,7 @@ void txDelayCallback(Timer*, void* p)
 
 void forwardPhaseEndCallback(Timer*, void *search)
 {
-  DibadawnSearch* s = (DibadawnSearch*) search;
+  DibadawnSearch* s = reinterpret_cast<DibadawnSearch*>( search);
   assert(s != NULL);
   s->onForwardPhaseTimeout();
 }
@@ -63,7 +63,8 @@ DibadawnSearch::DibadawnSearch(
     DibadawnNodeStatistic &stat, 
     DibadawnConfig &cfg,
     DibadawnLinkStatistic &linkStat)
-:   commonStatistic(stat), 
+:   visited(false),
+    commonStatistic(stat), 
     adjacents(searchId), 
     config(cfg), 
     linkStat(linkStat),
@@ -78,7 +79,8 @@ DibadawnSearch::DibadawnSearch(
     DibadawnConfig &cfg,
     DibadawnLinkStatistic &linkStat,
     DibadawnSearchId &id)
-:   commonStatistic(stat), 
+:   visited(false),
+    commonStatistic(stat), 
     adjacents(searchId), 
     config(cfg), 
     linkStat(linkStat),
@@ -119,6 +121,8 @@ void DibadawnSearch::onForwardPhaseTimeout()
 
 void DibadawnSearch::detectCycles()
 {
+  DibadawnPayloadElement payload(NULL);
+
   for (int i = 0; i < crossEdges.size(); i++)
   {
     DibadawnPacket &crossEdgePacket = crossEdges.at(i);
@@ -130,8 +134,8 @@ void DibadawnSearch::detectCycles()
       click_chatter("<Cycle id='%s' />", cycle.asString().c_str());
 
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(crossEdgePacket.forwardedBy);
-    DibadawnPayloadElement payload(cycle);
-    neighbor.messages.push_back(cycle);
+    payload.setCycle(cycle);
+    neighbor.messages.push_back(DibadawnPayloadElement(cycle));
 
     bufferBackwardMessage(cycle);
   }
@@ -503,7 +507,7 @@ void DibadawnSearch::updateAdjacent(DibadawnPacket& packet)
 
 DibadawnPayloadElement* DibadawnSearch::tryToFindPair(DibadawnPayloadElement& payloadA)
 {
-  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
+  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end();++it)
   {
     DibadawnPayloadElement& paylaodB = *it;
     if (payloadA.cycle == paylaodB.cycle)
@@ -528,7 +532,7 @@ void DibadawnSearch::setNonBrigdeByPayload(DibadawnPayloadElement& payload)
 
 void DibadawnSearch::removePayloadFromMessageBuffer(DibadawnPayloadElement& payloadA)
 {
-  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
+  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end();++it)
   {
     DibadawnPayloadElement& paylaodB = *it;
     if (payloadA.cycle == paylaodB.cycle)

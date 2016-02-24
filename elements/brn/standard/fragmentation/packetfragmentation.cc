@@ -73,7 +73,6 @@ PacketFragmentation::push( int /*port*/, Packet *packet )
 {
   WritablePacket *p = packet->uniqueify();
   WritablePacket *p_frag;
-  struct fragmention_header *frag_h;
 
   if ( p->length() > _max_packet_size ) {
     _packet_id++;
@@ -105,7 +104,7 @@ PacketFragmentation::push( int /*port*/, Packet *packet )
 
       WritablePacket *p_frag_h = p_frag->push(sizeof(struct fragmention_header));
 
-      frag_h = (struct fragmention_header *)p_frag_h->data();
+      struct fragmention_header *frag_h = (struct fragmention_header *)p_frag_h->data();
       frag_h->packet_id = htons(_packet_id);
       frag_h->no_fragments = no_frag_overall;
       frag_h->fragment_id = (--no_fragments);

@@ -25,7 +25,7 @@
 CLICK_DECLS
 
 AddARPEntry::AddARPEntry()
-{}
+:_arpQuerier(NULL){}
 
 AddARPEntry::~AddARPEntry()
 {}

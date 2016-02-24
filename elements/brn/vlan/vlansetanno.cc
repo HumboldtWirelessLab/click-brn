@@ -14,6 +14,7 @@ CLICK_DECLS
 //TODO: CHeck whether this element is needed. Also check anno in BRNPacketAnno
 
 VlanSetAnno::VlanSetAnno()
+ : _vlantable(NULL)
 {
 }
 

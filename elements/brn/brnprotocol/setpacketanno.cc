@@ -36,7 +36,9 @@ CLICK_DECLS
 
 SetPacketAnno::SetPacketAnno()
   : _ttl(-1),
-    _tos(-1)
+    _tos(-1),
+    _queue(0),
+    _queue_like_tos(true)
 {
   BRNElement::init();
 }

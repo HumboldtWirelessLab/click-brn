@@ -94,7 +94,7 @@ SetTXPowerRate::run_timer(Timer *t)
 
     _stats_timer.schedule_after_msec(_stats_timer_interval);
 
-    for (NIter iter = _neighbors.begin(); iter.live(); iter++) {
+    for (NIter iter = _neighbors.begin(); iter.live(); ++iter) {
       NeighbourRateInfo *nri = iter.value();
       nri->last_stats = Timestamp::now();
       nri->stats.set_next_timeslot();
@@ -118,11 +118,11 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
   EtherAddress src;
 
   if ( _has_wifi_header ) {
-    dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
-    src = EtherAddress(((struct click_wifi *) p->data())->i_addr2);
+    dst = EtherAddress((reinterpret_cast<const struct click_wifi *>(p->data()))->i_addr1);
+    src = EtherAddress((reinterpret_cast<const struct click_wifi *>(p->data()))->i_addr2);
   } else {
-    dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
-    src = EtherAddress(((click_ether*)p->data())->ether_shost);
+    dst = EtherAddress((reinterpret_cast<const click_ether*>(p->data()))->ether_dhost);
+    src = EtherAddress((reinterpret_cast<const click_ether*>(p->data()))->ether_shost);
   }
 
   struct rateselection_packet_info rs_pkt_info;
@@ -226,7 +226,7 @@ SetTXPowerRate::getInfo()
   sa << "<ratecontrol rateselection=\"" << rs << "\" >\n";
   sa << "\t<neighbours count=\"" << _neighbors.size() << "\" >\n";
 
-  for (NIter iter = _neighbors.begin(); iter.live(); iter++) {
+  for (NIter iter = _neighbors.begin(); iter.live(); ++iter) {
     NeighbourRateInfo *nri = iter.value();
     sa << "\t\t<neighbour node=\"" << nri->_eth.unparse() << "\" >\n\t\t\t<stats ts=\"" << nri->last_stats.unparse() << "\" >\n";
 
@@ -257,7 +257,7 @@ SetTXPowerRate::getInfo()
 RateSelection *
 SetTXPowerRate::get_rateselection(uint32_t rateselection_strategy)
 {
-  return (RateSelection *)_scheme_list.get_scheme(rateselection_strategy);
+  return (reinterpret_cast<RateSelection *>(_scheme_list.get_scheme(rateselection_strategy)));
 }
 
 /************************************************************************************************************/
@@ -269,7 +269,7 @@ enum {H_INFO};
 static String
 SetTXPowerRate_read_param(Element *e, void *thunk)
 {
-  SetTXPowerRate *spr = (SetTXPowerRate *)e;
+  SetTXPowerRate *spr = reinterpret_cast<SetTXPowerRate *>(e);
   switch ((uintptr_t) thunk) {
     case H_INFO: return spr->getInfo();
   }

@@ -45,7 +45,6 @@ public:
     /** @brief The global modulus used for all threshold computation */
     BIGNUM *_modulus;
     unsigned int _threshold;
-	int _debug;
 private:
     EtherAddress _me;
     BN_CTX *_bn_ctx;

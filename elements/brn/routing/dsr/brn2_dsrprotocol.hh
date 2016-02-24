@@ -31,7 +31,7 @@ class BRN2RouteQuerierHop
     BRN2RouteQuerierHop(EtherAddress ether, uint16_t c) : ether_address(ether), ip_address(), _metric(c) {}
     BRN2RouteQuerierHop(EtherAddress ether, IPAddress ip, uint16_t c) : ether_address(ether), ip_address(ip), _metric(c) {}
 
-    BRN2RouteQuerierHop(hwaddr ether) : ether_address(ether.data), ip_address(), _metric(BRN_DSR_INVALID_HOP_METRIC) {}
+    explicit BRN2RouteQuerierHop(hwaddr ether) : ether_address(ether.data), ip_address(), _metric(BRN_DSR_INVALID_HOP_METRIC) {}
     BRN2RouteQuerierHop(hwaddr ether, struct in_addr ip) : ether_address(ether.data), ip_address(ip), _metric(BRN_DSR_INVALID_HOP_METRIC) {}
 
     BRN2RouteQuerierHop(hwaddr ether, uint16_t c) : ether_address(ether.data), ip_address(), _metric(c) {}
@@ -54,12 +54,11 @@ class ForwardedReqKey
     EtherAddress _target;
     unsigned int _id;
 
-    ForwardedReqKey(EtherAddress src, EtherAddress target, unsigned int id) {
-      _src = src; _target = target; _id = id;
+    ForwardedReqKey(EtherAddress src, EtherAddress target, unsigned int id): _src(src), _target(target), _id(id) {
       check();
     }
 
-    ForwardedReqKey() {
+    ForwardedReqKey() : _src(), _target(), _id(0) {
     // need this for bighashmap::pair to work
     }
 
@@ -191,9 +190,11 @@ class DSRProtocol {
  public:
 
   static int header_length(Packet *p);
-  static int header_length(click_brn_dsr *brn_dsr);
+  static int header_length(const click_brn_dsr *brn_dsr);
 
-  static click_dsr_hop* get_hops(const Packet *p);
+  static const click_dsr_hop* get_hops(Packet *p);
+  static click_dsr_hop* get_hops(WritablePacket *p);
+  static const click_dsr_hop* get_hops(const click_brn_dsr *brn_dsr);
   static click_dsr_hop* get_hops(click_brn_dsr *brn_dsr);
   static WritablePacket *extend_hops(WritablePacket *p, int count);
 

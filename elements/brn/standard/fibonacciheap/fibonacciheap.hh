@@ -94,7 +94,7 @@ public:
      * Constructor.
      * \param size size of heap, default is 1000
      */
-    FibonacciHeap(int size = DEFAULTSIZE);
+    explicit FibonacciHeap(int size = DEFAULTSIZE);
 
     /**
      * Destructor

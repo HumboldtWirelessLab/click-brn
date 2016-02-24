@@ -58,7 +58,8 @@ class CollisionInfo : public BRNElement {
       uint32_t _interval;
       Timestamp _last_index_inc;
 
-      RetryStats(uint32_t no_queues, uint32_t records, uint32_t interval, Timestamp *now) {
+      RetryStats(uint32_t no_queues, uint32_t records, uint32_t interval, Timestamp *now): _max_samples(records), _curr_sample(0), _no_queues(no_queues), _interval(interval)
+      {
         _unicast_tx = new uint32_t[no_queues * records];
         _unicast_retries = new uint32_t[no_queues * records];
         _unicast_succ = new uint32_t[no_queues * records];
@@ -78,12 +79,23 @@ class CollisionInfo : public BRNElement {
         _l_unicast_succ = &(_unicast_succ[no_queues * (records-1)]);
         _l_unicast_frac = &(_unicast_frac[no_queues * (records-1)]);
 
-        _curr_sample = 0;
-        _max_samples = records;
-        _no_queues = no_queues;
-        _interval = interval;
-
         _last_index_inc = *now;
+      }
+
+      RetryStats(const RetryStats &rs) : _max_samples(rs._max_samples),
+                                         _curr_sample(rs._curr_sample),_no_queues(rs._no_queues),_interval(rs._interval),
+                                         _last_index_inc(rs._last_index_inc) {
+        _unicast_tx = new uint32_t[_no_queues * _max_samples];
+        _unicast_retries = new uint32_t[_no_queues * _max_samples];
+        _unicast_succ = new uint32_t[_no_queues * _max_samples];
+        _unicast_frac = new uint32_t[_no_queues * _max_samples];
+        _c_unicast_tx = _unicast_tx;
+        _c_unicast_retries = _unicast_retries;
+        _c_unicast_succ = _unicast_succ;
+        _l_unicast_tx = &(_unicast_tx[_no_queues * (_max_samples-1)]);
+        _l_unicast_retries = &(_unicast_retries[_no_queues * (_max_samples-1)]);
+        _l_unicast_succ = &(_unicast_succ[_no_queues * (_max_samples-1)]);
+        _l_unicast_frac = &(_unicast_frac[_no_queues * (_max_samples-1)]);
       }
 
       ~RetryStats() {

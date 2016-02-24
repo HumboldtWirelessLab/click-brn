@@ -54,7 +54,7 @@ BRN2EtherDecap::configure(Vector<String> &, ErrorHandler *)
 Packet *
 BRN2EtherDecap::simple_action(Packet *p)
 {
-  click_ether *ether = (click_ether *)p->data();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->data());
   p->pull(sizeof(click_ether));
 
   p->set_ether_header(ether);

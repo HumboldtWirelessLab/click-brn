@@ -37,7 +37,7 @@
 CLICK_DECLS
 
 AlarmingSource::AlarmingSource()
-{
+:_as(NULL){
   BRNElement::init();
 }
 
@@ -82,7 +82,7 @@ static int
 AlarmingSource_write_param(const String &in_s, Element *e, void *vparam,
                              ErrorHandler *errh)
 {
-  AlarmingSource *as = (AlarmingSource *)e;
+  AlarmingSource *as = reinterpret_cast<AlarmingSource *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_ALARM: {    //debug

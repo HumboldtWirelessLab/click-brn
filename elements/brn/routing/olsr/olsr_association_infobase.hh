@@ -44,23 +44,23 @@ private:
   typedef HashMap <OLSRIPPair, void *> AssociationSet;
 
   AssociationSet *_associationSet;
-  
-  Vector<OLSRIPPair> *_associations; 
-  Vector<OLSRIPPair> *_noRedundants; 
-  
+
+  Vector<OLSRIPPair> _associations;
+  Vector<OLSRIPPair> *_noRedundants;
+
   OLSRCompactAssociationInfoBase *_compactSet;
-  OLSRCompactAssociationInfoBase * _compactSet2;
-   
+  OLSRCompactAssociationInfoBase *_compactSet2;
+
   Timer _timer;
   OLSRRoutingTable *_routingTable;
   bool _useTimer;
   bool _redundancyCheck;
   bool _compact;
-  
+
   IPAddress _home_network;
   IPAddress _home_netmask;
- 
-  void add_handlers();   
+
+  void add_handlers();
   static int set_home_network_write_handler(const String &conf, Element *e, void *, ErrorHandler * errh);
 
   void run_timer(Timer *);

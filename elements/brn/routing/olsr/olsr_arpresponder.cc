@@ -105,10 +105,10 @@ OLSRARPResponder::live_reconfigure(Vector<String> &conf, ErrorHandler *errh)
 
 
 Packet *
-OLSRARPResponder::make_response(u_char tha[6], /* him */
-                            u_char tpa[4],
-                            u_char sha[6], /* me */
-                            u_char spa[4],
+OLSRARPResponder::make_response(const u_char tha[6], /* him */
+                            const u_char tpa[4],
+                            const u_char sha[6], /* me */
+                            const u_char spa[4],
 			    Packet *p /* only used for annotations */)
 {
     WritablePacket *q = Packet::make(sizeof(click_ether) + sizeof(click_ether_arp));
@@ -123,13 +123,13 @@ OLSRARPResponder::make_response(u_char tha[6], /* him */
   
     memset(q->data(), '\0', q->length());
   
-    click_ether *e = (click_ether *) q->data();
+    click_ether *e = reinterpret_cast<click_ether *>( q->data());
     q->set_ether_header(e);
     memcpy(e->ether_dhost, tha, 6);
     memcpy(e->ether_shost, sha, 6);
     e->ether_type = htons(ETHERTYPE_ARP);
     
-    click_ether_arp *ea = (click_ether_arp *) (e + 1);
+    click_ether_arp *ea = reinterpret_cast<click_ether_arp *>( (e + 1));
     ea->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);
     ea->ea_hdr.ar_pro = htons(ETHERTYPE_IP);
     ea->ea_hdr.ar_hln = 6;
@@ -164,13 +164,13 @@ OLSRARPResponder::lookup(IPAddress a, EtherAddress &ena) const
 Packet *
 OLSRARPResponder::simple_action(Packet *p)
 {
-    click_ether *e = (click_ether *) p->data();
-    click_ether_arp *ea = (click_ether_arp *) (e + 1);
+    const click_ether *e = reinterpret_cast<const click_ether *>( p->data());
+    const click_ether_arp *ea = reinterpret_cast<const click_ether_arp *>( (e + 1));
     unsigned int tpa;
     memcpy(&tpa, ea->arp_tpa, 4);
     IPAddress ipa = IPAddress(tpa);
-    
-    Packet *q = 0;
+
+    Packet *q = NULL;
     if (p->length() >= sizeof(*e) + sizeof(click_ether_arp) &&
 	ntohs(e->ether_type) == ETHERTYPE_ARP &&
 	ntohs(ea->ea_hdr.ar_hrd) == ARPHRD_ETHER &&
@@ -184,7 +184,7 @@ OLSRARPResponder::simple_action(Packet *p)
 	struct in_addr ina;
 	memcpy(&ina, &ea->arp_tpa, 4);
     }
-    
+
     p->kill();
     return(q);
 }

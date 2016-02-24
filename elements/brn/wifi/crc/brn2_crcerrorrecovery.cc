@@ -37,7 +37,6 @@ BRN2CRCErrorRecory::simple_action(Packet *p_in)
   uint8_t *packet_data = (uint8_t*)p_in->data();
   uint32_t i;
   int crc_count;
-  uint8_t next_byte;
   StringAccum sa;
   uint32_t seq_num;
 
@@ -48,7 +47,7 @@ BRN2CRCErrorRecory::simple_action(Packet *p_in)
   crc_count = 0;
   for ( i = 4; i < p_in->length(); i++)
   {
-    next_byte = packet_data[i];
+    uint8_t next_byte = packet_data[i];
     if ( next_byte != 0 ) crc_count++;
 
     for(uint8_t bit = 128; bit > 0; bit = bit < 1)

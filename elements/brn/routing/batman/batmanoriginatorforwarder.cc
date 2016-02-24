@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 BatmanOriginatorForwarder::BatmanOriginatorForwarder()
-  :_sendbuffer_timer(this)
+  : _brt(NULL),_nodeid(NULL), _sendbuffer_timer(this)
 {
   BRNElement::init();
 }
@@ -155,7 +155,7 @@ BatmanOriginatorForwarder::print_links()
 
   Timestamp now = Timestamp::now();
 
-  for (BatmanNeighbourInfoMapIter i = _neighbour_map.begin(); i.live(); i++) {
+  for (BatmanNeighbourInfoMapIter i = _neighbour_map.begin(); i.live();++i) {
     BatmanNeighbourInfo *bni = _neighbour_map.find(i.key());
     uint32_t psr = (uint32_t)(bni->get_fwd_psr(100000,now));
     if ( psr > 0 ) {
@@ -180,7 +180,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  BatmanOriginatorForwarder *bof = (BatmanOriginatorForwarder *)e;
+  BatmanOriginatorForwarder *bof = reinterpret_cast<BatmanOriginatorForwarder *>(e);
 
   switch ((uintptr_t) thunk)
   {

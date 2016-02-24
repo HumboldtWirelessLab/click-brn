@@ -57,11 +57,11 @@ bool DibadawnNodeStatistic::isBridge(TopologyInfoEdge* edge)
 
 bool DibadawnNodeStatistic::isBridgeByUnanimousRule(TopologyInfoEdge* edgeA)
 {
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
       
@@ -78,11 +78,11 @@ bool DibadawnNodeStatistic::isBridgeByMajorityRule(TopologyInfoEdge* edgeA)
   size_t numBridges = 0;
   size_t numNoBrigdes = 0;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
       
@@ -101,11 +101,11 @@ bool DibadawnNodeStatistic::isBridgeByMajorityRule(TopologyInfoEdge* edgeA)
 
 bool DibadawnNodeStatistic::isBridgeBySingleForRule(TopologyInfoEdge* edgeA)
 {
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
       
@@ -123,11 +123,11 @@ bool DibadawnNodeStatistic::isBridgeByIntelligentMajorityRule(TopologyInfoEdge* 
   size_t numNoBrigdes = 0;
   bool noBridgeHasTrustedVote = false;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
       
@@ -158,11 +158,11 @@ bool DibadawnNodeStatistic::isBridgeByTrustedNoBridgeRule(TopologyInfoEdge * edg
 {
   bool noBridgeHasTrustedVote = false;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
       
@@ -188,11 +188,11 @@ bool DibadawnNodeStatistic::isBridgeByWeightedRule(TopologyInfoEdge * edgeA)
   double sumBridges = 0;
   double sumNoBridges = 0;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
 
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edgeB = *it2;
 
@@ -222,7 +222,7 @@ bool DibadawnNodeStatistic::isBridgeByLastSet(TopologyInfoEdge* edgeA)
 {
   DibadawnTopologyInfoContainer *container = searchResults.back();
 
-  for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); it2++)
+  for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); ++it2)
   {
     TopologyInfoEdge *edgeB = *it2;
 
@@ -257,11 +257,11 @@ bool DibadawnNodeStatistic::isAP(TopologyInfoNode* edge)
 
 bool DibadawnNodeStatistic::isAPByUnanimousRule(TopologyInfoNode* nodeA)
 {
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
       
@@ -278,11 +278,11 @@ bool DibadawnNodeStatistic::isAPByMajorityRule(TopologyInfoNode* nodeA)
   size_t numAP = 0;
   size_t numNonAP = 0;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
       
@@ -301,11 +301,11 @@ bool DibadawnNodeStatistic::isAPByMajorityRule(TopologyInfoNode* nodeA)
 
 bool DibadawnNodeStatistic::isAPBySingleForRule(TopologyInfoNode* nodeA)
 {
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
       
@@ -323,11 +323,11 @@ bool DibadawnNodeStatistic::isAPByIntelligentMajorityRule(TopologyInfoNode* node
   size_t numNonAP = 0;
   bool noBridgeHasTrustedVote = false;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
       
@@ -358,11 +358,11 @@ bool DibadawnNodeStatistic::isAPByTrustedNoBridgeRule(TopologyInfoNode * nodeA)
 {
   bool noBridgeHasTrustedVote = false;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
       
@@ -388,11 +388,11 @@ bool DibadawnNodeStatistic::isAPByWeightedRule(TopologyInfoNode * nodeA)
   double sumAP = 0;
   double sumNonAP = 0;
 
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
 
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
 
@@ -413,7 +413,7 @@ bool DibadawnNodeStatistic::isAPByLastSet(TopologyInfoNode* nodeA)
 {
   DibadawnTopologyInfoContainer *container = searchResults.back();
 
-  for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+  for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *nodeB = *it2;
 
@@ -512,7 +512,7 @@ void DibadawnNodeStatistic::printSearchResultSets(String extraData)
   sa << ">\n";
   
   int i = 1;
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
@@ -554,7 +554,7 @@ void DibadawnNodeStatistic::updateTopologyInfoByVoting()
   getListOfKnowNodes(edgeList);
   
   
-   for (Vector<TopologyInfoEdge*>::const_iterator it = edgeList._edges.begin(); it !=  edgeList._edges.end(); it++)
+   for (Vector<TopologyInfoEdge*>::const_iterator it = edgeList._edges.begin(); it !=  edgeList._edges.end(); ++it)
    {
      TopologyInfoEdge *edge = *it;
      
@@ -562,7 +562,7 @@ void DibadawnNodeStatistic::updateTopologyInfoByVoting()
        result.addBridge(&(edge->node_a), &(edge->node_b), edge->probability);
    }
   
-  for (Vector<TopologyInfoNode*>::const_iterator it = edgeList._nodes.begin(); it !=  edgeList._nodes.end(); it++)
+  for (Vector<TopologyInfoNode*>::const_iterator it = edgeList._nodes.begin(); it !=  edgeList._nodes.end(); ++it)
    {
      TopologyInfoNode *node = *it;
      
@@ -586,11 +586,11 @@ void DibadawnNodeStatistic::updateTopologyInfoByVoting()
 
 void DibadawnNodeStatistic::getListOfKnowEdges(DibadawnTopologyInfoContainer &result)
 {
- for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+ for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); it2++)
+    for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 !=  container->_edges.end(); ++it2)
     {
       TopologyInfoEdge *edge = *it2;
       if(result.containsEdge(edge))
@@ -602,11 +602,11 @@ void DibadawnNodeStatistic::getListOfKnowEdges(DibadawnTopologyInfoContainer &re
 
 void DibadawnNodeStatistic::getListOfKnowNodes(DibadawnTopologyInfoContainer& result)
 {
-  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); ++it)
   {
     DibadawnTopologyInfoContainer *container = *it;
     
-    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); ++it2)
     {
       TopologyInfoNode *node = *it2;
       if(result.containsNode(node))

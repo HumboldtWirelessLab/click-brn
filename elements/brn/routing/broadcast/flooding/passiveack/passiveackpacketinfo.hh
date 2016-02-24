@@ -49,17 +49,13 @@ class PassiveAckPacket
   Vector<EtherAddress> _unfinished_neighbors;
   Vector<int> _unfinished_neighbors_rx_prob;
 
-  PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
+  PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries): _src(src->data()), _bcast_id(bcast_id), _max_retries(retries),
+                                                                                                             _retries(0), _cnt_finished_passiveack_nodes(0)
   {
-    _src = EtherAddress(src->data());
-    _bcast_id = bcast_id;
     if ( passiveack != NULL )
-    for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
-
-    _max_retries = retries;
+      for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
 
     _last_tx = _enqueue_time = Timestamp::now();
-    _retries = _cnt_finished_passiveack_nodes = 0;
 
     _unfinished_neighbors.clear();
     _unfinished_neighbors_rx_prob.clear();

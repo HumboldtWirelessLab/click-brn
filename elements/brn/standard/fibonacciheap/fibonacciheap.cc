@@ -93,18 +93,17 @@ FibonacciHeap::FibonacciHeap (const FibonacciHeap& FH){
 // A s s i g n m e n t   o p e r a t o r
 //
 FibonacciHeap& FibonacciHeap::operator=(const FibonacciHeap& FH){
-  int i;
-  
+
   // self reference ?
   if (this != &FH) {
     // current heap bigger than assigned heap? 
     if ( m_heapSize > FH.m_heapSize ){
 	    // copy assigned heap
-	    for (i = 0; i < FH.m_heapSize; i++) {
+	    for (int i = 0; i < FH.m_heapSize; i++) {
         m_nodeList[i] = FH.m_nodeList[i];
 	    }
 	    // initialise unused nodes
-	    for (i = FH.m_heapSize; i < m_heapSize; i++) {
+	    for (int i = FH.m_heapSize; i < m_heapSize; i++) {
         m_nodeList[i].setNoParent();
         m_nodeList[i].setNoChild();
         m_nodeList[i].setNoLeft();
@@ -138,7 +137,7 @@ FibonacciHeap& FibonacciHeap::operator=(const FibonacciHeap& FH){
           throw;
         }
 	    }
-	    for (i = 0; i < FH.m_heapSize; i++) {
+	    for (int i = 0; i < FH.m_heapSize; i++) {
         m_nodeList[i] = FH.m_nodeList[i];
 	    }
       
@@ -159,20 +158,16 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
   
   FibonacciNode node;
   Vector<FibonacciNode> tmp; // help array to save old heap
-  int i;
-  int left;        // left of minimum node in old heap
-  int leftFH;      // left of minimum node in added heap
-  int currentId;   // current processed Id
-  int newHeapSize; // new size of heap
-  
+
   // self reference ?
   if ( this != &FH ) {
     // save old heap
-    for (i=0; i<m_heapSize; i++) {
+    for (int i=0; i<m_heapSize; i++) {
 	    tmp.push_back(m_nodeList[i]);
 	}
     
     // generate new heap
+    int newHeapSize; // new size of heap
     newHeapSize = m_heapSize + FH.m_heapSize;
     delete[] m_nodeList;
     try {
@@ -186,11 +181,11 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
     }
     
     // copy old heap to new one
-    for (i=0; i<m_heapSize; i++) {
+    for (int i=0; i<m_heapSize; i++) {
       m_nodeList[i] = tmp[i];
     }
     // add the second heap
-    for (i=m_heapSize; i<newHeapSize; i++) {
+    for (int i=m_heapSize; i<newHeapSize; i++) {
 	    node = FH.m_nodeList[i-m_heapSize];
 	    if ( !node.noParent() ) {
         m_nodeList[i].setParent(node.getParent() + m_heapSize);
@@ -222,6 +217,8 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
     }
     
     // merge root lists
+    int left;        // left of minimum node in old heap
+    int leftFH;      // left of minimum node in added heap
     left = m_nodeList[m_minimumNode].getLeft();
     leftFH = FH.m_nodeList[FH.m_minimumNode].getLeft();
     leftFH += m_heapSize;
@@ -242,7 +239,7 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
         m_freeNode = FH.m_freeNode + m_heapSize;
 	    }
 	    else {
-        currentId = m_freeNode;
+        int currentId = m_freeNode; // current processed Id
         while ( m_nodeList[currentId].getRight() != s_noNode ) {
           currentId = m_nodeList[currentId].getRight();
         }
@@ -261,8 +258,7 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
 //
 int FibonacciHeap::insertNode(int nodeValue){
   int nodeId;       // node ID of new node
-  int minNodeValue; // minimum node value
-  
+
   // no more free nodes? -> Create new ones
   if ( m_freeNode == s_noNode ) {
 //    std::cerr << " FibonacciHeap::insertNode " << std::endl;
@@ -295,7 +291,7 @@ int FibonacciHeap::insertNode(int nodeValue){
   }
   else {
     insertInList(nodeId, m_minimumNode);
-    minNodeValue = m_nodeList[m_minimumNode].getValue();
+    int minNodeValue = m_nodeList[m_minimumNode].getValue(); // minimum node value
     if ( nodeValue < minNodeValue ) {
 	    m_minimumNode = nodeId;
     }
@@ -307,15 +303,14 @@ int FibonacciHeap::insertNode(int nodeValue){
 //
 // d e l e t e N o d e
 //
-void FibonacciHeap::deleteNode(int nodeId){
-  int minNodeValue; // minimum node value
-    
+void FibonacciHeap::deleteNode(int nodeId)
+{
   // node ID valid?
   if ( (nodeId >= 0) && (nodeId < m_heapSize) ) {
     if ( ! m_nodeList[nodeId].getFree() ) {
 	    // set nodeID value to minimum and extract
 	    if (nodeId != m_minimumNode) {
-        minNodeValue = m_nodeList[m_minimumNode].getValue();
+        int minNodeValue = m_nodeList[m_minimumNode].getValue();// minimum node value
         decreaseNodeValue(nodeId, minNodeValue);
 	    }
 	    m_minimumNode = nodeId;
@@ -619,11 +614,9 @@ void FibonacciHeap::consolidate()
 {
   int DnH = 1;  // Degree of heap
   int* A; // array with DnH elements
-  int d;  // degree of node
   int i = 1;
   int x;  // cuurent node id
   int y;  // compared node id
-  int tmp; 
   int stop_node;  // last node in root list
   int no_of_rootnodes = 1;
   int* rootnodes; // save rootnodes
@@ -677,12 +670,12 @@ void FibonacciHeap::consolidate()
   // for each root node
   for (i = 0; i < no_of_rootnodes; i++) {
     x = rootnodes[i];
-    d = m_nodeList[x].getDegree();
+    int d = m_nodeList[x].getDegree();
     // merge trees of same degree
     while ( A[d] != s_noNode) {
 	    y = A[d];
 	    if (m_nodeList[x].getValue() > m_nodeList[y].getValue() ) {
-        tmp = y;
+        int tmp = y;
         y = x;
         x = tmp;
 	    }
@@ -799,12 +792,10 @@ void FibonacciHeap::cascadingCut(int exParent){
 // d e c r e a s e N o d e V a l u e 
 //
 void FibonacciHeap::decreaseNodeValue(int nodeId, int nodeValue){
-  int parent;
-
   m_nodeList[nodeId].setValue(nodeValue);
 
   if ( ! m_nodeList[nodeId].noParent() ) {
-    parent = m_nodeList[nodeId].getParent();
+    int parent = m_nodeList[nodeId].getParent();
     if ( nodeValue < m_nodeList[parent].getValue() ){
 	    cut(nodeId,parent);
 	    cascadingCut(parent);
@@ -821,21 +812,18 @@ void FibonacciHeap::decreaseNodeValue(int nodeId, int nodeValue){
 //
 void FibonacciHeap::increaseNodeValue(int nodeId, int nodeValue)
 {
-  int child;
-  int leftOfChild;
-  int leftOfMinimumNode = m_nodeList[m_minimumNode].getLeft();
-  int stopNode = m_minimumNode;
-  int currentNode = m_minimumNode;
-  int minimumNodeValue = m_nodeList[m_minimumNode].getValue();
-  int value;
-
   // increase value and add child list to root list 
   if ( nodeValue != m_nodeList[nodeId].getValue() ) {
+    int leftOfMinimumNode = m_nodeList[m_minimumNode].getLeft();
+    int stopNode = m_minimumNode;
+    int currentNode = m_minimumNode;
+    int minimumNodeValue = m_nodeList[m_minimumNode].getValue();
+
     m_nodeList[nodeId].setValue(nodeValue);
 	
     if (! m_nodeList[nodeId].noChild() ) {
-	    child = m_nodeList[nodeId].getChild();
-	    leftOfChild = m_nodeList[child].getLeft();
+	    int child = m_nodeList[nodeId].getChild();
+	    int leftOfChild = m_nodeList[child].getLeft();
 	    
 	    m_nodeList[leftOfMinimumNode].setRight(child);
 	    m_nodeList[child].setLeft(leftOfMinimumNode);
@@ -856,7 +844,7 @@ void FibonacciHeap::increaseNodeValue(int nodeId, int nodeValue)
 	    minimumNodeValue = nodeValue; // Patch 1
 	    do {
         currentNode = m_nodeList[currentNode].getRight();
-        value = m_nodeList[currentNode].getValue();
+        int value = m_nodeList[currentNode].getValue();
         if ( value < minimumNodeValue ) {
           m_minimumNode = currentNode;
           minimumNodeValue = value;

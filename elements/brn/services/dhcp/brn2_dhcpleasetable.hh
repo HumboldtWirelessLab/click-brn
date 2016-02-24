@@ -11,7 +11,7 @@ CLICK_DECLS
 
 class Lease {
  public:
-	Lease() { }
+	Lease(): _valid(false) { }
 	~Lease() { }
 	
 	EtherAddress _eth;

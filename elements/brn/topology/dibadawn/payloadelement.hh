@@ -38,8 +38,18 @@ public:
     DibadawnCycle cycle;
 
     DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge, uint8_t hops = 1);
-    DibadawnPayloadElement(DibadawnCycle &cycle);
-    DibadawnPayloadElement(const uint8_t *pBinaryData);
+    DibadawnPayloadElement(const DibadawnPayloadElement &dple);
+    explicit DibadawnPayloadElement(const DibadawnCycle &cycle);
+    explicit DibadawnPayloadElement(const uint8_t *pBinaryData);
+
+    ~DibadawnPayloadElement() {
+      if ( mayInconsistentlyData != NULL ) {
+        delete mayInconsistentlyData;
+        mayInconsistentlyData = NULL;
+      }
+    }
+
+    void setCycle(DibadawnCycle& cycle);
     uint8_t* getData();
     bool operator==(DibadawnPayloadElement &b);
 

@@ -31,10 +31,10 @@
 
 CLICK_DECLS
 
-DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr, DibadawnSearchId &id)
-: searchId(id)
+DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr, DibadawnSearchId &id) :
+  address(addr),
+  searchId(id)
 {
-  address = addr;
 }
 
 bool DibadawnNeighbor::hasNonEmptyPairIntersection(DibadawnNeighbor& other)

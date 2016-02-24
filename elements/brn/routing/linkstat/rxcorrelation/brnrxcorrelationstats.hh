@@ -49,7 +49,7 @@ class BrnRXCorrelationStats : public Element {
 
   int _note_lp;
 
-  int calculatedPER(BrnRXCorrelation::NeighbourInfo *cand);
+  //int calculatedPER(BrnRXCorrelation::NeighbourInfo *cand);
   int calculatedPERPair(BrnRXCorrelation::NeighbourInfo *candA, BrnRXCorrelation::NeighbourInfo *candB);
   int calculatedPERIndepend(BrnRXCorrelation::NeighbourInfo *candA, BrnRXCorrelation::NeighbourInfo *candB);
   int calculatedPERDependPos(BrnRXCorrelation::NeighbourInfo *candA, BrnRXCorrelation::NeighbourInfo *candB);

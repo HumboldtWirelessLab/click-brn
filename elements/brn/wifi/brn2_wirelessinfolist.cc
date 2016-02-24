@@ -11,6 +11,7 @@
 CLICK_DECLS
 
 BRN2WirelessInfoList::BRN2WirelessInfoList()
+: _channel(0),_debug(0)
 {
 }
 
@@ -88,7 +89,7 @@ enum {
 static String
 BRN2WirelessInfoList_read_param(Element *e, void *thunk)
 {
-  BRN2WirelessInfoList *wil = (BRN2WirelessInfoList *)e;
+  BRN2WirelessInfoList *wil = reinterpret_cast<BRN2WirelessInfoList *>(e);
   switch ((uintptr_t) thunk) {
     case H_DEBUG: {
       return String(wil->_debug) + "\n";
@@ -114,7 +115,7 @@ static int
 BRN2WirelessInfoList_write_param(const String &in_s, Element *e, void *vparam,
                                  ErrorHandler *errh)
 {
-  BRN2WirelessInfoList *f = (BRN2WirelessInfoList *)e;
+  BRN2WirelessInfoList *f = reinterpret_cast<BRN2WirelessInfoList *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {

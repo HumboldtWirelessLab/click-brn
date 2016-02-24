@@ -27,12 +27,7 @@ class DSRStats : public BRNElement
 
       uint32_t count_usage;
 
-      RouteInfo(click_dsr_hop *dsr_hops, int hop_count, uint16_t rid) {
-        last_use = Timestamp::now();
-        count_usage = 1;
-        id = rid;
-
-        metric = 0;
+      RouteInfo(const click_dsr_hop *dsr_hops, int hop_count, uint16_t rid): last_use(Timestamp::now()), metric(0), id(rid), count_usage(1) {
         for ( int h = 0; h < hop_count; h++ ) {
           metric += ntohs(dsr_hops[h].metric);
           route.push_back(EtherAddress(dsr_hops[h].hw.data));
@@ -60,10 +55,7 @@ class DSRStats : public BRNElement
 
       RoutInfoList routes;
 
-      RouteEntry(EtherAddress src_ea, EtherAddress dst_ea) {
-        src = src_ea;
-        dst = dst_ea;
-
+      RouteEntry(EtherAddress src_ea, EtherAddress dst_ea) : src(src_ea), dst(dst_ea) {
         routes.clear();
       }
 
@@ -76,7 +68,7 @@ class DSRStats : public BRNElement
         routes.clear();
       }
 
-      void insert(click_dsr_hop *dsr_hops, int hop_count, uint16_t id) {
+      void insert(const click_dsr_hop *dsr_hops, int hop_count, uint16_t id) {
         routes.push_back(new RouteInfo(dsr_hops,hop_count,id));
       }
     };
@@ -106,7 +98,7 @@ class DSRStats : public BRNElement
 
     void push( int port, Packet *packet );
 
-    bool same_route(RouteInfo *ri, click_dsr_hop *dsr_hops, int hop_count);
+    bool same_route(RouteInfo *ri, const click_dsr_hop *dsr_hops, int hop_count);
 
     String read_stats();
     void reset();

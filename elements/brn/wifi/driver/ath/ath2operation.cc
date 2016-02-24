@@ -249,11 +249,11 @@ Ath2Operation::madwifi_config()
   sa << "CCA treshold: " << (int)cca_threshold << "\n";
 
   sa << "Flags:\n";
-  sa << " CCA: " << (driver_flags & MADWIFI_FLAGS_CCA_ENABLED ? "1" : "0") << "\n";
-  sa << " Small Backoff: " << (driver_flags & MADWIFI_FLAGS_SMALLBACKOFF_ENABLED ? "1" : "0") << "\n";
-  sa << " Burst: " << (driver_flags & MADWIFI_FLAGS_BURST_ENABLED ? "1" : "0") << "\n";
-  sa << " Channel Switch: " << (driver_flags & MADWIFI_FLAGS_CHANNELSWITCH_ENABLED ? "1" : "0") << "\n";
-  sa << " Macclone: " << (driver_flags & MADWIFI_FLAGS_MACCLONE_ENABLED ? "1" : "0") << "\n";
+  sa << " CCA: " << (((driver_flags & MADWIFI_FLAGS_CCA_ENABLED) != 0)  ? "1" : "0") << "\n";
+  sa << " Small Backoff: " << (((driver_flags & MADWIFI_FLAGS_SMALLBACKOFF_ENABLED) != 0) ? "1" : "0") << "\n";
+  sa << " Burst: " << (((driver_flags & MADWIFI_FLAGS_BURST_ENABLED) != 0) ? "1" : "0") << "\n";
+  sa << " Channel Switch: " << (((driver_flags & MADWIFI_FLAGS_CHANNELSWITCH_ENABLED) != 0) ? "1" : "0") << "\n";
+  sa << " Macclone: " << (((driver_flags & MADWIFI_FLAGS_MACCLONE_ENABLED) != 0) ? "1" : "0") << "\n";
 
   return sa.take_string();
 }
@@ -305,7 +305,7 @@ enum {H_CHANNEL, H_RESET_MAC, H_MAC, H_CONFIG, H_CCA_THRESHOLD, H_PKT_COUNT, H_C
 static String 
 Ath2Operation_read_param(Element *e, void *thunk)
 {
-  Ath2Operation *athop = (Ath2Operation *)e;
+  Ath2Operation *athop = reinterpret_cast<Ath2Operation *>(e);
 
   switch ((uintptr_t) thunk) {
     case H_CONFIG:    return athop->madwifi_config();
@@ -317,7 +317,7 @@ Ath2Operation_read_param(Element *e, void *thunk)
 static int 
 Ath2Operation_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Ath2Operation *athop = (Ath2Operation *)e;
+  Ath2Operation *athop = reinterpret_cast<Ath2Operation *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_CHANNEL: {       //channel

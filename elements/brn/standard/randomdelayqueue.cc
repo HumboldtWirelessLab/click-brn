@@ -19,6 +19,7 @@
 CLICK_DECLS
 
 RandomDelayQueue::RandomDelayQueue():
+  _min_delay(0), _delay(0), _min_diff_delay(0),
   _sendbuffer_timer(static_lookup_timer_hook,(void*)this),
   _usetsanno(false)
 {
@@ -59,7 +60,7 @@ RandomDelayQueue::initialize(ErrorHandler *)
 void
 RandomDelayQueue::static_lookup_timer_hook(Timer *, void *f)
 {
-  ((RandomDelayQueue*)f)->queue_timer_hook();
+ (reinterpret_cast<RandomDelayQueue*>(f))->queue_timer_hook();
 }
 
 void
@@ -158,7 +159,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  RandomDelayQueue *rdq = (RandomDelayQueue *)e;
+  RandomDelayQueue *rdq = reinterpret_cast<RandomDelayQueue *>(e);
 
   switch ((uintptr_t) thunk)
   {

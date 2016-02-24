@@ -112,8 +112,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
   } else if (port == 1) { // rrep packet received by this node
 
-    const click_brn_dsr *brn_dsr =
-          (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+    const click_brn_dsr *brn_dsr = reinterpret_cast<const click_brn_dsr *>(p_in->data() + sizeof(click_brn));
 
     BRN_DEBUG(" * receiving dsr_rrep packet; port 1; #ID %d", ntohs(brn_dsr->dsr_id));
 
@@ -150,7 +149,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
     _route_querier->_sendbuffer_timer.schedule_now();
 
     // remove the last forwarder from the blacklist, if present
-    const click_ether * ether = (const click_ether *)p_in->ether_header();
+    const click_ether * ether = reinterpret_cast<const click_ether *>(p_in->ether_header());
     EtherAddress last_forwarder(ether->ether_shost);
 
     BRN_DEBUG(" last_forwarder is %s", last_forwarder.unparse().c_str());

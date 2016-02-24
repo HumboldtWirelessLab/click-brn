@@ -20,11 +20,11 @@
 CLICK_DECLS
 
 FalconSuccessorMaintenance::FalconSuccessorMaintenance():
+  _frt(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
   _start(FALCON_DEFAULT_SUCCESSOR_START_TIME),
   _update_interval(FALCON_DEFAULT_SUCCESSOR_UPDATE_INTERVAL),
   _min_successor_ping(FALCON_DEFAULT_SUCCESSOR_MIN_PING),
-  _debug(BrnLogger::DEFAULT),
   _rfrt(NULL),
   _opti(FALCON_OPTIMAZATION_NONE)
 {
@@ -52,7 +52,7 @@ int FalconSuccessorMaintenance::configure(Vector<String> &conf, ErrorHandler *er
 
 static void notify_callback_func(void *e, int status)
 {
-  FalconSuccessorMaintenance *f = (FalconSuccessorMaintenance *)e;
+  FalconSuccessorMaintenance *f = reinterpret_cast<FalconSuccessorMaintenance *>(e);
   f->handle_routing_update_callback(status);
 }
 
@@ -69,8 +69,8 @@ void
 FalconSuccessorMaintenance::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((FalconSuccessorMaintenance*)f)->successor_maintenance();
-  ((FalconSuccessorMaintenance*)f)->set_lookup_timer();
+  (reinterpret_cast<FalconSuccessorMaintenance *>(f))->successor_maintenance();
+  (reinterpret_cast<FalconSuccessorMaintenance *>(f))->set_lookup_timer();
 }
 
 void
@@ -166,7 +166,7 @@ else
       BRN_INFO("Add foreign hop");
     }
 
-    //click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    //click_ether *annotated_ether = reinterpret_cast<click_ether *>(packet->ether_header());
     //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
     BRN_DEBUG("Dest %s Next Phy Hop: %s",succ._ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
@@ -193,7 +193,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
   /** Hawk-Routing stuff. TODO: this should move to extra funtion */
   if ( _rfrt != NULL ) {
-    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(packet->ether_header());
     if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Add neighbourhop.");
     } else {
@@ -210,15 +210,15 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   if ((_opti == FALCON_OPT_SUCC_HINT) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)) {
     DHTnode* old_pre = NULL;
     if(_frt->predecessor != NULL) old_pre = new DHTnode(_frt->predecessor->_ether_addr);
-       
+
     _frt->add_node(&src);
     //if predecessor changed tell it old predecessor
     if (old_pre != NULL && memcmp(old_pre->_ether_addr.data(),_frt->predecessor->_ether_addr.data(),6) != 0 ) {
-      
+
       BRN_DEBUG("i got new predecessor: %s, tell ist old one: %s",_frt->predecessor->_ether_addr.unparse().c_str(), old_pre->_ether_addr.unparse().c_str());
       //with fwd optimization send a succ request instead of the old predecesosr to be faster
       if (_opti ==  FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) {
-         
+
 
 		// from here i know a direct route to the new pred so i send a packet to old one therefore he gets the rest of the route
 		WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->predecessor, old_pre, FALCON_MINOR_UPDATE_SUCCESSOR,
@@ -250,6 +250,12 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
         output(0).push(q);
 
       }
+
+    }
+
+    if ( old_pre != NULL ) {
+      delete old_pre;
+      old_pre = NULL;
     }
   } else _frt->add_node(&src);
 

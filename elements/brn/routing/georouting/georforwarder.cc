@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 GeorForwarder::GeorForwarder()
-{
+:_rt(NULL),_nodeid(NULL){
   BRNElement::init();
 }
 
@@ -128,14 +128,14 @@ GeorForwarder::push( int port, Packet *packet )
 static String
 read_debug_param(Element *e, void *)
 {
-  GeorForwarder *gf = (GeorForwarder *)e;
+  GeorForwarder *gf = reinterpret_cast<GeorForwarder *>(e);
   return String(gf->_debug) + "\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  GeorForwarder *gf = (GeorForwarder *)e;
+  GeorForwarder *gf = reinterpret_cast<GeorForwarder *>(e);
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 

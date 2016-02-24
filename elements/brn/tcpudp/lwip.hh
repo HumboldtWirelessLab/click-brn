@@ -61,7 +61,8 @@ class LwIP : public BRNElement
 
       LwIP *_lwIP;     //ref to LwIP
 
-      LwIPNetIf(uint16_t num, IPAddress addr, IPAddress gw, IPAddress mask): _num(num), _addr(addr), _gw(gw), _mask(mask)
+      LwIPNetIf(uint16_t num, IPAddress addr, IPAddress gw, IPAddress mask): _num(num), _addr(addr), _gw(gw),
+                                                                             _mask(mask), _lwIP(NULL)
       {
         _lw_addr.addr = _addr.addr();
         _lw_gw.addr = _gw.addr();
@@ -77,6 +78,9 @@ class LwIP : public BRNElement
 
       uint32_t _sent_bytes;
       uint32_t _received_bytes;
+
+      LwIPClient() : _client_socket(NULL), _sent_bytes(0), _received_bytes(0) {
+      }
     };
 
 

@@ -61,17 +61,15 @@ BRN2DHCPPrint::initialize(ErrorHandler *)
 }
 
 char *
-BRN2DHCPPrint::print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data)
+BRN2DHCPPrint::print_hw_addr (const uint8_t, const uint8_t hlen, const unsigned char *data)
 {
   static char habuf [49];
-  char *s;
-  int i;
 
   if (hlen <= 0) habuf [0] = 0;
   else
   {
-    s = habuf;
-    for (i = 0; i < hlen; i++)
+    char *s = habuf;
+    for (int i = 0; i < hlen; i++)
     {
       sprintf (s, "%02x", data [i]);
       s += strlen (s);
@@ -89,7 +87,7 @@ BRN2DHCPPrint::simple_action(Packet *p_in)
   click_chatter("BRN2DHCPPrint::simple_action\n");
   click_chatter("****** DHCP packet ***********\n");
 
-  dhcp_packet *dhcp = (dhcp_packet *)p_in->data();
+  const dhcp_packet *dhcp = reinterpret_cast<const dhcp_packet *>(p_in->data());
 
   char opcode[32];
   switch (dhcp->op) {
@@ -161,14 +159,10 @@ BRN2DHCPPrint::simple_action(Packet *p_in)
 
   click_chatter("= Options =\n");
 
-  int code;
-  int len;
-	char *option_string;
-
   for (uint32_t offset = 4; offset < ( p_in->length() - DHCP_FIXED_NON_UDP - 1) ;)
   {
-    code = dhcp->options[offset];
-    len = dhcp->options[offset + 1];
+    int code = dhcp->options[offset];
+    int len = dhcp->options[offset + 1];
 
     switch (code) {
       case DHO_PAD:     /* Pad options don't have a length - just skip them. */
@@ -188,13 +182,14 @@ BRN2DHCPPrint::simple_action(Packet *p_in)
             case ipv4_list:
                 click_chatter("* %s: %d.%d.%d.%d", opt[code].text ,dhcp->options[offset+2], dhcp->options[offset+3], dhcp->options[offset+4], dhcp->options[offset+5]);
                 break;
-            case string:
-                option_string = new char [len + 1];
+            case string: {
+                char *option_string = new char [len + 1];
                 memcpy(option_string,&dhcp->options[offset+2],len);
                 option_string[len] = '\0';
                 click_chatter("* %s: %s", opt[code].text,option_string);
                 delete[] option_string;
                 break;
+            }
             case time_in_secs:
                 uint32_t time_in_sec;
                 memcpy(&time_in_sec,&dhcp->options[offset+2],4);
@@ -205,7 +200,7 @@ BRN2DHCPPrint::simple_action(Packet *p_in)
                 click_chatter("* %s", opt[code].text);
           }
     }
-    
+
     offset = offset + 2 + len;
   }
 

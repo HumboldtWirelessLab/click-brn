@@ -68,13 +68,13 @@ PullStats::pull(int /*port*/)
 static String
 idle_time(Element *e, void */*thunk*/)
 {
-  return String(((PullStats*)e)->_pull_null_duration);
+  return String((reinterpret_cast<PullStats*>(e))->_pull_null_duration);
 }
 
 static int
 reset_idle_time(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
-  ((PullStats*)e)->_pull_null_duration = 0;
+ (reinterpret_cast<PullStats*>(e))->_pull_null_duration = 0;
   return 0;
 }
 

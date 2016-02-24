@@ -71,7 +71,7 @@ BRN2DSREncap::initialize(ErrorHandler *)
 }
 
 /* creates a dsr source routed packet */
-Packet *
+WritablePacket *
 BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
 {
   int i;
@@ -96,7 +96,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   }
 
   // set brn dsr source route header
-  click_brn_dsr *dsr_source = (click_brn_dsr *)(p->data());
+  click_brn_dsr *dsr_source = reinterpret_cast<click_brn_dsr *>((p->data()));
 
   dsr_source->dsr_type = BRN_DSR_SRC;
   dsr_source->reserved = 0;
@@ -111,10 +111,10 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
       (uint8_t *)src_route[route_len - 1].data(), 6 * sizeof(uint8_t));
 
   // fetch IPs; TODO: dirty hack
-  const click_ether *ether = (const click_ether *)p_in->data();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());
   if (ether->ether_type == ETHERTYPE_IP) { //TODO: XXXXXXXXXXXXXXXXXXXXX
-    //const click_ip *iph = (const click_ip*)(p_in->data() + sizeof(click_ether));
-    const click_ip *iph = (const click_ip *)p_in->ip_header();
+    //const click_ip *iph = reinterpret_cast<const click_ip*>((p_in->data() + sizeof(click_ether)));
+    const click_ip *iph = reinterpret_cast<const click_ip *>(p_in->ip_header());
 
     if (iph) {
       BRN_DEBUG(" * iph not NULL");
@@ -173,7 +173,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   }
 
   //TODO: remove the next stuff
-  click_ether *cether = (click_ether *)p->ether_header();
+  click_ether *cether = reinterpret_cast<click_ether *>(p->ether_header());
   if ( cether != NULL ) {
     memcpy(cether->ether_dhost,(BRNPacketAnno::dst_ether_anno(p)).data() , 6);
   }
@@ -193,7 +193,7 @@ BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
-  click_brn_dsr *dsr_rreq = (click_brn_dsr*)p->data();
+  click_brn_dsr *dsr_rreq = reinterpret_cast<click_brn_dsr*>(p->data());
 
   dsr_rreq->dsr_type = BRN_DSR_RREQ;
   dsr_rreq->dsr_id = htons(rreq_id);
@@ -237,7 +237,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   memset(p->data(), '\0', p->length());
 
   // getting pointers to the headers
-  click_brn_dsr *dsr = (click_brn_dsr *)p->data();
+  click_brn_dsr *dsr = reinterpret_cast<click_brn_dsr *>(p->data());
 
   // dsr header - fill the route reply header
   dsr->dsr_type = BRN_DSR_RREP;
@@ -320,7 +320,7 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   memset(p->data(), '\0', p->length());
 
   // getting pointers to the header
-  click_brn_dsr *dsr_rerr = (click_brn_dsr *)p->data();
+  click_brn_dsr *dsr_rerr = reinterpret_cast<click_brn_dsr *>(p->data());
 
   dsr_rerr->dsr_type = BRN_DSR_RERR;
   dsr_rerr->dsr_hop_count = src_hop_count;
@@ -371,20 +371,21 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   return p;
 }
 
-Packet *
+WritablePacket *
 BRN2DSREncap::skipInMemoryHops(Packet *p_in)
 {
   BRN_DEBUG(" * calling NodeIdentity::skipInMemoryHops().");
+  // create a writeable packet
+  WritablePacket *p = p_in->uniqueify();
 
-  click_brn_dsr *brn_dsr =
-      (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = reinterpret_cast<click_brn_dsr *>(p->data() + sizeof(click_brn));
 
   int index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
 
   BRN_DEBUG(" * index = %d brn_dsr->dsr_hop_count = %d", index, brn_dsr->dsr_hop_count);
 
   if ( (brn_dsr->dsr_hop_count == 0) || (brn_dsr->dsr_segsleft == 0) )
-    return p_in;
+    return p;
 
   assert(index >= 0 && index < BRN_DSR_MAX_HOP_COUNT);
   assert(index <= brn_dsr->dsr_hop_count);
@@ -407,17 +408,17 @@ BRN2DSREncap::skipInMemoryHops(Packet *p_in)
 
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   } else {
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dsr_hops[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
 
-  return p_in;
+  return p;
 }
 
-Packet *
+WritablePacket *
 BRN2DSREncap::set_packet_to_next_hop(Packet * p_in)
 {
   BRN_DEBUG(" * set unicast packet to next hop: ...");
@@ -425,8 +426,7 @@ BRN2DSREncap::set_packet_to_next_hop(Packet * p_in)
   // create a writeable packet
   WritablePacket *p = p_in->uniqueify();
 
-  click_brn_dsr *brn_dsr =
-        (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = reinterpret_cast<click_brn_dsr *>(p->data() + sizeof(click_brn));
 
   if ( (brn_dsr->dsr_type != BRN_DSR_RREP) && (brn_dsr->dsr_type != BRN_DSR_SRC) && (brn_dsr->dsr_type != BRN_DSR_RERR)) {
     BRN_ERROR(" * source route option not found where expected, type = %d", brn_dsr->dsr_type);

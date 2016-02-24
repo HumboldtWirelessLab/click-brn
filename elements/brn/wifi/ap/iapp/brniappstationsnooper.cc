@@ -46,6 +46,7 @@ BrnIappStationSnooper::BrnIappStationSnooper() :
   _optimize(true),
   _id(NULL),
   _assoc_list(NULL),
+  _sta_tracker(NULL),
   _hello_handler(NULL)
 {
 }
@@ -120,7 +121,7 @@ BrnIappStationSnooper::push(int, Packet *p)
   BRN_CHECK_EXPR_RETURN(NULL == p || p->length() < sizeof(struct click_wifi),
     ("invalid arguments"), if (p) p->kill();return;);
 
-  const click_wifi* wifi = (const click_wifi*) p->data();
+  const click_wifi* wifi = reinterpret_cast<const click_wifi*>( p->data());
 
   BRN_CHECK_EXPR_RETURN(NULL == wifi,
     ("missing wifi header"), if (p) p->kill();return;);
@@ -145,7 +146,7 @@ BrnIappStationSnooper::push(int, Packet *p)
 void 
 BrnIappStationSnooper::peek_management(Packet *p) 
 {
-  const click_wifi* w = (const click_wifi*) p->data();
+  const click_wifi* w = reinterpret_cast<const click_wifi*>( p->data());
   EtherAddress bssid;
   EtherAddress dst;
   EtherAddress src;
@@ -260,7 +261,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
 void 
 BrnIappStationSnooper::peek_data(Packet *p) 
 {
-  const click_wifi* wifi = (const click_wifi*) p->data();
+  const click_wifi* wifi = reinterpret_cast<const click_wifi*>( p->data());
   EtherAddress bssid;
   EtherAddress sta;
   EtherAddress cn;
@@ -326,7 +327,7 @@ enum {H_DEBUG, H_OPTIMIZE};
 static String 
 read_param(Element *e, void *thunk)
 {
-  BrnIappStationSnooper *td = (BrnIappStationSnooper *)e;
+  BrnIappStationSnooper *td = reinterpret_cast<BrnIappStationSnooper *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -341,7 +342,7 @@ static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
-  BrnIappStationSnooper *f = (BrnIappStationSnooper *)e;
+  BrnIappStationSnooper *f = reinterpret_cast<BrnIappStationSnooper *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: 

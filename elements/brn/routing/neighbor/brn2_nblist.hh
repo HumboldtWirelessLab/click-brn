@@ -27,18 +27,18 @@ class BRN2NBList : public BRNElement
         struct timeval _last_seen;
 
         int type;
- 
-        NeighborInfo()
+
+        NeighborInfo(): _eth(), type(0)
         {
         }
 
-        NeighborInfo(EtherAddress ea)
+        explicit NeighborInfo(EtherAddress ea): _eth(ea), type(0)
         {
-          _eth = ea;
         }
 
         ~NeighborInfo()
         {
+          _devs.clear();
         }
 
     };

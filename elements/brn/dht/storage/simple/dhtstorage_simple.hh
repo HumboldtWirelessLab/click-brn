@@ -44,6 +44,7 @@ class DHTStorageSimple : public DHTStorage
         replica_number = replica;
         value_len = val_len;
         value = val;
+        status = 0;
       }
 
       ReplicaInfo()
@@ -51,7 +52,7 @@ class DHTStorageSimple : public DHTStorage
         init(0, NULL, 0);
       }
 
-      ReplicaInfo(int replica)
+      explicit ReplicaInfo(int replica)
       {
         init(replica, NULL, 0);
       }
@@ -87,12 +88,16 @@ class DHTStorageSimple : public DHTStorage
       ReplicaInfo *replicaList;
       uint32_t received_replica_bitmap;
 
-      DHTOperationForward()
+      DHTOperationForward() : _info_func(NULL), _info_obj(NULL), _operation(NULL),  replica_count(0),
+                              replicaList(NULL), received_replica_bitmap(0)
       {
-        _operation = NULL;
-        _info_obj = NULL;
-        replicaList = NULL;
-        replica_count = 0;
+      }
+
+      DHTOperationForward(const DHTOperationForward &dhtop) : _info_func(dhtop._info_func), _info_obj(dhtop._info_obj),
+                                                        _operation(dhtop._operation),  replica_count(dhtop.replica_count),
+                                                        received_replica_bitmap(dhtop.received_replica_bitmap)
+      {
+        replicaList = new ReplicaInfo[replica_count + 1];
       }
 
       ~DHTOperationForward()

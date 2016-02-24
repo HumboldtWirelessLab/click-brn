@@ -57,22 +57,15 @@ class BrnRXCorrelation : public Element {
 
     uint32_t _my_ids_highest;        //_my_ids_highest
 
-    NeighbourInfo(EtherAddress &_new_addr, uint32_t _lp_id)
+    NeighbourInfo(EtherAddress &_new_addr, uint32_t _lp_id): _addr(EtherAddress(_new_addr.data())), _ids_base(0), _ids_next(1), _lp_interval_in_ms(0),
+                                                             _my_ids_base(0), _my_ids_next(0), _my_ids_highest(0)
     {
-      _addr = EtherAddress(_new_addr.data());
       memset(_ids, 0, sizeof(_ids));
       memset(_ids, 0, sizeof(_ids_times));
-      _ids_base = 0;
       _ids[0] = _lp_id;
       _ids_times[0] = Timestamp::now();
-      _ids_next = 1;
-
-      _lp_interval_in_ms = 0;
 
       memset(_my_ids, 0, sizeof(_my_ids));
-      _my_ids_next = 0;
-      _my_ids_base = 0;
-      _my_ids_highest = 0;
     }
 
     ~NeighbourInfo()
@@ -101,8 +94,11 @@ class BrnRXCorrelation : public Element {
       _ids[_ids_next] = lp_id;
       _ids_times[_ids_next] = Timestamp::now();
 
-      _time_diff = _ids_times[_ids_next] - _ids_times[_ids_base];
-      _lp_interval_in_ms = ( 1000 * _time_diff.sec() + _time_diff.msec() ) / ( _ids[_ids_next] - _ids[_ids_base] );
+      int ids_diff = _ids[_ids_next]-_ids[_ids_base];
+      if ( ids_diff != 0 ) {
+        Timestamp _time_diff = _ids_times[_ids_next] - _ids_times[_ids_base];
+        _lp_interval_in_ms = ( 1000 * _time_diff.sec() + _time_diff.msec() ) / ids_diff;
+      }
 
       _ids_next = ( _ids_next + 1 ) % MAXIDS;
       if ( _ids_next == _ids_base ) _ids_base = ( _ids_base + 1 ) % MAXIDS;

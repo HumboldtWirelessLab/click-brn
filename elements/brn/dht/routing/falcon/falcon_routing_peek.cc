@@ -20,6 +20,8 @@
 CLICK_DECLS
 
 FalconRoutingPeek::FalconRoutingPeek():
+ _frt(NULL),
+ _routing_peek(NULL),
   _reroute_req(false),
   _active(false)
 {
@@ -46,7 +48,7 @@ int FalconRoutingPeek::configure(Vector<String> &conf, ErrorHandler *errh)
 
 static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
 {
-  return ((FalconRoutingPeek *)e)->handle_routing_peek(p, src, dst, brn_port);
+  return (reinterpret_cast<FalconRoutingPeek *>(e))->handle_routing_peek(p, src, dst, brn_port);
 }
 
 int FalconRoutingPeek::initialize(ErrorHandler *)

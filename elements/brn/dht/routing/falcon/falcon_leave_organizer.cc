@@ -18,11 +18,14 @@
 CLICK_DECLS
 
 FalconLeaveOrganizer::FalconLeaveOrganizer():
+  _frt(NULL),
   _lookup_timer(static_lookup_timer_hook,this),
+  _max_retries(0),
   _mode(FALCON_LEAVE_MODE_IDLE),
   _new_id_len(0),
   _debug(BrnLogger::DEFAULT)
 {
+  memset(_new_id,0,sizeof(_new_id));
 }
 
 FalconLeaveOrganizer::~FalconLeaveOrganizer()

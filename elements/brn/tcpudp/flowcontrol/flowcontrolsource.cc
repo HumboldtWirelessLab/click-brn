@@ -76,19 +76,19 @@ void
 FlowControlSource::static_retransmit_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
-  ((FlowControlSource*)f)->retransmit_data();
-  ((FlowControlSource*)f)->set_retransmit_timer();
+ (reinterpret_cast<FlowControlSource*>(f))->retransmit_data();
+ (reinterpret_cast<FlowControlSource*>(f))->set_retransmit_timer();
 }
 
 void
 FlowControlSource::set_retransmit_timer()
 {
   int32_t res = -1;
-  int32_t t = -1;
-  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+
+  for (FTIter iter = _flowtab.begin(); iter.live(); ++iter) {
     FlowControlInfo *fci = iter.value();
 
-    t = fci->min_age_not_acked();
+    int32_t t = fci->min_age_not_acked();
     if ( (t < res) || (res == -1) ) res = t;
   }
 
@@ -100,7 +100,7 @@ FlowControlSource::set_retransmit_timer()
 void
 FlowControlSource::retransmit_data()
 {
-  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+  for (FTIter iter = _flowtab.begin(); iter.live(); ++iter) {
     FlowControlInfo *fci = iter.value();
 
     Packet *p = fci->get_packet_with_max_age(DEFAULT_RETRANSMIT_TIME);
@@ -117,19 +117,18 @@ FlowControlSource::push( int port, Packet *packet)
 {
   EtherAddress src;
   EtherAddress dst;
-  uint16_t ethertype;
 
   if ( port == 0 ) {
     WritablePacket *etherpacket;
     if ( _etherannos ) {
       src = BRNPacketAnno::src_ether_anno(packet);
       dst = BRNPacketAnno::dst_ether_anno(packet);
-      ethertype = BRNPacketAnno::ethertype_anno(packet);
+      uint16_t ethertype = BRNPacketAnno::ethertype_anno(packet);
       etherpacket = packet->push(sizeof(uint16_t));
       ((uint16_t*)(etherpacket->data()))[0] = ethertype;
     } else {
       etherpacket = packet->uniqueify();
-      click_ether *ether = (click_ether *)etherpacket->data();
+      click_ether *ether = reinterpret_cast<click_ether *>(etherpacket->data());
       src = EtherAddress(ether->ether_shost);
       dst = EtherAddress(ether->ether_dhost);
       etherpacket->pull(12); //remove both ether addresses
@@ -213,7 +212,7 @@ FlowControlSource::gen_next_flowid()
 void
 FlowControlSource::clear_flowtab()
 {
-  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+  for (FTIter iter = _flowtab.begin(); iter.live(); ++iter) {
     FlowControlInfo *fci = iter.value();
 
     delete fci;

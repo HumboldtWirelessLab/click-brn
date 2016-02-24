@@ -65,8 +65,7 @@ class Dijkstra: public RoutingAlgorithm {
     Timestamp _last_used;
     uint32_t _no_calcs;
 
-    DijkstraGraphInfo(): _mode(DIJKSTRA_GRAPH_MODE_UNUSED), _node(EtherAddress()), _no_calcs(0) {
-      _last_used = Timestamp::now();
+    DijkstraGraphInfo(): _mode(DIJKSTRA_GRAPH_MODE_UNUSED), _node(EtherAddress()), _last_used(Timestamp::now()), _no_calcs(0) {
     }
 
     DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node), _last_used(Timestamp::now()), _no_calcs(0) {}
@@ -84,8 +83,7 @@ class Dijkstra: public RoutingAlgorithm {
       DijkstraNodeInfo *_next[DIJKSTRA_MAX_GRAPHS];
       bool _marked[DIJKSTRA_MAX_GRAPHS];
 
-      DijkstraNodeInfo(EtherAddress p) {
-        _ether = p;
+      explicit DijkstraNodeInfo(EtherAddress p): _ether(p) {
         memset(_metric, 0, DIJKSTRA_MAX_GRAPHS * sizeof(uint32_t));
         memset(_next, 0, DIJKSTRA_MAX_GRAPHS * sizeof(DijkstraNodeInfo *));
         memset(_marked, 0, DIJKSTRA_MAX_GRAPHS * sizeof(bool));

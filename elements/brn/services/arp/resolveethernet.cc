@@ -65,7 +65,7 @@ ResolveEthernet::simple_action(Packet *p_in)
 {
   BRN_DEBUG(" simple_action()");
 
-  const click_ip *ip = (click_ip *)p_in->data();
+  const click_ip *ip = reinterpret_cast<const click_ip *>(p_in->data());
   IPAddress dst_ip_addr(ip->ip_dst);
 
   EtherAddress dst_ether_addr(_arp_table->lookup(dst_ip_addr));
@@ -73,7 +73,7 @@ ResolveEthernet::simple_action(Packet *p_in)
   BRN_DEBUG(" * resolved: %s -> %s", dst_ip_addr.unparse().c_str(), dst_ether_addr.unparse().c_str());
 
   if (WritablePacket *q = p_in->push(14)) {
-    click_ether *ether = (click_ether *) q->data();
+    click_ether *ether = reinterpret_cast<click_ether *>( q->data());
 
     memcpy(ether->ether_dhost, dst_ether_addr.data(), 6);
     memcpy(ether->ether_shost, _src.data(), 6);

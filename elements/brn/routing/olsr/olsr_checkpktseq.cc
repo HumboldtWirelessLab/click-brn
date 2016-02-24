@@ -10,7 +10,7 @@ CLICK_DECLS
 
 
 OLSRCheckPacketSeq::OLSRCheckPacketSeq()
-{
+: _duplicateSet(NULL){
 }
 
 

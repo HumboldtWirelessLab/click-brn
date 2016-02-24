@@ -37,15 +37,16 @@
 CLICK_DECLS
 
 BRN2PrintWifi::BRN2PrintWifi()
-  : _print_anno(false),
+  : _label(""),
+    _print_anno(false),
     _print_checksum(false),
+    _timestamp(false),
     _print_ht(false),
     _print_ext_rx(false),
     _print_evm(false),
     _nowrap(false),
     _print_used_rate(false)
 {
-  _label = "";
 }
 
 BRN2PrintWifi::~BRN2PrintWifi()
@@ -317,7 +318,6 @@ BRN2PrintWifi::capability_string(int capability) {
   if (capability & WIFI_CAPINFO_PRIVACY) {
     if (any) { sa << " ";}
     sa << "PRIVACY";
-    any = true;
   }
   sa << "]";
   return sa.take_string();

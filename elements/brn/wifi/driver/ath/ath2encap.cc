@@ -15,6 +15,7 @@ CLICK_DECLS
 
 
 Ath2Encap::Ath2Encap()
+ : _debug(false),_athencap(false)
 {
 }
 
@@ -97,7 +98,7 @@ enum {H_DEBUG};
 static String 
 Ath2Encap_read_param(Element *e, void *thunk)
 {
-  Ath2Encap *td = (Ath2Encap *)e;
+  Ath2Encap *td = reinterpret_cast<Ath2Encap *>(e);
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
         return String(td->_debug) + "\n";
@@ -109,7 +110,7 @@ Ath2Encap_read_param(Element *e, void *thunk)
 static int 
 Ath2Encap_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Ath2Encap *f = (Ath2Encap *)e;
+  Ath2Encap *f = reinterpret_cast<Ath2Encap *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

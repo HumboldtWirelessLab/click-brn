@@ -44,6 +44,7 @@ BrnCompoundHandler::BrnCompoundHandler():
   _record_samples(10),
   _sample_time(1000),
   _record_timer(this),
+  _time_position(0),
   _compression_limit(0),
   _lzw_buffer(NULL),
   _lzw_buffer_size(32768),
@@ -55,7 +56,7 @@ BrnCompoundHandler::BrnCompoundHandler():
 
 BrnCompoundHandler::~BrnCompoundHandler()
 {
-  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); ++iter) {
     HandlerRecord *hr = iter.value();
     delete hr;
   }
@@ -280,7 +281,7 @@ BrnCompoundHandler::read_handler()
       sa << "\t</handler>\n";
     }
   } else { // show samples
-    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); ++iter) {
       String handler = iter.key();
       HandlerRecord *hr = iter.value();
       sa << "\t<handler name=\"" << handler.c_str();
@@ -485,7 +486,7 @@ BrnCompoundHandler::set_recordmode(int mode)
   if ( _record_mode != RECORDMODE_LAST_SAMPLE ) {
     _record_timer.unschedule();
   } else {
-    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); ++iter) {
       HandlerRecord *hr = iter.value();
       hr->clear();
     }
@@ -510,7 +511,7 @@ BrnCompoundHandler::set_updatemode(int mode)
 void
 BrnCompoundHandler::set_samplecount(int count)
 {
-  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); ++iter) {
     HandlerRecord *hr = iter.value();
     hr->set_max_records(count);
   }
@@ -522,7 +523,7 @@ BrnCompoundHandler::set_sampletime(int time)
 {
   if ( _sample_time == time ) return;
 
-  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); ++iter) {
     HandlerRecord *hr = iter.value();
 
     _sample_time = time;
@@ -546,19 +547,19 @@ BrnCompoundHandler::set_sampletime(int time)
 static String
 BrnCompoundHandler_read_handler(Element *e, void */*thunk*/)
 {
-  return ((BrnCompoundHandler*)e)->read_handler();
+  return(reinterpret_cast<BrnCompoundHandler*>(e))->read_handler();
 }
 
 static String
 BrnCompoundHandler_handler(Element *e, void */*thunk*/)
 {
-  return ((BrnCompoundHandler*)e)->handler();
+  return(reinterpret_cast<BrnCompoundHandler*>(e))->handler();
 }
 
 static int
 BrnCompoundHandler_handler_operation(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  return ((BrnCompoundHandler*)e)->handler_operation(in_s, vparam, errh);
+  return(reinterpret_cast<BrnCompoundHandler*>(e))->handler_operation(in_s, vparam, errh);
 }
 
 /* Single handler for many handler with the same name */
@@ -572,7 +573,7 @@ BrnCompoundHandler_read_compoundparam(Element */*e*/, void */*thunk*/)
 static int
 BrnCompoundHandler_write_compoundparam(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  BrnCompoundHandler *ch = reinterpret_cast<BrnCompoundHandler *>(e);
 
   String s = cp_uncomment(in_s);
   ch->set_value(s, errh);
@@ -585,7 +586,7 @@ BrnCompoundHandler_write_compoundparam(const String &in_s, Element *e, void *, E
 static String
 BrnCompoundHandler_read_param(Element *e, void *vparam)
 {
-  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  BrnCompoundHandler *ch = reinterpret_cast<BrnCompoundHandler *>(e);
   StringAccum sa;
 
   switch((intptr_t)vparam) {
@@ -625,7 +626,7 @@ BrnCompoundHandler_read_param(Element *e, void *vparam)
 static int
 BrnCompoundHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  BrnCompoundHandler *ch = reinterpret_cast<BrnCompoundHandler *>(e);
   String s = cp_uncomment(in_s);
   int value;
 

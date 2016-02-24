@@ -16,7 +16,7 @@
 CLICK_DECLS
 
 OLSRMIDGenerator::OLSRMIDGenerator()
-  : _timer(this)
+  : _localIfInfoBase(NULL),_period(0),_vtime(0),_timer(this),_mid_hold_time(0)
 {
 }
 
@@ -81,10 +81,10 @@ OLSRMIDGenerator::generate_mid()
   tv = Timestamp::now().timeval();
   packet->set_timestamp_anno(tv);
   
-  olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();
+  olsr_pkt_hdr *pkt_hdr = reinterpret_cast<olsr_pkt_hdr *>( packet->data());
   pkt_hdr->pkt_length = 0; //added in OLSRForward 
   pkt_hdr->pkt_seq = 0; //added in OLSRForward
-  olsr_msg_hdr *msg_hdr = (olsr_msg_hdr *) (pkt_hdr + 1);
+  olsr_msg_hdr *msg_hdr = reinterpret_cast<olsr_msg_hdr *>( (pkt_hdr + 1));
   msg_hdr->msg_type = OLSR_MID_MESSAGE;
   msg_hdr->vtime = _vtime; 
  
@@ -93,7 +93,7 @@ OLSRMIDGenerator::generate_mid()
   msg_hdr->ttl = 255;  //MID messages should diffuse into entire network
   msg_hdr->hop_count = 0; 
   msg_hdr->msg_seq = 0; //added in OLSRForward element   
-  in_addr *address = (in_addr *) (msg_hdr + 1);    
+  in_addr *address = reinterpret_cast<in_addr *>( (msg_hdr + 1));    
   for (int i=1;i<localInterfaceList->size();i++) //i=0 -> mainAddress, not to be advertised!
    { 
      *address = (*localInterfaceList)[i].in_addr();

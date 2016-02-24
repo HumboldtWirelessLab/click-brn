@@ -55,9 +55,9 @@ void *
 SeismoDetectionCooperative::cast(const char *n)
 {
   if (strcmp(n, "SeismoDetectionCooperative") == 0)
-    return (SeismoDetectionCooperative *) this;
+    return dynamic_cast<SeismoDetectionCooperative *>(this);
   else if (strcmp(n, "SeismoDetectionAlgorithm") == 0)
-    return (SeismoDetectionAlgorithm *) this;
+    return dynamic_cast<SeismoDetectionAlgorithm *>(this);
   else
     return 0;
 }
@@ -91,8 +91,7 @@ SeismoDetectionCooperative::initialize(ErrorHandler *errh)
     Element *new_element = cp_element(algo_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
       //click_chatter("El-Name: %s", new_element->class_name());
-      SeismoDetectionAlgorithm *sda =
-        (SeismoDetectionAlgorithm *)new_element->cast("SeismoDetectionAlgorithm");
+      SeismoDetectionAlgorithm *sda = reinterpret_cast<SeismoDetectionAlgorithm *>(new_element->cast("SeismoDetectionAlgorithm"));
       if ( sda != NULL ) {
         _sdal.push_back(sda);
       }
@@ -116,7 +115,7 @@ SeismoDetectionCooperative::push(int /*port*/, Packet *p)
                                        (struct click_seismodetection_coop_header *)p->data();
 
 
-  click_ether *annotated_ether = (click_ether *)p->ether_header();
+  const click_ether *annotated_ether = reinterpret_cast<const click_ether *>(p->ether_header());
   EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
   SeismoAlarmList *node_sal = _salm.find(srcEther);
@@ -270,7 +269,7 @@ SeismoDetectionCooperative::get_cooperative_alarms()
 {
   SeismoAlarmList *group_sal = _salm.find(_group_addr);
 
-  for (NodeAlarmMapIter iter = _salm.begin(); iter.live(); iter++) {
+  for (NodeAlarmMapIter iter = _salm.begin(); iter.live(); ++iter) {
 
     EtherAddress id = iter.key();
 
@@ -287,7 +286,7 @@ SeismoDetectionCooperative::get_cooperative_alarms()
       min_alarm_time = max_alarm_time = ((*sal)[a])->_start.msecval();
       alarm_count = 1;
 
-      for (NodeAlarmMapIter iter_peer = _salm.begin(); iter_peer.live(); iter_peer++) {
+      for (NodeAlarmMapIter iter_peer = _salm.begin(); iter_peer.live(); ++iter_peer) {
         EtherAddress id_peer = iter_peer.key();
 
         if ((id_peer==_group_addr)||(id_peer==id)) continue;
@@ -342,7 +341,7 @@ SeismoDetectionCooperative::stats(void)
   sa << "<seismodetection_cooperative id=\"" << BRN_NODE_NAME << "\" time=\"";
   sa << now.unparse() << "\" >\n";
 
-  for (NodeAlarmMapIter iter = _salm.begin(); iter.live(); iter++) {
+  for (NodeAlarmMapIter iter = _salm.begin(); iter.live(); ++iter) {
 
     EtherAddress id = iter.key();
     SeismoAlarmList *sal = iter.value();
@@ -366,14 +365,14 @@ SeismoDetectionCooperative::stats(void)
 static String
 read_handler(Element *e, void */*thunk*/)
 {
-  SeismoDetectionCooperative *sdc = (SeismoDetectionCooperative*)e;
+  SeismoDetectionCooperative *sdc = reinterpret_cast<SeismoDetectionCooperative*>(e);
   return sdc->stats();
 }
 
 static int
 write_handler(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  SeismoDetectionCooperative *scop = (SeismoDetectionCooperative *)e;
+  SeismoDetectionCooperative *scop = reinterpret_cast<SeismoDetectionCooperative *>(e);
 
   String s = cp_uncomment(in_s);
 

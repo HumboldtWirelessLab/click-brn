@@ -47,8 +47,6 @@ class BRN2DHCPClient : public BRNElement {
 
  public:
 
-   int _debug;
-
    class DHCPClientInfo {
 
    public:
@@ -67,32 +65,18 @@ class BRN2DHCPClient : public BRNElement {
 
     IPAddress server_add;
 
-    DHCPClientInfo(uint32_t _xid, uint8_t *_mac, int _ip )
+    DHCPClientInfo(uint32_t _xid, uint8_t *_mac, int _ip ) : eth_add(_mac), ip_add(_ip), xid(_xid),
+                                                             _last_action(0), status(DHCPINIT), lease(0)
     {
-      xid =_xid;
-      eth_add = EtherAddress(_mac);
-      ip_add = IPAddress(_ip);
-
       _time_start = Timestamp::now().timeval();
       _last_action_time = Timestamp::now();
-
-      _last_action = 0;
-
-      status = DHCPINIT;
-      _last_action = 0;
     }
 
-    DHCPClientInfo(uint32_t _xid, uint8_t *_mac)
+    DHCPClientInfo(uint32_t _xid, uint8_t *_mac) : eth_add(_mac), ip_add(), xid(_xid),
+                                                    _last_action(0), status(DHCPINIT), lease(0)
     {
-      xid =_xid;
-      eth_add = EtherAddress(_mac);
-
       _time_start = Timestamp::now().timeval();
       _last_action_time = Timestamp::now();
-
-      _last_action = 0;
-
-      status = DHCPINIT;
     }
 
     ~DHCPClientInfo()
@@ -129,10 +113,10 @@ class BRN2DHCPClient : public BRNElement {
   Packet *dhcpdiscover(DHCPClientInfo *client_info);
   Packet *dhcprequest(DHCPClientInfo *client_info);
   void dhcpbound(DHCPClientInfo *client_info);
-  Packet *dhcprenewing();
-  Packet *dhcprebinding();
-  Packet *dhcprelease(DHCPClientInfo *client_info);
-  Packet *dhcpinform();
+  //Packet *dhcprenewing();
+  //Packet *dhcprebinding();
+  //Packet *dhcprelease(DHCPClientInfo *client_info);
+  //Packet *dhcpinform();
 
   int search_dhcpclient_by_xid(int xid);
 

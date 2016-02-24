@@ -31,7 +31,8 @@ class BinaryMatrix
     size_t dimension;
 
 public:
-    BinaryMatrix(size_t n);
+    explicit BinaryMatrix(size_t n);
+    BinaryMatrix(const BinaryMatrix &bm);
     ~BinaryMatrix();
 
     void setTrue(size_t row, size_t col);

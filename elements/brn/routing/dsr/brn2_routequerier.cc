@@ -38,10 +38,12 @@ CLICK_DECLS
 
 /* constructor initalizes timer, ... */
 BRN2RouteQuerier::BRN2RouteQuerier()
-  : _sendbuffer_check_routes(false),
+  : _rreq_id(0),
+    _sendbuffer_check_routes(false),
     _sendbuffer_timer(static_sendbuffer_timer_hook, this),
     _me(NULL),
     _link_table(),
+    _routing_maintenance(NULL),
     _dsr_encap(),
     _dsr_decap(),
     _dsr_rid_cache(NULL),
@@ -66,7 +68,7 @@ BRN2RouteQuerier::~BRN2RouteQuerier()
   flush_sendbuffer();
   uninitialize();
 
-  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live(); i++) {
+  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live();++i) {
     ForwardedReqVal &frv = i.value();
     if (frv.p) frv.p->kill();
     frv.p = NULL;
@@ -154,7 +156,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     return;
   }
 
-  click_ether *ether = (click_ether *)p_in->data();//better to use this, since ether_header is not always set.it also can be overwriten
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p_in->data());//better to use this, since ether_header is not always set.it also can be overwriten
   uint8_t p_in_ttl = BRNPacketAnno::ttl_anno(p_in);
   if ( p_in_ttl == 0) p_in_ttl = 255; //TODO: ttl = route len
 
@@ -218,23 +220,25 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     }
 
     // add DSR headers to packet..
-    Packet *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
+    WritablePacket *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
 
-    uint16_t _path_id = 0;
-    BrnRouteIdCache::RouteIdEntry* rid_e;
     if ( _dsr_rid_cache ) {
-      rid_e = _dsr_rid_cache->get_entry(&src_addr, &dst_addr);
+      uint16_t _path_id = 0;
+
+      BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src_addr, &dst_addr);
       if ( rid_e ) {
         _path_id = rid_e->_id;
         rid_e->update();
       } else {
         _rid_ac++;
-        _path_id = _rid_ac; 
-        //FIXME: rid_e is never used
+        _path_id = _rid_ac;
         rid_e = _dsr_rid_cache->insert_entry(&src_addr, &dst_addr, &src_addr, &(route[route.size() - 2]) , _path_id);
+        if ( rid_e == NULL ) {
+          BRN_ERROR("DSR-ID-Cache error");
+        }
       }
 
-      click_brn_dsr *dsr_source = (click_brn_dsr *)(dsr_p->data());
+      click_brn_dsr *dsr_source = reinterpret_cast<click_brn_dsr *>((dsr_p->data()));
       dsr_source->dsr_id = htons(_path_id);
     }
 
@@ -267,7 +271,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
       return;
 
     if (ether->ether_type == ETHERTYPE_IP) {
-      const click_ip *iph = (const click_ip*)(p_in->data() + sizeof(click_ether));
+      const click_ip *iph = reinterpret_cast<const click_ip*>((p_in->data() + sizeof(click_ether)));
       dst_ip_addr = iph->ip_dst;
       src_ip_addr = iph->ip_src;
 
@@ -292,7 +296,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 void
 BRN2RouteQuerier::static_rreq_expire_hook(Timer *, void *v)
 {
-  BRN2RouteQuerier *r = (BRN2RouteQuerier *)v;
+  BRN2RouteQuerier *r = reinterpret_cast<BRN2RouteQuerier *>(v);
   r->rreq_expire_hook();
 }
 
@@ -300,7 +304,7 @@ BRN2RouteQuerier::static_rreq_expire_hook(Timer *, void *v)
 void
 BRN2RouteQuerier::static_sendbuffer_timer_hook(Timer *, void *v)
 {
-  BRN2RouteQuerier *rt = (BRN2RouteQuerier*)v;
+  BRN2RouteQuerier *rt = reinterpret_cast<BRN2RouteQuerier*>(v);
   rt->sendbuffer_timer_hook();
 }
 
@@ -308,7 +312,7 @@ BRN2RouteQuerier::static_sendbuffer_timer_hook(Timer *, void *v)
 void 
 BRN2RouteQuerier::static_blacklist_timer_hook(Timer *, void *v)
 {
-  BRN2RouteQuerier *rt = (BRN2RouteQuerier*)v;
+  BRN2RouteQuerier *rt = reinterpret_cast<BRN2RouteQuerier*>(v);
   rt->blacklist_timer_hook();
 }
 
@@ -316,7 +320,7 @@ BRN2RouteQuerier::static_blacklist_timer_hook(Timer *, void *v)
 void
 BRN2RouteQuerier::static_rreq_issue_hook(Timer *, void *v)
 {
-  BRN2RouteQuerier *r = (BRN2RouteQuerier *)v;
+  BRN2RouteQuerier *r = reinterpret_cast<BRN2RouteQuerier *>(v);
   r->rreq_issue_hook();
 }
 
@@ -332,14 +336,14 @@ BRN2RouteQuerier::check()
   assert(_link_table);
 
   // _blacklist
-  for (BlacklistIter i = _blacklist.begin(); i.live(); i++)
+  for (BlacklistIter i = _blacklist.begin(); i.live();++i)
     i.value().check();
 
   // _sendbuffer_map
-  for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
+  for (SBMapIter i = _sendbuffer_map.begin(); i.live();++i) {
     SBSourceMap &src_map = i.value();
 
-    for (SBSourceMapIter j = src_map.begin(); j.live(); j++) {
+    for (SBSourceMapIter j = src_map.begin(); j.live();++j) {
       SendBuffer &sb = j.value();
       for (int k = 0; k < sb.size(); k++) {
         sb[k].check();
@@ -348,11 +352,11 @@ BRN2RouteQuerier::check()
   }
 
   // _forwarded_rreq_map
-  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live(); i++)
+  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live();++i)
     i.value().check();
 
   // _initiated_rreq_map
-  for (InitReqIter i = _initiated_rreq_map.begin(); i.live(); i++)
+  for (InitReqIter i = _initiated_rreq_map.begin(); i.live();++i)
     i.value().check();
 
   // _rreq_expire_timer;
@@ -372,10 +376,10 @@ BRN2RouteQuerier::flush_sendbuffer()
 
 //  BRN_DEBUG(" * flushing send buffer.");
 
-  for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
+  for (SBMapIter i = _sendbuffer_map.begin(); i.live();++i) {
     SBSourceMap &src_map = i.value();
 
-    for (SBSourceMapIter j = src_map.begin(); j.live(); j++) {
+    for (SBSourceMapIter j = src_map.begin(); j.live();++j) {
       SendBuffer &sb = j.value();
       for (int k = 0; k < sb.size(); k++) {
         sb[k].check();
@@ -399,11 +403,11 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   EtherAddress dst;
   EtherAddress src;
 
-  const click_ether *ether = (const click_ether *)p->data();//better to use this, since ether_header is not always set.it also can be overwriten
-  //const click_ether *ether = (const click_ether *)p->ether_header();
+  const click_ether *ether = reinterpret_cast<const click_ether *>(p->data());//better to use this, since ether_header is not always set.it also can be overwriten
+  //const click_ether *ether = reinterpret_cast<const click_ether *>(p->ether_header());
 
   if (ether->ether_type == ETHERTYPE_BRN) {
-    const click_brn_dsr *dsr = (const click_brn_dsr *)( p->data() + sizeof(click_brn) );  //TODO: BRN-packet in queue is alway dsr ??
+    const click_brn_dsr *dsr = reinterpret_cast<const click_brn_dsr *>(( p->data() + sizeof(click_brn) ));  //TODO: BRN-packet in queue is alway dsr ??
     dst = EtherAddress(dsr->dsr_dst.data);
     src = EtherAddress(dsr->dsr_src.data);
     BRN_DEBUG("BRN in queue");
@@ -436,13 +440,13 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
     p->kill();
     return false;
   } else {
-    sb->push_back(p);
+    sb->push_back(BufferedPacket(p));
 
     if(_debug == BrnLogger::DEBUG) {
       SendBuffer *tmp_buff = _sendbuffer_map.findp(dst)->findp(src);
       if (tmp_buff) {
         BRN_DEBUG(" * size = %d", tmp_buff->size());
-        const click_ether *tmp = (const click_ether *)tmp_buff->begin()->_p->data();
+        const click_ether *tmp = reinterpret_cast<const click_ether *>(tmp_buff->begin()->_p->data());
         EtherAddress tmp_dst(tmp->ether_dhost);
         EtherAddress tmp_src(tmp->ether_shost);
         BRN_DEBUG("* buffering packet ... %s -> %s", tmp_src.unparse().c_str(), tmp_dst.unparse().c_str());
@@ -556,7 +560,7 @@ BRN2RouteQuerier::rreq_expire_hook()
   curr_time = Timestamp::now().timeval();
 
   Vector<ForwardedReqKey> remove_list;
-  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live(); i++) {
+  for (FWReqIter i = _forwarded_rreq_map.begin(); i.live();++i) {
 
     ForwardedReqVal &val = i.value();
 
@@ -567,7 +571,7 @@ BRN2RouteQuerier::rreq_expire_hook()
       BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
       const EtherAddress *device_addr = indev->getEtherAddress();//ether addr of the interface the packet is coming from
 
-      const click_ether *ether = (const click_ether *)val.p->ether_header();
+      const click_ether *ether = reinterpret_cast<const click_ether *>(val.p->ether_header());
      // rreq received from this node (last hop)
       EtherAddress prev_node(ether->ether_shost);
       uint16_t last_hop_metric = _link_table->get_link_metric(prev_node, *device_addr);
@@ -637,12 +641,12 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
   int total = 0; // total packets sent this scheduling
   bool check_next_time = false;
 
-  for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
+  for (SBMapIter i = _sendbuffer_map.begin(); i.live();++i) {
 
     SBSourceMap &src_map = i.value();
     EtherAddress dst = i.key();
 
-    for (SBSourceMapIter x = src_map.begin(); x.live(); x++) {
+    for (SBSourceMapIter x = src_map.begin(); x.live();++x) {
 
       SendBuffer &sb = x.value();
       EtherAddress src = x.key();
@@ -712,10 +716,10 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
             for (k = 0; k < sb.size() && total < BRN_DSR_SENDBUFFER_MAX_BURST; k++, total++) {
               // send out each of the buffered packets
               Packet *p = sb[k]._p;
-              Packet *p_out = _dsr_encap->add_src_header(p, route); //todo brn_dsr packet --> encap
+              WritablePacket *p_out = _dsr_encap->add_src_header(p, route); //todo brn_dsr packet --> encap
 
               if ( _dsr_rid_cache ) {
-                click_brn_dsr *dsr_source = (click_brn_dsr *)(p_out->data());
+                click_brn_dsr *dsr_source = reinterpret_cast<click_brn_dsr *>((p_out->data()));
                 dsr_source->dsr_id = htons(_path_id);
                 rid_e->update();
               }
@@ -736,7 +740,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
             for ( ; k < sb.size() ; k++) {
               // push whatever packets we didn't send onto new_sb, then
               // replace the existing sendbuffer
-              new_sb.push_back(sb[k]._p);
+              new_sb.push_back(sb[k]);
             }
             sb = new_sb;
           }
@@ -785,7 +789,7 @@ BRN2RouteQuerier::blacklist_timer_hook()
   timeval curr_time;
   curr_time = Timestamp::now().timeval();
 
-  for (BlacklistIter i = _blacklist.begin(); i.live(); i++) {
+  for (BlacklistIter i = _blacklist.begin(); i.live();++i) {
     if ((i.value()._status == BRN_DSR_BLACKLIST_UNI_PROBABLE) &&
        (diff_in_ms(curr_time, i.value()._time_updated) > BRN_DSR_BLACKLIST_ENTRY_TIMEOUT)) {
 
@@ -810,7 +814,7 @@ BRN2RouteQuerier::rreq_issue_hook()
 
   EtherAddresses remove_list;
 
-  for (InitReqIter i = _initiated_rreq_map.begin(); i.live(); i++) {
+  for (InitReqIter i = _initiated_rreq_map.begin(); i.live();++i) {
 
     InitiatedReq &ir = i.value();
     assert(ir._target == i.key());
@@ -1076,9 +1080,9 @@ BRN2RouteQuerier::print_stats()
   uint32_t open_requests = 0;
   uint32_t requested_routes = 0;
 
-  for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
+  for (SBMapIter i = _sendbuffer_map.begin(); i.live();++i) {
     SBSourceMap &src_map = i.value();
-    for (SBSourceMapIter x = src_map.begin(); x.live(); x++) {
+    for (SBSourceMapIter x = src_map.begin(); x.live();++x) {
       SendBuffer &sb = x.value();
 
       requested_routes++;
@@ -1090,12 +1094,12 @@ BRN2RouteQuerier::print_stats()
   sa << "\" request=\"" << (uint32_t)_requests << "\" open_requests=\"" << open_requests << "\" next_request_id=\"";
   sa << (_rreq_id+1) << "\" requested_routes=\"" << requested_routes << "\" >\n";
 
-  for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
+  for (SBMapIter i = _sendbuffer_map.begin(); i.live();++i) {
 
     SBSourceMap &src_map = i.value();
     EtherAddress dst = i.key();
 
-    for (SBSourceMapIter x = src_map.begin(); x.live(); x++) {
+    for (SBSourceMapIter x = src_map.begin(); x.live();++x) {
 
       SendBuffer &sb = x.value();
       EtherAddress src = x.key();
@@ -1114,7 +1118,7 @@ enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB, H_STATS, H_MAX_RETRIES};
 static String
 read_handler(Element *e, void * vparam)
 {
-  BRN2RouteQuerier *rq = (BRN2RouteQuerier *)e;
+  BRN2RouteQuerier *rq = reinterpret_cast<BRN2RouteQuerier *>(e);
 
   switch ((intptr_t)vparam) {
     case H_FIXED_ROUTE: {
@@ -1147,7 +1151,7 @@ read_handler(Element *e, void * vparam)
 static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BRN2RouteQuerier *rq = (BRN2RouteQuerier *)e;
+  BRN2RouteQuerier *rq = reinterpret_cast<BRN2RouteQuerier *>(e);
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {

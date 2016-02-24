@@ -32,17 +32,13 @@ NHopClusterProtocol::get_mgt(Packet *p, int offset)
 WritablePacket*
 NHopClusterProtocol::new_request(int max_hops, int code, int id)
 {
-  WritablePacket *p;
-  struct nhopcluster_packet_header *h;
-  struct nhopcluster_managment *m;
-
-  p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/,
+  WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/,
                            sizeof(struct nhopcluster_managment) + sizeof(struct nhopcluster_packet_header),
                            32);
 
   if ( p != NULL ) {
-    h = (struct nhopcluster_packet_header *)p->data();
-    m = (struct nhopcluster_managment *)&(p->data()[sizeof(struct nhopcluster_packet_header)]);
+    struct nhopcluster_packet_header *h = (struct nhopcluster_packet_header *)p->data();
+    struct nhopcluster_managment *m = (struct nhopcluster_managment *)&(p->data()[sizeof(struct nhopcluster_packet_header)]);
 
     h->packet_type = NHOPCLUSTER_PACKETTYPE_MANAGMENT;
     m->operation = NHOPCLUSTER_MANAGMENT_REQUEST;
@@ -59,17 +55,13 @@ NHopClusterProtocol::new_request(int max_hops, int code, int id)
 WritablePacket*
 NHopClusterProtocol::new_notify(EtherAddress *ch, int max_hops, int code, int id)
 {
-  WritablePacket *p;
-  struct nhopcluster_packet_header *h;
-  struct nhopcluster_managment *m;
-
-  p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/,
+  WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/,
                            sizeof(struct nhopcluster_managment) + sizeof(struct nhopcluster_packet_header),
                                   32);
 
   if ( p != NULL ) {
-    h = (struct nhopcluster_packet_header *)p->data();
-    m = (struct nhopcluster_managment *)&(p->data()[sizeof(struct nhopcluster_packet_header)]);
+    struct nhopcluster_packet_header *h = (struct nhopcluster_packet_header *)p->data();
+    struct nhopcluster_managment *m = (struct nhopcluster_managment *)&(p->data()[sizeof(struct nhopcluster_packet_header)]);
 
     h->packet_type = NHOPCLUSTER_PACKETTYPE_MANAGMENT;
     m->operation = NHOPCLUSTER_MANAGMENT_NOTIFICATION;
@@ -86,10 +78,8 @@ NHopClusterProtocol::new_notify(EtherAddress *ch, int max_hops, int code, int id
 int
 NHopClusterProtocol::pack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data,  int max_size)
 {
-  struct nhopcluster_packet_header *h;
-
   if ( (uint32_t)max_size >= ( sizeof(struct nhopcluster_lp_info) + sizeof(struct nhopcluster_packet_header) )) {
-    h = (struct nhopcluster_packet_header *)data;
+    struct nhopcluster_packet_header *h = (struct nhopcluster_packet_header *)data;
     h->packet_type = NHOPCLUSTER_PACKETTYPE_LP_INFO;
     memcpy(&data[sizeof(struct nhopcluster_packet_header)], (int8_t*)lpi, sizeof(struct nhopcluster_lp_info));
     //click_chatter("Maxsize. %d Size; %d",max_size,sizeof(struct nhopcluster_lp_info) + sizeof(struct nhopcluster_packet_header));
@@ -104,10 +94,8 @@ NHopClusterProtocol::pack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data,  in
 int
 NHopClusterProtocol::unpack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data, int size)
 {
-  struct nhopcluster_packet_header *h;
-
   if ( size == ( sizeof(struct nhopcluster_lp_info) + sizeof(struct nhopcluster_packet_header) )) {
-    h = (struct nhopcluster_packet_header *)data;
+    struct nhopcluster_packet_header *h = (struct nhopcluster_packet_header *)data;
     if ( h->packet_type != NHOPCLUSTER_PACKETTYPE_LP_INFO ) return 0;
 
     memcpy((int8_t*)lpi, &data[sizeof(struct nhopcluster_packet_header)], sizeof(struct nhopcluster_lp_info));

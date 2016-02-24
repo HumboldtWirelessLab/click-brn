@@ -18,10 +18,8 @@ CLICK_DECLS
 
 
 BrnAutoRateFallback::BrnAutoRateFallback()
-  : _stepup(10),
-    _stepdown(1)
+  : _stepup(10), _stepdown(1), _alt_rate(false), _adaptive_stepup(false), mcs_zero(0)
 {
-  mcs_zero = MCS(0);
   _default_strategy = RATESELECTION_AUTORATEFALLBACK;
 }
 
@@ -33,7 +31,7 @@ void *
 BrnAutoRateFallback::cast(const char *name)
 {
   if (strcmp(name, "BrnAutoRateFallback") == 0)
-    return (BrnAutoRateFallback *) this;
+    return dynamic_cast<BrnAutoRateFallback *>(this);
 
   return RateSelection::cast(name);
 }
@@ -60,7 +58,7 @@ BrnAutoRateFallback::process_feedback(struct rateselection_packet_info *rs_pkt_i
   bool used_alt_rate = (eh->flags & WIFI_EXTRA_TX_USED_ALT_RATE);
 
   MCS mcs = MCS(eh, 0);
-  DstInfo *nfo = (DstInfo *)nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo *>(nri->_rs_data);
 
   if (!nfo || !nri->_rates[nfo->_current_index].equals(mcs)) {
     return;
@@ -132,13 +130,13 @@ BrnAutoRateFallback::assign_rate(struct rateselection_packet_info *rs_pkt_info, 
     return;
   }
 
-  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo*>(nri->_rs_data);
 
   if (!nfo) {
     sort_rates_by_data_rate(nri);
 
     nfo = new DstInfo();
-    nri->_rs_data = (void*)nfo;
+    nri->_rs_data = reinterpret_cast<void*>(nfo);
 
     nfo->_successes = 0;
     nfo->_wentup = false;
@@ -172,7 +170,7 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
 {
   StringAccum sa;
 
-  DstInfo *nfo = (DstInfo*) nri->_rs_data;
+  DstInfo *nfo = reinterpret_cast<DstInfo*>( nri->_rs_data);
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
 
@@ -213,7 +211,7 @@ enum {H_STEPUP, H_STEPDOWN };
 static String
 BrnAutoRateFallback_read_param(Element *e, void *thunk)
 {
-  BrnAutoRateFallback *td = (BrnAutoRateFallback *)e;
+  BrnAutoRateFallback *td = reinterpret_cast<BrnAutoRateFallback *>(e);
   switch ((uintptr_t) thunk) {
     case H_STEPDOWN:
       return String(td->_stepdown) + "\n";
@@ -227,7 +225,7 @@ BrnAutoRateFallback_read_param(Element *e, void *thunk)
 static int
 BrnAutoRateFallback_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BrnAutoRateFallback *f = (BrnAutoRateFallback *)e;
+  BrnAutoRateFallback *f = reinterpret_cast<BrnAutoRateFallback *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_STEPUP: {

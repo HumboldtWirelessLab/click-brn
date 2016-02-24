@@ -68,9 +68,9 @@ inline pkt_hdr_info
 OLSRPacketHandle::get_pkt_hdr_info(Packet *_packet)
 {
         pkt_hdr_info hdr_info;
-        olsr_pkt_hdr *pkt_hdr;
+        const olsr_pkt_hdr *pkt_hdr;
 
-        pkt_hdr = (olsr_pkt_hdr *) _packet->data();
+        pkt_hdr = reinterpret_cast<const olsr_pkt_hdr *>( _packet->data());
 
         hdr_info.pkt_length = (int) ntohs(pkt_hdr->pkt_length);
         hdr_info.pkt_seq =  (int) ntohs(pkt_hdr->pkt_seq);
@@ -83,9 +83,9 @@ inline msg_hdr_info
 OLSRPacketHandle::get_msg_hdr_info(Packet *_packet, int offset)
 {
         msg_hdr_info hdr_info;
-        olsr_msg_hdr *msg_hdr;
+        const olsr_msg_hdr *msg_hdr;
 
-        msg_hdr = (olsr_msg_hdr *)( _packet->data() + offset );
+        msg_hdr = reinterpret_cast<const olsr_msg_hdr *>(( _packet->data() + offset ));
 
         hdr_info.msg_type = (int) msg_hdr->msg_type;
         hdr_info.vtime_a = (int) (msg_hdr->vtime) >> 4;
@@ -105,9 +105,9 @@ inline hello_hdr_info
 OLSRPacketHandle::get_hello_hdr_info(Packet *_packet, int offset)
 {
         hello_hdr_info hdr_info;
-        olsr_hello_hdr *hello_header;
+        const olsr_hello_hdr *hello_header;
 
-        hello_header = (olsr_hello_hdr *)(_packet->data() + offset);
+        hello_header = reinterpret_cast<const olsr_hello_hdr *>((_packet->data() + offset));
 
         hdr_info.htime_a = (int) (hello_header->htime) >> 4;
         hdr_info.htime_b = (int) (hello_header->htime) & 0x0f;
@@ -121,9 +121,9 @@ inline link_hdr_info
 OLSRPacketHandle::get_link_hdr_info(Packet *_packet, int offset)
 {
         link_hdr_info hdr_info;
-        olsr_link_hdr *link_header;
+        const olsr_link_hdr *link_header;
 
-        link_header = (olsr_link_hdr *)(_packet->data() + offset);
+        link_header = reinterpret_cast<const olsr_link_hdr *>((_packet->data() + offset));
 
         hdr_info.neigh_type = (link_header->link_code) >> 2;
         hdr_info.link_type = (link_header->link_code) & 0x03;
@@ -137,9 +137,9 @@ inline tc_hdr_info
 OLSRPacketHandle::get_tc_hdr_info(Packet *_packet, int offset)
 {
         tc_hdr_info hdr_info;
-        olsr_tc_hdr *tc_hdr;
+        const olsr_tc_hdr *tc_hdr;
 
-        tc_hdr = (olsr_tc_hdr *)(_packet->data() + offset);
+        tc_hdr = reinterpret_cast<const olsr_tc_hdr *>((_packet->data() + offset));
 
         hdr_info.ansn = (int) ntohs(tc_hdr->ansn);
 

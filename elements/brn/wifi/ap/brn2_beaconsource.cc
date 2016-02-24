@@ -42,10 +42,11 @@ CLICK_DECLS
 
 BRN2BeaconSource::BRN2BeaconSource()
   : _timer(this),
-    _debug(false),
     _active(true),
+    _target_channel(0),
     _switch_channel_countdown(0),
-    _rtable(0),
+    _winfo(NULL),_rtable(NULL),_winfolist(NULL),
+    _switch_channel(false),
     _headroom(32)
 {
   BRNElement::init();
@@ -407,13 +408,11 @@ BRN2BeaconSource::push(int, Packet *p)
 bool
 BRN2BeaconSource::is_protected_ssid(String ssid)
 {
-  BRN2WirelessInfoList::WifiInfo *wi;
-
   if ( ssid == "" ) return false;
   if ( _winfo && ( _winfo->_ssid == ssid ) ) return false;
   if ( _winfolist ) {
     for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
-       wi = _winfolist->getWifiInfo(i);
+       BRN2WirelessInfoList::WifiInfo *wi = _winfolist->getWifiInfo(i);
        if (wi->_ssid == ssid ) return wi->_protected;
     }
   }
@@ -425,7 +424,7 @@ enum {H_DEBUG, H_ACTIVE, H_CHANNEL};
 static String 
 BRN2BeaconSource_read_param(Element *e, void *thunk)
 {
-  BRN2BeaconSource *td = (BRN2BeaconSource *)e;
+  BRN2BeaconSource *td = reinterpret_cast<BRN2BeaconSource *>(e);
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
@@ -441,7 +440,7 @@ static int
 BRN2BeaconSource_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BRN2BeaconSource *f = (BRN2BeaconSource *)e;
+  BRN2BeaconSource *f = reinterpret_cast<BRN2BeaconSource *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug

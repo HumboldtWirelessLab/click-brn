@@ -19,7 +19,7 @@
 CLICK_DECLS
 AODVGenerateRREQ::AODVGenerateRREQ():
 	neighbour_table(0),
-	rreqid(0)
+	rreqid(0), known_classifier(NULL),myIP(NULL)
 {
 }
 
@@ -51,7 +51,7 @@ void AODVGenerateRREQ::generateRREQ(const IPAddress & destination, bool destinat
 		return;
 	}
 	memset(packet->data(), 0, packet->length());
-	aodv_rreq_header * header = (aodv_rreq_header *) packet->data();
+	aodv_rreq_header * header = reinterpret_cast<aodv_rreq_header *>( packet->data());
 	header->type = AODV_RREQ_MESSAGE;
 	header->jrgdureserved = 0;
 	// don't use multicast

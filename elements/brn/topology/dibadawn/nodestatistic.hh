@@ -36,7 +36,7 @@ CLICK_DECLS;
 class DibadawnNodeStatistic
 {
 public:
-    DibadawnNodeStatistic(DibadawnConfig &cfg);
+    explicit DibadawnNodeStatistic(DibadawnConfig &cfg);
     
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);

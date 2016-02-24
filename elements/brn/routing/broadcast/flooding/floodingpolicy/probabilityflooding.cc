@@ -13,6 +13,7 @@
 CLICK_DECLS
 
 ProbabilityFlooding::ProbabilityFlooding():
+  _me(NULL),_fhelper(NULL),_flooding_db(NULL),
   _min_no_neighbors(0),
   _fwd_probability(100)
 {
@@ -27,9 +28,9 @@ void *
 ProbabilityFlooding::cast(const char *name)
 {
   if (strcmp(name, "ProbabilityFlooding") == 0)
-    return (ProbabilityFlooding *) this;
+    return dynamic_cast<ProbabilityFlooding *>(this);
   else if (strcmp(name, "FloodingPolicy") == 0)
-         return (FloodingPolicy *) this;
+         return dynamic_cast<FloodingPolicy *>(this);
        else
          return NULL;
 }
@@ -112,7 +113,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  ProbabilityFlooding *sfl = (ProbabilityFlooding *)e;
+  ProbabilityFlooding *sfl = reinterpret_cast<ProbabilityFlooding *>(e);
 
   switch ((uintptr_t) thunk)
   {

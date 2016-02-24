@@ -77,7 +77,7 @@ class VAServer : public BRNElement {
    public:
     IPAddress _ip;
 
-    VAAntennaInfo(IPAddress ip): _ip(ip) {
+    explicit VAAntennaInfo(IPAddress ip): _ip(ip) {
     }
 
     ~VAAntennaInfo() {
@@ -94,7 +94,7 @@ class VAServer : public BRNElement {
 
     struct rtentry routing_entry;
 
-    VAClientInfo(IPAddress ip) : _ip(ip) {
+    explicit VAClientInfo(IPAddress ip) : _ip(ip) {
       csi_map.clear();
       current_antenna = NULL;
 

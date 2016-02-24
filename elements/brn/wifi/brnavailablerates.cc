@@ -41,7 +41,7 @@ void *
 BrnAvailableRates::cast(const char *n)
 {
   if (strcmp(n, "BrnAvailableRates") == 0)
-    return (BrnAvailableRates *) this;
+    return reinterpret_cast<BrnAvailableRates *>(this);
   else
     return 0;
 }
@@ -139,7 +139,7 @@ BrnAvailableRates::configure(Vector<String> &conf, ErrorHandler *errh)
 void
 BrnAvailableRates::take_state(Element *e, ErrorHandler *)
 {
-  BrnAvailableRates *q = (BrnAvailableRates *)e->cast("BrnAvailableRates");
+  BrnAvailableRates *q = reinterpret_cast<BrnAvailableRates *>(e->cast("BrnAvailableRates"));
   if (!q) return;
   _rtable = q->_rtable;
   _default_rates = _default_rates;
@@ -240,7 +240,7 @@ enum {H_INSERT, H_REMOVE, H_RATES};
 static String
 BrnAvailableRates_read_param(Element *e, void *thunk)
 {
-  BrnAvailableRates *td = (BrnAvailableRates *)e;
+  BrnAvailableRates *td = reinterpret_cast<BrnAvailableRates *>(e);
   switch ((uintptr_t) thunk) {
   case H_RATES: {
     StringAccum sa;
@@ -256,7 +256,7 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
       }
       sa << "\" />\n\t<destination>\n";
     }
-    for (BrnAvailableRates::RIter iter = td->_rtable.begin(); iter.live(); iter++) {
+    for (BrnAvailableRates::RIter iter = td->_rtable.begin(); iter.live(); ++iter) {
       BrnAvailableRates::DstInfo n = iter.value();
       sa << "\t\t<node addr=\"" << n._eth.unparse() << "\" rates=\"";
       for (int x = 0; x < n._rates.size(); x++) {
@@ -276,7 +276,7 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
 static int
 BrnAvailableRates_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BrnAvailableRates *f = (BrnAvailableRates *)e;
+  BrnAvailableRates *f = reinterpret_cast<BrnAvailableRates *>(e);
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_INSERT:

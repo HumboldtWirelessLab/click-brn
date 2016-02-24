@@ -17,7 +17,7 @@
 
 CLICK_DECLS
 AODVGenerateRERR::AODVGenerateRERR()
-{
+:neighbour_table(NULL){
 }
 
 AODVGenerateRERR::~AODVGenerateRERR()
@@ -46,14 +46,14 @@ void AODVGenerateRERR::push (int port, Packet * packet){
 		
 	} else {
 		// 6.9 case iii: receives RERR from a neighbour for one or more active routes
-		aodv_rerr_header * rerr = (aodv_rerr_header*) (packet->data() + aodv_headeroffset);
+		const aodv_rerr_header * rerr = reinterpret_cast<const aodv_rerr_header*>(packet->data() + aodv_headeroffset);
 		assert(rerr->type == AODV_RERR_MESSAGE);
 		Vector<IPAddress> ips;
 		Vector<uint32_t> seqNrs;
 		
 		
 		for(uint8_t i = 0; i < rerr->destcount; ++i){
-		//	aodv_rerr_linkdata* data = (aodv_rerr_linkdata*) (packet->data() + aodv_headeroffset + sizeof(aodv_rerr_header) + i * sizeof(aodv_rerr_linkdata));
+		//	aodv_rerr_linkdata* data = reinterpret_cast<aodv_rerr_linkdata*>( (packet->data() + aodv_headeroffset + sizeof(aodv_rerr_header) + i * sizeof(aodv_rerr_linkdata)));
 //Robat			Vector<IPAddress> haveNexthop = neighbour_table->getEntriesWithNexthop(data->destination);
 /*		robAt	for(Vector<IPAddress>::iterator iter = haveNexthop.begin(); iter != haveNexthop.end(); ++iter){
 				ips.push_back(*iter);
@@ -92,7 +92,7 @@ void AODVGenerateRERR::generateRERR(bool nodelete, Vector<IPAddress> ips, Vector
 		return;
 	}
 	memset(packet->data(), 0, packet->length());
-	aodv_rerr_header * header = (aodv_rerr_header *) packet->data();
+	aodv_rerr_header * header = reinterpret_cast<aodv_rerr_header *>( packet->data());
 	header->type = AODV_RERR_MESSAGE;
 	header->nreserved = AODV_RERR_NRESERVED;
 	if (nodelete) header->nreserved += 1 << 7;
@@ -106,15 +106,15 @@ void AODVGenerateRERR::generateRERR(bool nodelete, Vector<IPAddress> ips, Vector
 	Vector<uint32_t>::iterator seqIter = seqnrs.begin(); 
 	while(ipIter != ips.end()) {
 		if (firstAddress){
-			address = (in_addr *) (header + 1);
+			address = reinterpret_cast<in_addr *>( (header + 1));
 			firstAddress = false;
 		}
 		else{
-			address = (in_addr *) (address + 1);
+			address = reinterpret_cast<in_addr *>( (address + 1));
 		}
 		*address = *ipIter;
 		
-		address = (in_addr *) (address + 1);
+		address = reinterpret_cast<in_addr *>( (address + 1));
 		// nasty trick to use uint32_t and in_addr based on same pointer
 		uint32_t* uint32_tAddress = (uint32_t*)(void*)(address);
 		*uint32_tAddress = htonl(*seqIter);

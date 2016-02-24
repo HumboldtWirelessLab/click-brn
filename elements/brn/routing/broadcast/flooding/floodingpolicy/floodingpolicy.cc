@@ -3,7 +3,8 @@
 
 CLICK_DECLS
 
-FloodingPolicy::FloodingPolicy()
+FloodingPolicy::FloodingPolicy():
+  _flooding(NULL)
 {
 }
 

@@ -38,7 +38,7 @@ CLICK_DECLS
 
 BRNPDRMetric::BRNPDRMetric()
   : BRN2GenericMetric(),
-    _link_table(0)
+    _link_table(NULL)
 {
   BRNElement::init();
 }
@@ -51,9 +51,9 @@ void *
 BRNPDRMetric::cast(const char *n)
 {
   if (strcmp(n, "BRNPDRMetric") == 0)
-    return (BRNPDRMetric *) this;
+    return dynamic_cast<BRNPDRMetric *>(this);
   else if (strcmp(n, "BRN2GenericMetric") == 0)
-    return (BRN2GenericMetric *) this;
+    return dynamic_cast<BRN2GenericMetric *>(this);
   else
     return 0;
 }

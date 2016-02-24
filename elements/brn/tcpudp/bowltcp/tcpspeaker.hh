@@ -186,7 +186,7 @@ class TCPQueue {
 	};
 
     public: 
-    TCPQueue(TCPConnection *con);
+    explicit TCPQueue(TCPConnection *con);
     ~TCPQueue(); 
 
 	int push(WritablePacket *p, tcp_seq_t seq, tcp_seq_t seq_nxt);
@@ -229,7 +229,7 @@ class TCPFifo
 { 
 	public:
 #define FIFO_SIZE 256
-    TCPFifo(TCPConnection *con);
+    explicit TCPFifo(TCPConnection *con);
     ~TCPFifo(); 
     int 	push(WritablePacket *);
     int 	pkt_length() { return (_head - _tail) % FIFO_SIZE; }
@@ -327,7 +327,7 @@ class TCPConnection : public MultiFlowHandler
 	tcp_seq_t	so_recv_buffer_size; 
 
 	int			_so_state; 
-	void 		_tcp_dooptions(u_char *cp, int cnt, const click_tcp *ti, 
+	void 		_tcp_dooptions(const u_char *cp, int cnt, const click_tcp *ti, 
 					int *ts_present, u_long *ts_val, u_long *ts_ecr);
 	void 		tcp_respond(tcp_seq_t ack, tcp_seq_t seq, int flags);
 	void		tcp_setpersist(); 
@@ -360,7 +360,9 @@ class TCPConnection : public MultiFlowHandler
 
 class TCPSpeaker : public MultiFlowDispatcher {
     public:
-	TCPSpeaker() { _ip_id = 0; };
+	TCPSpeaker(): _speaker(NULL),_errh(NULL),_fast_ticks(NULL),_slow_ticks(NULL),_verbosity(0), _ip_id(0) {
+		memset(&_tcp_globals,0,sizeof(_tcp_globals));
+	};
 	~TCPSpeaker() { /*TODO delete all sub-datastructures, although this should never happen */ }; 
 
 	const char *class_name() const { return "TCPSpeaker"; }

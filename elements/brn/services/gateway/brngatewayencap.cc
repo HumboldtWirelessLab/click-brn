@@ -36,7 +36,9 @@
 
 CLICK_DECLS
 
-BRNGatewayEncap::BRNGatewayEncap() {}
+BRNGatewayEncap::BRNGatewayEncap() : _debug(0),_gw(NULL)
+{
+}
 
 BRNGatewayEncap::~BRNGatewayEncap() {}
 
@@ -82,7 +84,7 @@ BRNGatewayEncap::push(int port, Packet *p) {
                                   sizeof(click_brn) +
                                   sizeof(brn_gateway))) {
 	  // set ether header
-   	click_ether *ether_new = (click_ether *) q->data();
+   	click_ether *ether_new = reinterpret_cast<click_ether *>( q->data());
    	ether_new->ether_type = htons(ETHERTYPE_BRN);
 
    	// copy ethernet addess
@@ -95,7 +97,7 @@ BRNGatewayEncap::push(int port, Packet *p) {
     q->set_ether_header(ether_new);
 
     // set brn header
-    click_brn* brn = (click_brn*) (q->data() + sizeof(click_ether));
+    click_brn* brn = reinterpret_cast<click_brn*>( (q->data() + sizeof(click_ether)));
 
     brn->src_port = BRN_PORT_GATEWAY;
     brn->dst_port = BRN_PORT_GATEWAY;
@@ -105,7 +107,7 @@ BRNGatewayEncap::push(int port, Packet *p) {
 
 
 	  // set brn gateway header
-	  brn_gateway* brn_gw = (brn_gateway*) (q->data() + sizeof(click_ether) + sizeof(click_brn));
+	  brn_gateway* brn_gw = reinterpret_cast<brn_gateway*>( (q->data() + sizeof(click_ether) + sizeof(click_brn)));
 	
 	  // set failed to sent this packet to internet
 	  //brn_gw->failed = 0;

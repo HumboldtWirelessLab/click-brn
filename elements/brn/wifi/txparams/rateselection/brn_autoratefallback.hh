@@ -45,7 +45,7 @@ class BrnAutoRateFallback : public RateSelection
         int _stepup;
         bool _wentup;
 
-        DstInfo() {
+        DstInfo(): _current_index(0), _successes(0), _stepup(0), _wentup(false) {
         }
     };
 

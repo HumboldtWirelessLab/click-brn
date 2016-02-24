@@ -41,7 +41,7 @@
 CLICK_DECLS
 
 OLSRProcessHNA::OLSRProcessHNA()
-{
+ : _associationInfo(NULL),_neighborInfo(NULL),_routingTable(NULL){
 }
 
 OLSRProcessHNA::~OLSRProcessHNA()
@@ -67,13 +67,11 @@ OLSRProcessHNA::push(int, Packet *packet){
   //click_chatter ("OLSR_process_HNA::push \n");
   msg_hdr_info msg_info;
   neighbor_data *neighbor_tuple;
-  association_data *association_tuple;
 
   bool update_hna = false;
   bool new_hna_added = false;
   struct timeval now;
   IPAddress network_address, originator_address, source_address, netmask;
-  in_addr * addr;
 
   now = Timestamp::now().timeval();
 
@@ -98,14 +96,14 @@ OLSRProcessHNA::push(int, Packet *packet){
 
   if (msg_bytes_left > 0){ //there are advertised networks in the hna-message
     do {
-      addr = (in_addr*)(packet->data() + msg_offset);
+      const in_addr *addr = reinterpret_cast<const in_addr*>((packet->data() + msg_offset));
       network_address = IPAddress(*addr);
-      addr = (in_addr*)(packet->data() + msg_offset) + 1;
+      addr = reinterpret_cast<const in_addr*>((packet->data() + msg_offset) + 1);
       netmask = IPAddress(*addr);
 
       //robat click_chatter("%f | %s | network_address %s | netmask %s", Timestamp(now).doubleval(), _my_ip.unparse().c_str(), network_address.unparse().c_str(), netmask.unparse().c_str());
 
-      association_tuple = _associationInfo->find_tuple(originator_address, network_address, netmask);
+      association_data *association_tuple = _associationInfo->find_tuple(originator_address, network_address, netmask);
       if (association_tuple != 0) {
         association_tuple->A_time = (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval();
 	update_hna = true;

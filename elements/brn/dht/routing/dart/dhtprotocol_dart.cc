@@ -82,9 +82,10 @@ DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, 
 
 
   int32_t buffer_left = sizeof(struct dht_dart_lp_node_entry);
-  int32_t node_index = 0;
 
   if ( nodes != NULL ) {
+    int32_t node_index = 0;
+
     while ( buffer_left < buffer_len ) {
       node_index++;
       DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].id, ne[node_index].id_size);
