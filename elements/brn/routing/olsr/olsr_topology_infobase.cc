@@ -84,7 +84,7 @@ OLSRTopologyInfoBase::find_tuple(IPAddress dest_addr, IPAddress last_addr)
 bool
 OLSRTopologyInfoBase::newer_tuple_exists(IPAddress last_addr, int ansn)
 {
-  for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); iter++){
+  for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); ++iter){
     topology_data *data = reinterpret_cast<topology_data *>( iter.value());
     if (data->T_last_addr == last_addr && data->T_seq > ansn)
       return true;
@@ -95,7 +95,7 @@ OLSRTopologyInfoBase::newer_tuple_exists(IPAddress last_addr, int ansn)
 void OLSRTopologyInfoBase::print_topology()
 {
 click_chatter ("TOPOLOGY SET\n");
- for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); iter++){
+ for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); ++iter){
     topology_data *data = reinterpret_cast<topology_data *>( iter.value());
     click_chatter ("T_dest: %s\t T_last: %s\tT_seq: %d\t\n",data->T_dest_addr.unparse().c_str(),data->T_last_addr.unparse().c_str(),data->T_seq);
  }
@@ -108,7 +108,7 @@ bool
 OLSRTopologyInfoBase::remove_outdated_tuples(IPAddress last_addr, int ansn)
 {
   bool tuple_removed = false;
-  for(TopologySet::iterator iter =_topologySet->begin(); iter != _topologySet->end(); iter++){
+  for(TopologySet::iterator iter =_topologySet->begin(); iter != _topologySet->end(); ++iter){
     topology_data *data = reinterpret_cast<topology_data *>( iter.value());
     if (data->T_last_addr == last_addr && data->T_seq < ansn){
       remove_tuple(data->T_dest_addr, data->T_last_addr);
@@ -147,7 +147,7 @@ OLSRTopologyInfoBase::run_timer(Timer *)
 
   //find expired topology tuple and delete them
   if (! _topologySet->empty()){
-    for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); iter++){
+    for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); ++iter){
       topology_data *tuple = reinterpret_cast<topology_data *>( iter.value());
       if (Timestamp(tuple->T_time) <= Timestamp(now)){
 	remove_tuple(tuple->T_dest_addr, tuple->T_last_addr);
@@ -159,7 +159,7 @@ OLSRTopologyInfoBase::run_timer(Timer *)
 
   //find next topology tuple to expire
   if (! _topologySet->empty()){
-    for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); iter++){
+    for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); ++iter){
       topology_data *tuple = reinterpret_cast<topology_data *>( iter.value());
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->T_time;

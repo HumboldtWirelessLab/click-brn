@@ -256,7 +256,7 @@ OLSRRoutingTable::compute_routing_table()
 		interface_data *interface = reinterpret_cast<interface_data *>(iter.value());
 		//rtable_entry *entry = reinterpret_cast<rtable_entry *>( _routingTable->find(interface->I_main_addr));
 		if ( _linearIPlookup->lookup_iproute( interface->I_main_addr )  ) {
-			if (! (iproute = _linearIPlookup->lookup_iproute( interface->I_iface_addr ) )) {
+			if (/*!*/ (iproute = _linearIPlookup->lookup_iproute( interface->I_iface_addr ) )) {
 
 				newiproute.addr = interface->I_iface_addr;
 				newiproute.mask = netmask32;

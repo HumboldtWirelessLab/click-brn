@@ -418,7 +418,7 @@ BrnRoutingTable::print_stats()
 static String
 read_stats_param(Element *e, void * /*thunk*/)
 {
-  return ((BrnRoutingTable *)e)->print_stats();
+  return (reinterpret_cast<BrnRoutingTable *>(e))->print_stats();
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -42,7 +42,7 @@ OpenBeaconPrint::simple_action(Packet *p)
 	StringAccum dmac_sa( sizeof(crh->openbeacon_dmac)*4 ), smac_sa( sizeof(crh->openbeacon_smac)*4);
 	char cpower[10], cchannel[10], crate[10], clength[10];
 	
-	for(int i=0; i<sizeof(crh->openbeacon_dmac); i++)  {
+	for(uint32_t i=0; i<sizeof(crh->openbeacon_dmac); i++)  {
 		unsigned int dlen = sprintf(dmac_sa.reserve( 4 ), "%.2X:", crh->openbeacon_dmac[i]);
 		unsigned int slen = sprintf(smac_sa.reserve( 4 ), "%.2X:", crh->openbeacon_smac[i]);
 			

@@ -160,11 +160,11 @@ AlarmingState::update_neighbours()
       for( int ai_i = 0; ai_i < _alarm_nodes[an_i]._info.size(); ai_i++ ) {
         AlarmInfo *ai = &(_alarm_nodes[an_i]._info[ai_i]);
 
-        int found_fwd = 0;
         ai->_fwd_missing = false;
 
         if (ai->_hops < _hop_limit) {
           for( int n_i = 0; n_i < neighbors.size(); n_i++) {
+            int found_fwd = 0;
             int fwd_i = 0;
             for(;fwd_i < ai->_fwd.size(); fwd_i++ ) {
               ForwarderInfo *fwd = &(ai->_fwd[fwd_i]);

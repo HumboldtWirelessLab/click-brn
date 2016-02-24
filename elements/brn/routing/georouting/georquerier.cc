@@ -108,9 +108,9 @@ GeorQuerier::push( int port, Packet *packet )
       BRN_INFO("Perform route request !");
       packet->kill();
     }
-  } else if ( port == 1 ) {                      //routereply
-      packet->kill();
-  } else {
+  } else /*if ( port == 1 ) {                      //routereply
+      packet->kill();                              //Comment out since kill the packet anyway (cppcheck warning)
+  } else */{
       packet->kill();
   }
 }

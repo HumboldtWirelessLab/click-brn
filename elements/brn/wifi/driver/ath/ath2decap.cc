@@ -41,8 +41,8 @@ Ath2Decap::Ath2Decap():
     _cst(NULL),
     _max_rssi(ATH2DECAP_DEFAULT_MAX_SNR),
     _rssi_reset(ATH2DECAP_DEFAULT_SNR_RESET_VALUE),
-    _fix_rssi(0),
-    _athdecap(false)
+    _athdecap(false),
+    _fix_rssi(0)
 {
   BRNElement::init();
 }

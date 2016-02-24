@@ -133,7 +133,7 @@ OLSRAssociationInfoBase::remove_tuple(IPAddress gateway_addr, IPAddress network_
 {
 
 	OLSRIPPair ippair = OLSRIPPair(gateway_addr, network_addr, netmask);
-	association_data *ptr=(association_data *)_associationSet->find(ippair);
+	association_data *ptr=reinterpret_cast<association_data *>(_associationSet->find(ippair));
 	_associationSet->remove(ippair);
 	delete ptr;
 	
@@ -152,7 +152,7 @@ OLSRAssociationInfoBase::get_association_set()
 void
 OLSRAssociationInfoBase::clear()
 {
-	for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
+	for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); ++iter){
 		OLSRIPPair *entry = reinterpret_cast<OLSRIPPair *>( iter.value());
 		delete entry;			//free memory of entries
 	}
@@ -171,7 +171,7 @@ OLSRAssociationInfoBase::run_timer(Timer *)
 
   //find expired topology tuple and delete them
   if (! _associationSet->empty()){
-    for (AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
+    for (AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); ++iter){
       association_data *tuple = reinterpret_cast<association_data *>( iter.value());
       if (Timestamp(tuple->A_time) <= Timestamp(now)){
 	remove_tuple(tuple->A_gateway_addr, tuple->A_network_addr, tuple->A_netmask);
@@ -207,7 +207,7 @@ OLSRAssociationInfoBase::get_associations()
 {
 	print_association_set();
 	_associations.clear();
-	for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
+	for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); ++iter){
       association_data *entry = reinterpret_cast<association_data *>( iter.value());
 	  _associations.push_back(OLSRIPPair(entry->A_network_addr, entry->A_netmask));
     }	
@@ -217,7 +217,7 @@ OLSRAssociationInfoBase::get_associations()
 		_associations.push_back(OLSRIPPair(_home_network , _home_netmask));
 		redundancy_check();
 		_compactSet2->get_compact_set()->clear();		
-		for (Vector<OLSRIPPair>::iterator iter = _noRedundants->begin(); iter != _noRedundants->end(); iter++) {
+		for (Vector<OLSRIPPair>::iterator iter = _noRedundants->begin(); iter != _noRedundants->end(); ++iter) {
 			_compactSet2->add(iter->_from, iter->_to);
 		}
 		return _compactSet2->get_compact_set();
@@ -249,24 +249,24 @@ OLSRAssociationInfoBase::redundancy_check()
 	uint32_t bit = 0;
 	for (uint32_t i = 0; i < 32; i++) {
 		bit = 1 << i; 
-		for (Vector<OLSRIPPair>::iterator iter = _associations.begin(); iter != _associations.end(); iter++) {
+		for (Vector<OLSRIPPair>::iterator iter = _associations.begin(); iter != _associations.end(); ++iter) {
 			uint32_t addr = htonl(iter->_from.addr());
 			uint32_t res = (addr & bit) >> i;
 			bucket[res].push_back(*iter);
 		}
 		_associations.clear();
-		for (Vector<OLSRIPPair>::iterator iter = bucket[0].begin(); iter != bucket[0].end(); iter++) {
+		for (Vector<OLSRIPPair>::iterator iter = bucket[0].begin(); iter != bucket[0].end(); ++iter) {
 			_associations.push_back(*iter);
 		}		
 		bucket[0].clear();
-		for (Vector<OLSRIPPair>::iterator iter = bucket[1].begin(); iter != bucket[1].end(); iter++) {
+		for (Vector<OLSRIPPair>::iterator iter = bucket[1].begin(); iter != bucket[1].end(); ++iter) {
 			_associations.push_back(*iter);
 		}
 		bucket[1].clear();
 	}
 	
 	previous = 0;
-	for (Vector<OLSRIPPair>::iterator iter = _associations.begin(); iter != _associations.end(); iter++) {
+	for (Vector<OLSRIPPair>::iterator iter = _associations.begin(); iter != _associations.end(); ++iter) {
 		if (!previous) {
 			_noRedundants->push_back(*iter);
 			previous = iter;
@@ -304,7 +304,7 @@ OLSRAssociationInfoBase::print_association_set()
 {
   if (! _associationSet->empty() ){
     click_chatter("Association Set:\n");
-    for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
+    for ( AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); ++iter){
       association_data *entry = reinterpret_cast<association_data *>( iter.value());
       click_chatter("Gateway: %s\n", entry->A_gateway_addr.unparse().c_str());
       click_chatter("\tNetwork: %s\n", entry->A_network_addr.unparse().c_str());

@@ -77,18 +77,14 @@ FalconNetworkSizeDetermination::get_responsibly_node_FT(md5_byte_t *key, uint8_t
 void
 FalconNetworkSizeDetermination::request_nws()
 {
-  uint8_t position;
-  uint32_t size;
-
-  DHTnode *next;
-
   BRN_DEBUG("New NWS-Request");
 
   if ( _frt->successor == NULL ) _networksize = 1;
   else if ( _frt->successor->equals(_frt->predecessor) ) {
     _networksize = 2;
   } else {
-    next = get_responsibly_node_FT( _frt->_me->_md5_digest, &position);
+    uint8_t position;
+    DHTnode *next = get_responsibly_node_FT( _frt->_me->_md5_digest, &position);
 
     if (next == NULL) {
       BRN_ERROR("Next is NULL.");
@@ -96,7 +92,7 @@ FalconNetworkSizeDetermination::request_nws()
       return;
     }
 
-    size = 1 << position;
+    uint32_t size = 1 << position;
     BRN_DEBUG("Next is %s",next->_ether_addr.unparse().c_str());
 
     WritablePacket *p = DHTProtocolFalcon::new_nws_packet(_frt->_me, next, size);

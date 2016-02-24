@@ -482,9 +482,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		}
 	}
 	HashMap <IPAddress, NeighborSet > N_set; //Set of Neighborsets (for all local interfaces)
-	NeighborSet *N_of_interface_ptr; 	  //Neighborset pointer for one interface
 	HashMap <IPAddress, TwoHopSet> twohop_set;	//Set of TwoHopSets for (for all local interfaces)
-	TwoHopSet *twohop_of_interface_ptr;
 	HashMap <IPAddress, N2Set> n2_set;
 	//N2Set n2_set_of_interface;
 	MPRSet old_mprset;
@@ -502,6 +500,8 @@ OLSRNeighborInfoBase::compute_mprset()
 			neighbor_data *neigh = find_neighbor (main_address);	//side of the link and its neighbor data ptr
 			if (neigh)
 			{
+				TwoHopSet *twohop_of_interface_ptr;
+				NeighborSet *N_of_interface_ptr; //Neighborset pointer for one interface
 				if (!(N_of_interface_ptr=N_set.findp(data->L_local_iface_addr)))	//if there doesnt already exist
 				{								//a neighborset for this
 					NeighborSet N_of_interface; 				//local Interface, create one
@@ -865,7 +865,7 @@ OLSRNeighborInfoBase::compute_mprset()
 			for (HashMap <IPAddress, NeighborSet>::iterator it=N_set.begin(); it != N_set.end(); ++it) //for over all Neighborsets for the local Interfaces
 			{
 				N = &(it.value()); // Neighborset for this interface
-				N2=n2_set.findp(it.key());
+				//N2=n2_set.findp(it.key());  //TODO: not used? Why?
 				twohopset=twohop_set.findp(it.key());
 				// loop over all the neighbors that we can reach through that interface
 				for (NeighborSet::iterator iter=N->begin(); iter != N->end(); ++iter)
