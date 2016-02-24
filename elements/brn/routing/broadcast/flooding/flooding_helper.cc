@@ -412,8 +412,8 @@ FloodingHelper::get_local_childs(const EtherAddress &node, NetworkGraph &ng, int
           s = ng_ids[g1];
           b = ng_ids[g2];
         } else {
-          s = ng_ids[g1];
-          b = ng_ids[g2];
+          b = ng_ids[g1];
+          s = ng_ids[g2];
         }
 
         for ( int i = 0; i < neighbours_size; i++)
