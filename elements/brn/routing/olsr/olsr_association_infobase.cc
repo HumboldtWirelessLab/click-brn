@@ -183,7 +183,7 @@ OLSRAssociationInfoBase::run_timer(Timer *)
 
   //find next topology tuple to expire
   if (! _associationSet->empty()){
-    for (AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
+    for (AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); ++iter){
       association_data *tuple = reinterpret_cast<association_data *>( iter.value());
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->A_time;

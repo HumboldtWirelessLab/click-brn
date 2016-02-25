@@ -320,7 +320,7 @@ void
 OLSRNeighborInfoBase::remove_twohop_neighbor(IPAddress neigh_addr, IPAddress twohop_neigh_addr)
 {
 	OLSRIPPair ippair = OLSRIPPair(neigh_addr, twohop_neigh_addr);
-	twohop_data *ptr = (twohop_data*) _twohopSet->find(ippair);
+	twohop_data *ptr = reinterpret_cast<twohop_data*>(_twohopSet->find(ippair));
 	_twohopSet->remove(ippair);
 	delete ptr;
 }
@@ -402,7 +402,7 @@ OLSRNeighborInfoBase::is_mpr_selector(IPAddress ms_addr)
 void
 OLSRNeighborInfoBase::remove_mpr_selector(IPAddress ms_addr)
 {
-	mpr_selector_data *ptr=(mpr_selector_data*) _mprSelectorSet->find(ms_addr);
+	mpr_selector_data *ptr = reinterpret_cast<mpr_selector_data*>(_mprSelectorSet->find(ms_addr));
 	if (ptr)
 	{
 		_mprSelectorSet->remove(ms_addr);
@@ -458,7 +458,6 @@ OLSRNeighborInfoBase::compute_mprset()
 	TwoHopSet twohopSet_interface;
 
 	NeighborSet *N;
-	TwoHopSet *twohopset;
 	N2Set *N2;
 	HashMap<IPAddress, int> D_y_obj;
 	HashMap<IPAddress, int> *D_y = &D_y_obj;
@@ -495,7 +494,7 @@ OLSRNeighborInfoBase::compute_mprset()
 	{
 		for (HashMap<OLSRIPPair, void*>::iterator iter = linkSet->begin(); iter != linkSet->end(); ++iter)
 		{ 	//for all links
-			link_data *data = (link_data *)iter.value();			//get link data
+			link_data *data = reinterpret_cast<link_data *>(iter.value());			//get link data
 			IPAddress main_address=_interfaceInfoBase->get_main_address(data->L_neigh_iface_addr); //get main address of other
 			neighbor_data *neigh = find_neighbor (main_address);	//side of the link and its neighbor data ptr
 			if (neigh)
@@ -528,7 +527,7 @@ OLSRNeighborInfoBase::compute_mprset()
 							{
 								if ((neigh->N_willingness != OLSR_WILL_NEVER) && (N_twohop_addr!=_myMainIP))
 								{
-									neighbor_data *twohop_neighbor_data = (neighbor_data*) _neighborSet->find(N_twohop_addr);
+									neighbor_data *twohop_neighbor_data = reinterpret_cast<neighbor_data*>(_neighborSet->find(N_twohop_addr));
 
 									if (!twohop_neighbor_data) insert=true;
 									else if (twohop_neighbor_data->N_status == OLSR_NOT_NEIGH) insert=true;
@@ -569,7 +568,7 @@ OLSRNeighborInfoBase::compute_mprset()
 							{
 								if ((neigh->N_willingness != OLSR_WILL_NEVER) && (N_twohop_addr!=_myMainIP))
 								{
-									neighbor_data * twohop_neighbor_data = (neighbor_data*) _neighborSet->find(N_twohop_addr);
+									neighbor_data * twohop_neighbor_data = reinterpret_cast<neighbor_data*>(_neighborSet->find(N_twohop_addr));
 
 									if (!twohop_neighbor_data) insert=true;
 									else if (twohop_neighbor_data->N_status == OLSR_NOT_NEIGH) insert=true;
@@ -622,7 +621,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		click_chatter ("local Interface: %s\n",it.key().unparse().c_str());
 		N = &(it.value()); // Neighborset for this interface
 		N2=n2_set.findp(it.key());
-		twohopset=twohop_set.findp(it.key());
+		TwoHopSet *twohopset=twohop_set.findp(it.key());
 		if ( twohopset == NULL ) click_chatter("Empty twohop set");
 		click_chatter ("\tNeighborset\t\n");
 		if (! N->empty())
@@ -669,7 +668,7 @@ OLSRNeighborInfoBase::compute_mprset()
 
 		N = &(it.value()); // Neighborset for this interface
 		N2=n2_set.findp(it.key());
-		twohopset=twohop_set.findp(it.key());
+		TwoHopSet *twohopset=twohop_set.findp(it.key());
 		if ( twohopset == NULL ) click_chatter("Twohopset is empty");
 #ifdef OLSR_DEBUG
 		click_chatter ("computing for interface %s\n",it.key().unparse().c_str());
@@ -689,7 +688,7 @@ OLSRNeighborInfoBase::compute_mprset()
 				//for all mprs already elected
 				for (HashMap <IPAddress, void *> ::iterator iterat = interfaceSet->begin(); iterat != interfaceSet->end(); ++iterat)
 				{ 	//for all interface
-					interface_data *tuple = (interface_data *) iterat.value();			//addresses that match
+					interface_data *tuple = reinterpret_cast<interface_data *>(iterat.value());			//addresses that match
 					if (tuple->I_main_addr==iter.key())
 					{					//the elected mpr as main address
 						if (linkSet->find(OLSRIPPair(it.key(),tuple->I_iface_addr))) 			//check wheter there exists a link to this interface
@@ -866,7 +865,7 @@ OLSRNeighborInfoBase::compute_mprset()
 			{
 				N = &(it.value()); // Neighborset for this interface
 				//N2=n2_set.findp(it.key());  //TODO: not used? Why?
-				twohopset=twohop_set.findp(it.key());
+				//twohopset = twohop_set.findp(it.key());//TODO: not used? Why?
 				// loop over all the neighbors that we can reach through that interface
 				for (NeighborSet::iterator iter=N->begin(); iter != N->end(); ++iter)
 				{

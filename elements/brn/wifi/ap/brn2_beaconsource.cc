@@ -116,8 +116,6 @@ BRN2BeaconSource::run_timer(Timer *)
 
 void
 BRN2BeaconSource::send_probe_beacon(EtherAddress dst, bool probe, String ssid) {
-  BRN2WirelessInfoList::WifiInfo *wi;
-
   if ( ssid != "" )
     send_beacon(dst, probe, ssid);
   else {  //Just send the first available SSID, since client element is confused by multiple ssid having the same bssid
@@ -125,7 +123,7 @@ BRN2BeaconSource::send_probe_beacon(EtherAddress dst, bool probe, String ssid) {
       send_beacon(dst, probe, _winfo->_ssid);
     } else if ( _winfolist ) {
       for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
-        wi = _winfolist->getWifiInfo(i);
+        BRN2WirelessInfoList::WifiInfo *wi = _winfolist->getWifiInfo(i);
         if ( (wi->_ssid != NULL) && (wi->_ssid != "" ) ) {
           send_beacon(dst, probe, wi->_ssid);
           break;

@@ -124,7 +124,7 @@ OLSRTopologyInfoBase::remove_tuple(IPAddress dest_addr, IPAddress last_addr)
 {
  
   OLSRIPPair ippair = OLSRIPPair(dest_addr, last_addr);
-  topology_data *ptr=(topology_data *)_topologySet->find(ippair);
+  topology_data *ptr = reinterpret_cast<topology_data *>(_topologySet->find(ippair));
   _topologySet->remove(ippair);
   delete ptr;
 }

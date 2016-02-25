@@ -39,7 +39,7 @@ CPUStats::get_usage(const pid_t pid, struct pstat* result){
   bzero(result, sizeof(struct pstat));
 
   //read values from /proc/pid/stat
-  if(fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %ld %ld", &result->utime_ticks, &result->stime_ticks, &result->cutime_ticks, &result->cstime_ticks) == EOF){
+  if(fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %25lu %25lu %25ld %25ld", &result->utime_ticks, &result->stime_ticks, &result->cutime_ticks, &result->cstime_ticks) == EOF){
       fclose(fpstat);
       fclose(fstat);
       return -1;
@@ -49,7 +49,7 @@ CPUStats::get_usage(const pid_t pid, struct pstat* result){
   //read+calc cpu total time from /proc/stat, on linux 2.6.35-23 x86_64 the cpu row has 10values could differ on different architectures :/
   long unsigned int cpu_time[10];
   bzero(cpu_time, sizeof(cpu_time));
-  if(fscanf(fstat, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu", &cpu_time[0], &cpu_time[1], &cpu_time[2], &cpu_time[3], &cpu_time[4], &cpu_time[5], &cpu_time[6], &cpu_time[7], &cpu_time[8], &cpu_time[9]) == EOF){
+  if(fscanf(fstat, "%*s %25lu %25lu %25lu %25lu %25lu %25lu %25lu %25lu %25lu %25lu", &cpu_time[0], &cpu_time[1], &cpu_time[2], &cpu_time[3], &cpu_time[4], &cpu_time[5], &cpu_time[6], &cpu_time[7], &cpu_time[8], &cpu_time[9]) == EOF){
       fclose(fstat);
       return -1;
   }
