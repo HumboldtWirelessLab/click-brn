@@ -303,12 +303,14 @@ BRN2Device::getTypeStringByInt(uint32_t type)
 void
 BRN2Device::get_cca()
 {
+  assert(_wificonfig != NULL);
   _wificonfig->get_cca(&_cs_threshold, &_rx_threshold, &_cp_threshold);
 }
 
 void
 BRN2Device::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
 {
+  assert(_wificonfig != NULL);
 
   if ( cs_threshold != 0 ) _cs_threshold = cs_threshold;
   if ( rx_threshold != 0 ) _rx_threshold = rx_threshold;
@@ -320,6 +322,8 @@ BRN2Device::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
 uint32_t
 BRN2Device::set_backoff()
 {
+  assert(_wificonfig != NULL);
+
   _wificonfig->set_backoff(_queue_info);
 
   return 0;
@@ -328,6 +332,8 @@ BRN2Device::set_backoff()
 uint32_t
 BRN2Device::get_backoff()
 {
+  assert(_wificonfig != NULL);
+
   _wificonfig->get_backoff(&_queue_info);
 
   _no_queues = _queue_info[0];
@@ -387,6 +393,7 @@ BRN2Device::abort_transmission(EtherAddress &dst)
 int
 BRN2Device::set_power(int power, ErrorHandler*)
 {
+  assert(_wificonfig != NULL);
   _wificonfig->set_txpower(power);
   _power = _wificonfig->get_txpower();
 
@@ -396,6 +403,7 @@ BRN2Device::set_power(int power, ErrorHandler*)
 int
 BRN2Device::set_channel(int channel, ErrorHandler*)
 {
+  assert(_wificonfig != NULL);
   _wificonfig->set_channel(channel);
   BRN_DEBUG("Set Channel to: %d", _wificonfig->get_channel());
 
