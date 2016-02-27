@@ -92,6 +92,16 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 
   device_etheraddress_fix = device_etheraddress;
 
+  if ( device_type == DEVICETYPE_WIRELESS ) {
+#if CLICK_NS
+    _wificonfig = new WifiConfigSim(device_name,router());
+#else
+#if CLICK_USERLEVEL
+    _wificonfig = new WifiConfigIwLib(device_name);
+#endif
+#endif
+  }
+
   return 0;
 }
 
@@ -119,13 +129,6 @@ BRN2Device::initialize(ErrorHandler *)
   }
 
   if ( device_type == DEVICETYPE_WIRELESS ) {
-#if CLICK_NS
-    _wificonfig = new WifiConfigSim(device_name,router());
-#else
-#if CLICK_USERLEVEL
-    _wificonfig = new WifiConfigIwLib(device_name);
-#endif
-#endif
 
     _power = _wificonfig->get_txpower();
 
