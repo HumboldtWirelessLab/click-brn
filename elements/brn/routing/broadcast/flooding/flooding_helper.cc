@@ -177,10 +177,10 @@ void
 FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric*/)
 {
   uint32_t new_nodes_start = 0;
-  uint32_t new_nodes_end = 1;
+  uint32_t new_nodes_end = ng.nml.size();
+  uint32_t ng_size = new_nodes_end;
 
   CachedNeighborsMetricList* cnml = NULL;
-  int ng_size = ng.nml.size();
 
   for ( uint32_t h = 1; h <= hop_count; h++ ) {
     for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
@@ -207,10 +207,10 @@ void
 FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric*/, HashMap<EtherAddress,EtherAddress> &blacklist)
 {
   uint32_t new_nodes_start = 0;
-  uint32_t new_nodes_end = 1;
+  uint32_t new_nodes_end = ng.nml.size();
+  uint32_t ng_size = new_nodes_end;
 
   CachedNeighborsMetricList* cnml = NULL;
-  int ng_size = ng.nml.size();
 
   for ( uint32_t h = 1; h <= hop_count; h++ ) {
     for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
@@ -225,8 +225,8 @@ FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric
         }
       }
     }
-    new_nodes_start = new_nodes_end;
-    new_nodes_end = ng_size;
+    new_nodes_start = new_nodes_end;                                                   //just check all new nodes
+    new_nodes_end = ng_size;                                                           //in the set
   }
 }
 
@@ -423,11 +423,12 @@ FloodingHelper::get_local_childs(const EtherAddress &node, NetworkGraph &ng, int
   }
 
   //search single graphs
+  // Explain: if node/graph has a overlapping graph, both got the lowest ID of both
   for ( int g1 = 0; g1 < neighbours_size; g1++ ) {
-    if ( ng_ids[g1] >= g1 ) { 
+    if ( ng_ids[g1] == g1 ) {                       //has top be equals -> requirement to be single but not enough
       int g2;
-      for ( g2 = g1+1; g2 < neighbours_size; g2++ ) 
-        if ( ng_ids[g1] == g1 ) break;
+      for ( g2 = g1+1; g2 < neighbours_size; g2++ )
+        if ( ng_ids[g2] == g1 ) break;              //node/graph is not single
 
       if ( g2 == neighbours_size ) {
         //node has non-overlapping graph
@@ -545,7 +546,7 @@ FloodingHelper::graph_overlapping(NetworkGraph &ng, NetworkGraph &ng_2)
     for( int i = 0; i < ng_2.size(); i++) // loop over s
       if ( ng.nmm.findp(ng_2.nml[i]->_ea) != NULL ) return true;
   }
-  return false;  
+  return false;
 }
 
 /*

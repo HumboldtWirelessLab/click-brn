@@ -1057,6 +1057,7 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 
     //if ( !(_me->isIdentical(&dst) || _me->isIdentical(&src)) ) {
       //TODO: check, whether we should restrict route updates (only src/dst or something else
+    assert(ea_route.size() > 0);
       _routing_maintenance->update_route(src, dst, ea_route, rmetric);
     //}
   }

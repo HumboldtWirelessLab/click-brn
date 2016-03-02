@@ -243,7 +243,7 @@ BrnRoutingTable::remove_route(
   const RouteType& route = pEntry->m_route;
   RouteType::const_iterator iter_a = route.begin();
   RouteType::const_iterator iter_b = iter_a + 1;
-  for( ;iter_a != route.end(); iter_a++, iter_b++ )
+  for( ;iter_b != route.end(); ++iter_a, ++iter_b )
   {
     // Get the corresponding route vector for the link
     AddrPairVectorType* pLinkVector =
@@ -252,19 +252,20 @@ BrnRoutingTable::remove_route(
       continue; // Strange thing that no route vector is avail, but...
 
     // Loop through vector and delete the current route entry 
+    assert( pLinkVector->size() != 0 );
+
     AddrPairVectorType::iterator iter_link = pLinkVector->begin();
-    while( iter_link != pLinkVector->end() && *iter_link != pairSrcDst )
+    while( (iter_link != pLinkVector->end()) && (*iter_link != pairSrcDst) ) {
       ++iter_link;
+    }
 
     // We found the route entry in the vector
-    if( *iter_link == pairSrcDst )
-    {
+    if( iter_link != pLinkVector->end() ){ //not end() so it must be pairSrcDst -> erease
       pLinkVector->erase(iter_link);
     }
 
     // Cleanup, remove LinkToRoute entry, if not used anymore
-    if( true == pLinkVector->empty() )
-    {
+    if( true == pLinkVector->empty() ) {
       m_mapLinkToRoute.remove( AddressPairType(*iter_a,*iter_b) );
     }
   }

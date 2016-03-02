@@ -162,7 +162,7 @@ RoutingMaintenance::update_route(
 {
 
   Vector<EtherAddress> old_route;
-  uint32_t old_metric;
+  uint32_t old_metric = BRN_LT_INVALID_ROUTE_METRIC;
 
   // First, search the route cache
   bool bCached = _routing_table->get_route( addrSrc, addrDst, old_route, &old_metric );
