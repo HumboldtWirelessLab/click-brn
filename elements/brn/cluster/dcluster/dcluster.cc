@@ -116,6 +116,8 @@ DCluster::lpSendHandler(char *buffer, int size)
 {
   struct dcluster_info info;
 
+  memset(&info.min.etheraddr,0, sizeof(info.min.etheraddr));
+
   BRN_INFO("Linkprobe-Send: Min: %d Max: %d",_ac_min_round,_ac_max_round);
 
   //store myself

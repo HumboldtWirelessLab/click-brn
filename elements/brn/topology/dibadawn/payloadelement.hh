@@ -44,7 +44,7 @@ public:
 
     ~DibadawnPayloadElement() {
       if ( mayInconsistentlyData != NULL ) {
-        delete mayInconsistentlyData;
+        delete[] mayInconsistentlyData;
         mayInconsistentlyData = NULL;
       }
     }

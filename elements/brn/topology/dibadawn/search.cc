@@ -106,7 +106,7 @@ void DibadawnSearch::onForwardPhaseTimeout()
 {
   if(IS_VERBOSE_ENABLED(config))
     click_chatter("<ForwardTimeout node='%s' time='%s' searchId='%s' />",
-      config.thisNodeAsCstr(),
+      config.thisNode.unparse().c_str(),
       Timestamp::now().unparse().c_str(),
       searchId.asString().c_str());
 
@@ -219,17 +219,17 @@ void DibadawnSearch::detectArticulationPoints()
   }
 
   if(IS_DEBUG_ENABLED(config))
-    closure.print(config.thisNodeAsCstr());
+    closure.print(config.thisNode.unparse().c_str());
   closure.runMarshallAlgo();
   if(IS_DEBUG_ENABLED(config))
-    closure.print(config.thisNodeAsCstr());
+    closure.print(config.thisNode.unparse().c_str());
 
   bool isArticulationPoint = !closure.isOneMatrix();
   if (isArticulationPoint)
   {
     if(IS_EVAL_ENABLED(config))
       click_chatter("<ArticulationPoint node='%s' time='%s'/>",
-        config.thisNodeAsCstr(),
+        config.thisNode.unparse().c_str(),
         Timestamp::now().unparse().c_str());
     searchResult.addArticulationPoint(&config.thisNode, 1.0);
   }
@@ -255,7 +255,7 @@ void DibadawnSearch::start_search()
 
   if(IS_EVAL_ENABLED(config))
     click_chatter("<DibadawnStartSearch node='%s' time='%s' searchId='%s' />",
-        config.thisNodeAsCstr(),
+        config.thisNode.unparse().c_str(), //thisNodeAsCstr()
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
   
@@ -314,7 +314,7 @@ void DibadawnSearch::sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool
   packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
   packet.lastForwardDelayMs = forwardJitter;
   if(IS_DEBUG_ENABLED(config))
-    click_chatter("<DEBUG node='%s' txDelayMs='%d' minDelay='%d' jitter='%d' />", config.thisNodeAsCstr(), delay, minDelay, forwardJitter);
+    click_chatter("<DEBUG node='%s' txDelayMs='%d' minDelay='%d' jitter='%d' />", config.thisNode.unparse().c_str(), delay, minDelay, forwardJitter);
   
   ForwardSendTimerParam *param = new ForwardSendTimerParam;
   param->packet = packet;
@@ -341,7 +341,7 @@ uint16_t DibadawnSearch::calcForwardDelayImproved(DibadawnPacket &packet)
   uint16_t currentMax = 2 * ((hops * config.maxTraversalTimeMs/2) - packet.sumForwardDelay);
   
   if(IS_DEBUG_ENABLED(config))
-    click_chatter("<DEBUG node='%s' rand_min='0' rand_max='%d' />", config.thisNodeAsCstr(), currentMax);
+    click_chatter("<DEBUG node='%s' rand_min='0' rand_max='%d' />", config.thisNode.unparse().c_str(), currentMax);
   
   return(randomNumber % currentMax);
 }
@@ -377,7 +377,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       
       if(IS_EVAL_ENABLED(config))
         click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
-          config.thisNodeAsCstr(),
+          config.thisNode.unparse().c_str(),
           parentNode.unparse().c_str(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
@@ -398,7 +398,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     {
       if(IS_VERBOSE_ENABLED(config))
         click_chatter("<IgnorePacket node='%s' reason='lowTtl' time='%s' searchId='%s' />",
-          config.thisNodeAsCstr(),
+          config.thisNode.unparse().c_str(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
     }
@@ -407,7 +407,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
   {
     if(IS_DEBUG_ENABLED(config))
       click_chatter("<IgnorePacket node='%s' reason='reForward' time='%s' searchId='%s' />",
-        config.thisNodeAsCstr(),
+        config.thisNode.unparse().c_str(),
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
   }
@@ -418,7 +418,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     
     if(IS_EVAL_ENABLED(config))
       click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' valid='%d' />",
-        config.thisNodeAsCstr(),
+        config.thisNode.unparse().c_str(),
         neighbor.unparse_dash().c_str(),
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str(),
@@ -440,7 +440,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   if (packet.payload.size() < 1)
   {
     click_chatter("<Error node='%s' methode='receiveBackMessage' msg='no payload data at back-msg' />",
-        config.thisNodeAsCstr());
+        config.thisNode.unparse().c_str());
     return;
   }
 
@@ -465,7 +465,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
       {
         if(IS_VERBOSE_ENABLED(config))
         click_chatter("<PairedCycle node='%s' time='%s' searchId='%s' cycle='%s'/>",
-            config.thisNodeAsCstr(),
+            config.thisNode.unparse().c_str(),
             Timestamp::now().unparse().c_str(),
             searchId.asString().c_str(),
             payloadA.cycle.asString().c_str());
@@ -488,7 +488,7 @@ void DibadawnSearch::rememberEdgeMarking(EtherAddress &nodeA, EtherAddress &node
 
   if(IS_EVAL_ENABLED(config))
     click_chatter("<Bridge node='%s' time='%s' nodeA='%s' nodeB='%s' src='%s' searchId='%s' />",
-      config.thisNodeAsCstr(),
+      config.thisNode.unparse().c_str(),
       Timestamp::now().unparse().c_str(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str(),
@@ -562,7 +562,7 @@ void DibadawnSearch::markSearchAsFinished()
 {
    if(IS_VERBOSE_ENABLED(config))
       click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
-            config.thisNodeAsCstr(),
+            config.thisNode.unparse().c_str(),
             Timestamp::now().unparse().c_str(),
             searchId.asString().c_str());
     isRunFinished = true; 

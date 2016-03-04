@@ -33,6 +33,7 @@
 #include "elements/brn/routing/standard/routingtable/brnroutingtable.hh"
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/brn2.h"
 
 CLICK_DECLS
 /*
