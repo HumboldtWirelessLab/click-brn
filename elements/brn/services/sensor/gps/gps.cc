@@ -40,6 +40,7 @@ CLICK_DECLS
 
 GPS::GPS()
   :_gpsmode(GPSMODE_HANDLER),
+   _position(),
    _gpsmap(NULL),
 #if CLICK_NS
    gps_timer(this),
@@ -161,12 +162,13 @@ read_position_param(Element *e, void *thunk)
 static int
 write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler */*errh*/)
 {
-  int x,y,z;
   GPS *gps = reinterpret_cast<GPS *>(e);
   GPSPosition *pos = gps->getPosition();
   switch ((uintptr_t) thunk)
   {
     case H_CART_COORD: {
+      int x,y,z;
+      x = y = z = 0;
       String s = cp_uncomment(in_s);
       Vector<String> args;
       cp_spacevec(s, args);
@@ -174,10 +176,7 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
       cp_integer(args[0], &x);
       cp_integer(args[1], &y);
 
-      if ( args.size() > 2 )
-        cp_integer(args[2], &z);
-      else
-        z = 0;
+      if ( args.size() > 2 ) cp_integer(args[2], &z);
 
       pos->setCC(x,y,z);
 

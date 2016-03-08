@@ -126,13 +126,13 @@ class GPSPosition {
 	  sa << "LONG: " << _longitude.unparse() << " ";
 	  sa << "ALT: " << _altitude.unparse() << " ";
 	  sa << "SPEED: " << _speed.unparse();
-	  return sa.take_string().c_str();
+	  return sa.take_string();
   }
 
   String unparse_coord() {
 	  StringAccum sa;
       sa << _x << " " << _y << " " << _z;
-	  return sa.take_string().c_str();
+	  return sa.take_string();
   }
 
   Vector3D vector3D() {
