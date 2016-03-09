@@ -320,14 +320,16 @@ click_lw_ip_if_init(struct netif *netif)
   netif->name[0] = 'i';
   netif->name[1] = 'p';
 
-  netif->hwaddr_len = 6;
+  netif->hwaddr_len = 6; //ETHARP_HWADDR_LEN
   memset(netif->hwaddr,0,netif->hwaddr_len);
   netif->hwaddr[5] = netif->num + 1;
 
-  netif->flags |= NETIF_FLAG_BROADCAST;
+  netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 
   netif->output = click_lw_ip_if_output;
   netif->linkoutput = click_lw_ip_if_link_output;
+
+  netif->mtu = 1500;
 
   return ERR_OK;
 }
