@@ -769,7 +769,9 @@ BRN2LinkStat::clear_stale()
 {
   Vector<EtherAddress> new_neighbors;
 
+  new_neighbors.reserve(_neighbors.size() + 1);
   Timestamp now = Timestamp::now();
+
   for (int x = 0; x < _neighbors.size(); x++) {
     EtherAddress n = _neighbors[x];
     probe_list_t *l = _bcast_stats.findp(n);
@@ -786,7 +788,9 @@ BRN2LinkStat::clear_stale()
     }
   }
 
+  _neighbors.reserve(new_neighbors.size() + 1);
   _neighbors.clear();
+
   for (int x = 0; x < new_neighbors.size(); x++) {
     _neighbors.push_back(new_neighbors[x]);
   }

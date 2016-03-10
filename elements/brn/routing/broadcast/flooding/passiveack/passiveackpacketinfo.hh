@@ -52,8 +52,10 @@ class PassiveAckPacket
   PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries): _src(src->data()), _bcast_id(bcast_id), _max_retries(retries),
                                                                                                              _retries(0), _cnt_finished_passiveack_nodes(0)
   {
-    if ( passiveack != NULL )
+    if ( passiveack != NULL ) {
+      _passiveack.reserve(passiveack->size() + 1);
       for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
+    }
 
     _last_tx = _enqueue_time = Timestamp::now();
 

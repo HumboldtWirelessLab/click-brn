@@ -1002,6 +1002,8 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
   int route_size = route.size() - 1;
   if ( end_index != -1 ) route_size = end_index;
 
+  ea_route.reserve(route_size+1);
+
   for (int i=0; i < route_size; i++) {
     EtherAddress ether1 = route[i].ether();
     EtherAddress ether2 = route[i+1].ether();

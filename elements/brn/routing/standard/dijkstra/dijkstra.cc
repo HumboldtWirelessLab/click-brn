@@ -201,6 +201,7 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     route.push_back(current_node->_ether);
   }
 
+  route.reserve(route.size() + 1);
   // TODO: fix dst and src is it s me and if we have multiple radios/devices
 }
 

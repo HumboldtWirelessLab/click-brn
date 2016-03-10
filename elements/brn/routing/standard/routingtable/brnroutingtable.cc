@@ -159,6 +159,7 @@ BrnRoutingTable::insert_route(
   // Insert the route under key pair(src,dst)
   m_mapRoutes.insert( pairSrcDst, entry );
 
+  entry->m_route.reserve(route.size() + 1);
   entry->m_route = route;
   entry->m_iTTL  = m_iInitialTTL;
   entry->m_metric = metric;

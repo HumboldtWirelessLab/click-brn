@@ -387,6 +387,7 @@ Brn2LinkTable::clear_stale()
 void
 Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors)
 {
+  neighbors.reserve(_hosts.size() + 1); //reserve for max host ( +1, to avoid acces errors on 64Bit)
   for (HTIter iter = _hosts.begin(); iter.live(); ++iter) {
     BrnHostInfo *neighbor = _hosts.findp(iter.value()._ether);
     assert(neighbor);
