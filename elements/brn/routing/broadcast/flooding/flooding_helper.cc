@@ -283,8 +283,9 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
   BRN_DEBUG("NeighbourSize: %d KnownNeighbours: %d",no_nodes,known_neighbors.size());
 
   //set metric to known nodes to 100
-  ng.nml[0]->_predecessor = ng.nml[0];
-  ng.nml[0]->set_root_follower_flag();
+  NeighbourMetric *nm_0 = ng.nml[0];
+  nm_0->_predecessor = nm_0;
+  nm_0->set_root_follower_flag();
 
   for ( int i = 0; i < known_neighbors.size(); i++ ) {
     if ( ng.nmm.findp(known_neighbors[i]) == NULL ) {
@@ -316,10 +317,13 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
   */
 
   for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
+
     uint32_t pdr_cache_index = src_node << _pdr_cache_shift;
+    NeighbourMetric *nm_src_node = ng.nml[src_node];
+
     for ( uint32_t dst_node = 0; dst_node < no_nodes; dst_node++, pdr_cache_index++) {
       if ( src_node == dst_node ) continue;
-      _pdr_cache[pdr_cache_index] = _link_table->get_link_pdr(ng.nml[src_node]->_ea, ng.nml[dst_node]->_ea);
+      _pdr_cache[pdr_cache_index] = _link_table->get_link_pdr(nm_src_node->_ea, ng.nml[dst_node]->_ea);
       /*
       if (( src_node == 0 ) && (dst_node < 6)) {
         BRN_DEBUG("PDR (%d -> %d): %d",src_node,dst_node,_pdr_cache[pdr_cache_index]);
@@ -344,12 +348,15 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
     best_metric = best_metric_src = best_metric_dst = -1;
 
     for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
-      int src_metric = ng.nml[src_node]->_metric;
+
+      NeighbourMetric *nm_src = ng.nml[src_node];
+      int src_metric = nm_src->_metric;
       uint32_t pdr_cache_index = src_node << _pdr_cache_shift;
+
       for ( uint32_t dst_node = 0; dst_node < no_nodes; dst_node++, pdr_cache_index++) {
         if ((dst_node == src_node) ||                         //src equals dst
           (ng.nml[dst_node]->_predecessor != NULL) ||         //target already part of graph
-          (ng.nml[src_node]->_predecessor == NULL)) continue; //src not in the graph
+          (nm_src->_predecessor == NULL)) continue; //src not in the graph
 
         //_metric is not dived by 100. its not important to get the best metric (just compare)
         //move "*" . in this loop its enough to compore the pdr_cache stuff
@@ -365,10 +372,13 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
 
     if ( best_metric_dst != best_metric_src ) { //found new link
       metric_changed = true;
-      ng.nml[best_metric_dst]->_metric = best_metric / 100;
-      ng.nml[best_metric_dst]->_predecessor = ng.nml[best_metric_src];
-      ng.nml[best_metric_dst]->_hops = ng.nml[best_metric_dst]->_predecessor->_hops + 1;
-      ng.nml[best_metric_dst]->copy_root_follower_flag(ng.nml[best_metric_dst]->_predecessor);
+      NeighbourMetric *nm_est_metric_dst = ng.nml[best_metric_dst];
+      NeighbourMetric *nm_est_metric_src = ng.nml[best_metric_src];
+
+      nm_est_metric_dst->_metric = best_metric / 100;
+      nm_est_metric_dst->_predecessor = nm_est_metric_src;
+      nm_est_metric_dst->_hops = nm_est_metric_dst->_predecessor->_hops + 1;
+      nm_est_metric_dst->copy_root_follower_flag(nm_est_metric_dst->_predecessor);
     }
 
   } while ( metric_changed );

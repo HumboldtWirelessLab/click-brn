@@ -117,11 +117,13 @@ class CachedNeighborsMetricList {
 
   Vector<EtherAddress> _neighbors;
   uint8_t *_metrics;
+  uint16_t _metrics_size;
 
   Timestamp _last_update;
 
-  CachedNeighborsMetricList(EtherAddress ea, uint8_t metric):_node(ea), _min_pdr_to_neighbor(metric), _metrics(NULL) {
+  CachedNeighborsMetricList(EtherAddress ea, uint8_t metric):_node(ea), _min_pdr_to_neighbor(metric), _metrics(NULL), _metrics_size(0) {
     _neighbors.clear();
+    _neighbors.reserve(16);
   }
 
   ~CachedNeighborsMetricList() {
@@ -134,15 +136,20 @@ class CachedNeighborsMetricList {
 
   void update(FloodingLinktable *lt) {
     _neighbors.clear();
-    if ( _metrics != NULL ) {
-      delete[] _metrics;
-      _metrics = NULL;
-    }
 
     lt->get_neighbors(_node, _neighbors);
-
     int c_neighbors = _neighbors.size();
-    _metrics = new uint8_t[c_neighbors];
+
+    if ( (_metrics != NULL) && (c_neighbors > _metrics_size)) {
+      delete[] _metrics;
+      _metrics = NULL;
+      _metrics_size = 0;
+    }
+
+    if ( (_metrics == NULL) || (_metrics_size == 0)) {
+      _metrics_size = (c_neighbors == 0)?1:c_neighbors;
+      _metrics = new uint8_t[_metrics_size];
+    }
 
     for( int n_i = 0; n_i < c_neighbors;) {
       //calc metric between this neighbor and node to make sure that we are well-connected
