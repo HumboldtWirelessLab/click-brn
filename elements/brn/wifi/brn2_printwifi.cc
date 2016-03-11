@@ -384,6 +384,8 @@ BRN2PrintWifi::simple_action(Packet *p)
   EtherAddress bssid;
 
   StringAccum sa;
+  sa.reserve(512);
+
   if (_label[0] != 0) {
     sa << _label << ": ";
   }

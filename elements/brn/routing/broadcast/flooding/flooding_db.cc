@@ -315,6 +315,12 @@ FloodingDB::table()
 {
   StringAccum sa;
 
+#if CLICK_NS
+  sa.reserve(262144);
+#else
+  sa.reserve(32786);
+#endif
+
   sa << "<flooding_table node=\"" << BRN_NODE_NAME << "\">\n";
   BcastNodeMapIter iter = _bcast_map.begin();
   while (iter != _bcast_map.end())

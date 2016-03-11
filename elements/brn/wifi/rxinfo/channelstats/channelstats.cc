@@ -902,6 +902,7 @@ String
 ChannelStats::stats_handler(int mode)
 {
   StringAccum sa;
+  sa.reserve(4096);
 
   struct airtime_stats *stats;
   SrcInfoTable          *src_tab;

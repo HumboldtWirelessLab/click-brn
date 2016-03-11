@@ -700,6 +700,11 @@ BRN2LinkStat::read_bcast_stats()
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
 
   StringAccum sa;
+#if CLICK_NS
+  sa.reserve(32786);
+#else
+  sa.reserve(4096);
+#endif
 
   sa << "<entry from='" << *(_dev->getEtherAddress()) << "'";
   sa << " time='" << now.unparse() << "' seq='" << _seq << "' period='" << _period << "' tau='" << _tau << "' >\n";

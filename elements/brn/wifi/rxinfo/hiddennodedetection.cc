@@ -411,6 +411,7 @@ String
 HiddenNodeDetection::stats_handler(int mode)
 {
   StringAccum sa;
+  sa.reserve(4096);
 
   switch (mode) {
     case H_STATS:

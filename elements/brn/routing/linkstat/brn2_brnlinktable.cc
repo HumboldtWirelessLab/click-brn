@@ -455,6 +455,12 @@ String
 Brn2LinkTable::print_links()
 {
   StringAccum sa;
+#if CLICK_NS
+  sa.reserve(32786);
+#else
+  sa.reserve(4096);
+#endif
+
   sa << "<linktable id=\"";
   sa << _node_identity->getMasterAddress()->unparse().c_str();
   sa << "\" time=\"" << Timestamp::now() << "\" linkcnt=\"" << _links.size() << "\" >\n";
