@@ -166,6 +166,21 @@ BrnAvailableRates::lookup(EtherAddress eth)
   return Vector<MCS>();
 }
 
+Vector<MCS> *
+BrnAvailableRates::lookup_p(EtherAddress eth)
+{
+  if (!eth) {
+    click_chatter("%s: lookup called with NULL eth!\n", name().c_str());
+    return NULL;
+  }
+
+  DstInfo *dst = _rtable.findp(eth);
+  if (dst) return &(dst->_rates);
+  if (_default_rates.size()) return &_default_rates;
+
+  return NULL;
+}
+
 Timestamp
 BrnAvailableRates::get_timestamp(EtherAddress eth)
 {

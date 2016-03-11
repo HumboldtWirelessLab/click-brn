@@ -296,17 +296,17 @@ BRN2LinkStat::send_probe()
    */
   if (_rtable) {
     // my wireless device is capable to transmit packets at rates (e.g. 2 4 11 12 18 22 24 36 48 72 96 108)
-    Vector<MCS> rates = _rtable->lookup(dev_address);
+    Vector<MCS>* rates = _rtable->lookup_p(dev_address);
 
-    if (rates.size() && 1 + ptr + rates.size() < end) { // put my available rates into the packet
-      ptr[0] = rates.size(); // available rates count
+    if (rates->size() && 1 + ptr + rates->size() < end) { // put my available rates into the packet
+      ptr[0] = rates->size(); // available rates count
       ptr++;
       int x = 0;
-      while (ptr < end && x < rates.size()) {
-        ptr[x] = rates[x].get_packed_8();
+      while (ptr < end && x < rates->size()) {
+        ptr[x] = (*rates)[x].get_packed_8();
         x++;
       }
-      ptr += rates.size();
+      ptr += rates->size();
       lp->_flags |= PROBE_AVAILABLE_RATES; // indicate that rates are available
     }
   }

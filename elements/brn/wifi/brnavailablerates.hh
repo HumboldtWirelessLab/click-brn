@@ -234,6 +234,7 @@ class BrnAvailableRates : public BRNElement { public:
   typedef RTable::const_iterator RIter;
 
   Vector<MCS> lookup(EtherAddress eth);
+  Vector<MCS>* lookup_p(EtherAddress eth);
   Timestamp get_timestamp(EtherAddress eth);
 
   int insert(EtherAddress eth, Vector<MCS>);
