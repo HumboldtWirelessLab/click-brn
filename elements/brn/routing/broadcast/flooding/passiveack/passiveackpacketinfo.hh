@@ -49,8 +49,12 @@ class PassiveAckPacket
   Vector<EtherAddress> _unfinished_neighbors;
   Vector<int> _unfinished_neighbors_rx_prob;
 
-  PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries): _src(src->data()), _bcast_id(bcast_id), _max_retries(retries),
-                                                                                                             _retries(0), _cnt_finished_passiveack_nodes(0)
+  int _packet_size;
+
+  PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries, int16_t packet_size): _src(src->data()), _bcast_id(bcast_id),
+                                                                                                                                  _max_retries(retries), _retries(0),
+                                                                                                                                  _cnt_finished_passiveack_nodes(0),
+                                                                                                                                  _packet_size(packet_size)
   {
     if ( passiveack != NULL ) {
       _passiveack.reserve(passiveack->size() + 1);

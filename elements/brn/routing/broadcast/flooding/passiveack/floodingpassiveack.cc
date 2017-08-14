@@ -55,6 +55,7 @@ FloodingPassiveAck::FloodingPassiveAck():
   _dequeued_pkts(0),
   _retransmissions(0),
   _pre_removed_pkts(0),
+  _pre_removed_pkts_timeout(0),
   _retransmit_broadcast(NULL)
 {
   BRNElement::init();
@@ -112,7 +113,7 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
     passiveack = &(cnml->_neighbors);
   }
 
-  PassiveAckPacket *pap = new PassiveAckPacket(src, bcast_id, passiveack, retries);
+  PassiveAckPacket *pap = new PassiveAckPacket(src, bcast_id, passiveack, retries, p->length());
 
   p_queue.push_back(pap);
   _queued_pkts++;
@@ -163,15 +164,20 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
   set_unfinished_neighbors(pap);
+  bool pap_tx_timeout = pap->tx_timeout(now, _dfl_timeout);
 
   if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
         packet_is_finished(pap) ||                                                             //or packet is finished (all passiv ack nodes or cnt based
-        pap->tx_timeout(now, _dfl_timeout)) {                                                  //or timeout
+        pap_tx_timeout) {                                                                      //or timeout
 
-    BRN_DEBUG("Finished with %d retries left! Reson: %d %d %d (reject pack-fin timeout)",pap->retries_left(), 
+    BRN_DEBUG("Finished with %d retries left! Reson: %d %d %d (reject pack-fin timeout)",pap->retries_left(),
                 (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 ))?1:0,
-                packet_is_finished(pap)?1:0, pap->tx_timeout(now, _dfl_timeout)?1:0);
+                packet_is_finished(pap)?1:0, pap_tx_timeout?1:0);
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
+    if ( pap_tx_timeout ) {
+      _flooding_db->set_as_timeout(src, bcast_id, NULL);
+      _pre_removed_pkts_timeout++;
+    }
 
     _queued_pkts--;
 
@@ -261,7 +267,8 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
 
   bool cnt_based_abort = ((_cntbased_min_neighbors_for_abort > 0) && (_cntbased_min_neighbors_for_abort <= pap->_cnt_finished_passiveack_nodes ));
 
-  BRN_DEBUG("Finished?: Retries left: %d cnt_based_abort: %d abort_on_finished: %d count_finihsed_n: %d",
+  BRN_DEBUG("Finished (%s:%d)?: Retries left: %d cnt_based_abort: %d abort_on_finished: %d count_unfinished_n: %d",
+                        pap->_src.unparse().c_str(),pap->_bcast_id,
                         pap->retries_left(), cnt_based_abort?1:0,
                         _abort_on_finished,count_unfinished_neighbors(pap));
 
@@ -299,7 +306,8 @@ FloodingPassiveAck::stats()
   sa << "\" retries=\"" << _dfl_retries << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _enqueued_pkts << "\" deletes=\"" << _dequeued_pkts;
   sa << "\" queued=\"" << _queued_pkts;
-  sa << "\" retransmissions=\"" << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts << "\" >\n";
+  sa << "\" retransmissions=\"" << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts;
+  sa << "\" timeouts=\"" << _pre_removed_pkts_timeout << "\" >\n";
 
   for ( int i = 0; i < p_queue.size(); i++ ) {
     PassiveAckPacket *p_next = p_queue[i];

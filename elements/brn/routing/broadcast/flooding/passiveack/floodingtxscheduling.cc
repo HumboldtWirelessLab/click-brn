@@ -128,7 +128,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
 
   BenefitMap benefit_map;
 
-  Vector<EtherAddress> same_prio_ea;
+  Vector<EtherAddress> same_prio_ea; //TODO: used for what?? Same prio sort by mac (Slot selection)
 
   //get all neighbors
   CachedNeighborsMetricList* own_cnml = _fhelper->get_filtered_neighbors(me);
@@ -225,8 +225,12 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
     BRN_DEBUG("Same Prio %d Own benefit: %d", same_prio, own_benefit);
   }
 
+  int max_packet_time = _dfl_interval/10;
   //TODO: use same prio_ea-vector to sort node by mac
-  int delay = ((higher_prio * _dfl_interval) / 10) + (click_random() % (same_prio+1));
+  //int max_packet_time = pap->_packet_size << 3; // (<< 3) -> in Bits; Overall: t in us at 1MBIT/s (1000Bits/ms)
+  //           Slots before (higher prio)    +  (SubSlots duration (slot dur / no. nodes) * (own random slot))
+  int delay = (higher_prio * max_packet_time) + ((max_packet_time/(same_prio+1)) * (click_random() % (same_prio+1))); //in us
+  //delay /= 1000;
 
   benefit_map.clear();
   same_prio_ea.clear();

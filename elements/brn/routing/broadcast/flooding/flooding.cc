@@ -258,7 +258,7 @@ Flooding::push( int port, Packet *packet )
     uint8_t flags = bcast_header->flags;
     uint32_t rxdatasize = bcast_header->extra_data_size;
 
-    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
+    BRN_DEBUG("Src/ID: %s:%d Fwd: %s",src.unparse().c_str(),p_bcast_id , fwd.unparse().c_str());
 
     BroadcastNode *new_bcn = _flooding_db->add_broadcast_node(&src);
 
@@ -538,8 +538,10 @@ Flooding::push( int port, Packet *packet )
 
     int no_transmissions = 1;       //in the case of wired
     int no_rts_transmissions = 0;
+    int no_retries = (int)(ceh->retries);
 
-    bool packet_is_tx_abort = ((port == 2) && (ceh->flags & WIFI_EXTRA_TX_ABORT));
+    bool packet_is_tx_abort = ((port == 2) && ((ceh->flags & WIFI_EXTRA_TX_ABORT) != 0));
+    int packet_is_tx_abort_int_inc = (int)(packet_is_tx_abort?0:1);
 
     if (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS) {
 
@@ -547,21 +549,22 @@ Flooding::push( int port, Packet *packet )
         no_rts_transmissions = (int)(ceh->virt_col >> 4);
         no_transmissions = (int)(ceh->virt_col & 15);
 
-        if (no_transmissions != ((int)ceh->retries + (packet_is_tx_abort?0:1))) {
-          BRN_ERROR("notx: %d tx: %d rts: %d Pad: %d (Port: %d Abort: %d Retries: %d Dst: %s)",
-                                                                            no_transmissions, (int)((int)ceh->virt_col & (int)15),
-                                                                            no_rts_transmissions, (int)ceh->virt_col,
-                                                                            port, (int)((ceh->flags & WIFI_EXTRA_TX_ABORT)?1:0),
-                                                                            (int)ceh->retries, rx_node.unparse().c_str());
+        if (no_transmissions != (no_retries + packet_is_tx_abort_int_inc)) {
+          BRN_ERROR("notx: %d tx: %d rts: %d Pad: %d (Port: %d Abort: %d Retries: %d Dst: %s AbortInc: %d)",
+                                                                    no_transmissions, (int)((int)ceh->virt_col & (int)15),
+                                                                    no_rts_transmissions, (int)ceh->virt_col,
+                                                                    port, (int)(((ceh->flags & WIFI_EXTRA_TX_ABORT)!=0)?1:0),
+                                                                    no_retries, rx_node.unparse().c_str(), packet_is_tx_abort_int_inc);
 
-          if ( (ceh->flags & WIFI_EXTRA_DO_RTS_CTS) == 0 ) {
-            assert(no_transmissions == ((int)ceh->retries + ((packet_is_tx_abort)?0:1)));
+          if ( ((ceh->flags & WIFI_EXTRA_DO_RTS_CTS) == 0) && (no_rts_transmissions > 0) ) {
+            click_chatter("NoT: %d Retries: %d tx_abort: %d",no_transmissions,(int)ceh->retries,packet_is_tx_abort);
+            assert(no_transmissions == ((int)(ceh->retries) + packet_is_tx_abort_int_inc));
           }
         }
 
       } else {
         //  TODO: handle RTS/CTS without WIFI_EXTRA_EXT_RETRY_INFO
-        no_transmissions = (int)ceh->retries + ((packet_is_tx_abort)?0:1);
+        no_transmissions = (int)(ceh->retries) + packet_is_tx_abort_int_inc;
       }
     }
 

@@ -210,6 +210,15 @@ FloodingDB::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint3
 }
 
 void
+FloodingDB::set_as_timeout(EtherAddress *src, uint16_t id, EtherAddress *last_node)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  assert(bcn != NULL);
+
+  bcn->set_as_timeout(id, last_node);
+}
+
+void
 FloodingDB::inc_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
@@ -341,7 +350,8 @@ FloodingDB::table()
       sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" rts_sent=\"";
       sa << (uint32_t)bcn->_bcast_rts_snd_list[i] << "\" time=\"";
       sa << bcn->_bcast_time_list[i].unparse() << "\" unicast_target=\"";
-      sa << (uint32_t)(((bcn->_bcast_flags_list[i] & FLOODING_FLAGS_ME_UNICAST_TARGET) == 0)?0:1) << "\" >\n";
+      sa << (uint32_t)(((bcn->_bcast_flags_list[i] & FLOODING_FLAGS_ME_UNICAST_TARGET) == 0)?0:1) << "\" timeout=\"";
+      sa << (uint32_t)(((bcn->_bcast_flags_list[i] & FLOODING_FLAGS_TIMEOUT) == 0)?0:1) << "\">\n";
 
       for ( int j = 0; j < bcn->_flooding_node_info_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse();

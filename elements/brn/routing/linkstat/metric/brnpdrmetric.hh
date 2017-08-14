@@ -40,6 +40,9 @@ CLICK_DECLS
  * The Packet Del. Ratio metric (PDR).
  *
  * TODO: Metric is not useful for add!! use mul instead. 
+ *
+ * Important: Result metric (rev and fwd together) should never be greater than 9999 since this is the value for invalid link!!!
+ * thats why we use fwd*64+rev/2 = pdr_metric
  */
 class BRNPDRMetric : public BRN2GenericMetric {
 

@@ -73,10 +73,11 @@ class BroadcastNode
 #define FLOODING_FLAGS_ME_SRC             1
 #define FLOODING_FLAGS_TX_ABORT           2
 #define FLOODING_FLAGS_ME_UNICAST_TARGET  4 /* as long as i'm not unicast target and did not forward, nobody knows that i have received it */
+#define FLOODING_FLAGS_TIMEOUT            8 /* set as timeouted */
 
   Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
-  //stats for one node of one packet
+  //stats for one node of one packet-ID/SRC
   struct flooding_node_info {
     uint8_t etheraddr[6];
 
@@ -86,6 +87,10 @@ class BroadcastNode
     uint8_t tx_unicast_count; //number of unicast transmission (no mac reties!!) to this node (set by floodunicast)
 
     uint8_t flags;
+
+    uint8_t flags_ext;
+
+    uint8_t reserved;
 
 #define FLOODING_NODE_INFO_FLAGS_FORWARDED                    1
 #define FLOODING_NODE_INFO_FLAGS_FINISHED                     2
@@ -103,7 +108,10 @@ class BroadcastNode
 #define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY 64
 
 #define FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET     128
-  };
+
+#define FLOODING_NODE_EXTINFO_FLAGS_NODE_TIMEOUT               1
+
+};
 
 
 #define FLOODING_NODE_INFO_RESULT_IS_NEW                         1
@@ -239,6 +247,13 @@ class BroadcastNode
   inline int get_sent(uint16_t id) const {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     return (_bcast_id_list[index] == id)?_bcast_snd_list[index]:0;
+  }
+
+  inline void set_as_timeout(uint16_t id, EtherAddress */*ea*/) {
+    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+    if (_bcast_id_list[index] == id) {
+      _bcast_flags_list[index] |= FLOODING_FLAGS_TIMEOUT;
+    }
   }
 
   /**
@@ -618,6 +633,7 @@ class FloodingDB : public BRNElement {
   void forward_attempt(EtherAddress *src, uint16_t id);
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint16_t id);
   void sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint32_t no_rts_transmission);
+  void set_as_timeout(EtherAddress *src, uint16_t id, EtherAddress *last_node);
 
   int add_node_info(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
   int add_responsible_node(EtherAddress *src, uint16_t id, EtherAddress *last_node);

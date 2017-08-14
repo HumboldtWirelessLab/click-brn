@@ -109,7 +109,7 @@ private:
 
   bool packet_is_finished(PassiveAckPacket *pap);
 
-  uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
+  uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts, _pre_removed_pkts_timeout;
 
   PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id) const;
 
