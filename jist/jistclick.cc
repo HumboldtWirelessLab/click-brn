@@ -28,8 +28,6 @@
 #include <unistd.h>
 #endif //HAVE_UNISTD_H
 
-//#include <clicknet/wifi.h>
-
 #include <click/router.hh>
 #include <click/error.hh>
 #include <click/string.hh>
@@ -78,6 +76,13 @@ public:
   
   int unsupported_command_counter;
 };
+
+CLICK_DECLS
+uint32_t click_random() {
+    return rand();
+}
+
+CLICK_ENDDECLS
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -858,9 +863,11 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
     }
     default:
     {
-      if ( router_state->unsupported_command_counter < 5 ) {
-        printf("unsupported command: %d\n",cmd);
-	router_state->unsupported_command_counter++;
+      if ( router_state != NULL ) {
+        if ( router_state->unsupported_command_counter < 5 ) {
+          printf("unsupported command: %d\n",cmd);
+          router_state->unsupported_command_counter++;
+        }
       }
       r = -1;
     }

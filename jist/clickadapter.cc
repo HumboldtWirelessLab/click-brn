@@ -22,22 +22,77 @@
 #include <jni.h>
 #include <java_array.hh>
 #include <clickadapter.hh>
+#include <sys/time.h>
+#include <click/simclick.h>
 extern JNIEnv     *javaEnv;
 
 enum 
 {
-  METHOD_sim_ifid_from_name = 0,
-  METHOD_sim_ipaddr_from_name = 1,
-  METHOD_sim_macaddr_from_name = 2,
-  METHOD_sim_send_to_if = 3,
-  METHOD_sim_schedule = 4,
-  METHOD_sim_get_node_name = 5,
-//  METHOD_sim_if_ready = 6, 
-  METHOD_sim_trace = 7, 
-  METHOD_sim_get_node_id = 8,
-  METHOD_sim_get_next_pkt_id = 9, 
+/*
+#define SIMCLICK_VERSION<------><------>0  // none
+#define SIMCLICK_SUPPORTS<-----><------>1  // int call
+#define SIMCLICK_IFID_FROM_NAME><------>2  // const char *ifname
+#define SIMCLICK_IPADDR_FROM_NAME<----->3  // const char *ifname, char *buf, int len
+#define SIMCLICK_MACADDR_FROM_NAME<---->4  // const char *ifname, char *buf, int len
+#define SIMCLICK_SCHEDULE<-----><------>5  // struct timeval *when
+#define SIMCLICK_GET_NODE_NAME<><------>6  // char *buf, int len
+#define SIMCLICK_IF_READY<-----><------>7  // int ifid
+#define SIMCLICK_TRACE<><------><------>8  // const char *event
+#define SIMCLICK_GET_NODE_ID<--><------>9  // none
+#define SIMCLICK_GET_NEXT_PKT_ID<------>10 // none
+#define SIMCLICK_CHANGE_CHANNEL><------>11 // int ifid, int channelid
+#define SIMCLICK_IF_PROMISC<---><------>12 // int ifid
+#define SIMCLICK_IPPREFIX_FROM_NAME<--->13 // const char *ifname, char *buf, int len
+#define SIMCLICK_GET_RANDOM_INT><------>14 // uint32_t *result, uint32_t max
+#define SIMCLICK_GET_DEFINES<--><------>15 // char *buf, size_t *size
 
-  _METHOD_COUNT = 10
+#define SIMCLICK_GET_NODE_POSITION       20 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_SET_NODE_POSITION       21 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_GET_PERFORMANCE_COUNTER 22 // int ifid, int *performance_counter
+#define SIMCLICK_CCA_OPERATION           23 // int ifid, int cca_operation, int cca_value
+#define SIMCLICK_WIFI_SET_BACKOFF        24 // int (no queues) + int (no max queues) + int *cwmin + int *cwmax
+#define SIMCLICK_WIFI_GET_BACKOFF        25 // int (no queues) + int (no max queues) + int *cwmin + int *cwmax
+#define SIMCLICK_WIFI_TX_CONTROL         26 // int (operation) +  data //see elements/brn/sim/txcontrol.h
+#define SIMCLICK_WIFI_RX_CONTROL         27 // int (operation) +  data //see elements/brn/sim/txcontrol.h
+#define SIMCLICK_WIFI_GET_RXTXSTATS      28 // void *rxtxstats (struct rx_tx_stats*)
+#define SIMCLICK_WIFI_GET_TXPOWER        29 // int (txpower)
+#define SIMCLICK_WIFI_SET_TXPOWER        30 // int (txpower)
+#define SIMCLICK_WIFI_GET_RATES          31 // int no_rates, int* rates
+*/
+
+  METHOD_sim_version = SIMCLICK_VERSION,                     //0
+  METHOD_sim_supports = SIMCLICK_SUPPORTS,
+  METHOD_sim_ifid_from_name = SIMCLICK_IFID_FROM_NAME,
+  METHOD_sim_ipaddr_from_name = SIMCLICK_IPADDR_FROM_NAME,
+  METHOD_sim_macaddr_from_name = SIMCLICK_MACADDR_FROM_NAME,
+  METHOD_sim_schedule = SIMCLICK_SCHEDULE,                   //5
+  METHOD_sim_get_node_name = SIMCLICK_GET_NODE_NAME,
+  METHOD_sim_if_ready = SIMCLICK_IF_READY,
+  METHOD_sim_trace = SIMCLICK_TRACE,
+  METHOD_sim_get_node_id = SIMCLICK_GET_NODE_ID,
+  METHOD_sim_get_next_pkt_id = SIMCLICK_GET_NEXT_PKT_ID,     //10
+  METHOD_sim_change_channel = SIMCLICK_CHANGE_CHANNEL,
+  METHOD_sim_if_promisc = SIMCLICK_IF_PROMISC,
+  METHOD_sim_ipprefix_from_name = SIMCLICK_IPPREFIX_FROM_NAME,
+  METHOD_sim_get_random_int = SIMCLICK_GET_RANDOM_INT,
+  METHOD_sim_get_defines = SIMCLICK_GET_DEFINES,             //15
+
+  METHOD_sim_send_to_if = 16,
+
+  METHOD_sim_get_node_position = SIMCLICK_GET_NODE_POSITION,                     //20
+  METHOD_sim_set_node_position = SIMCLICK_SET_NODE_POSITION,
+  METHOD_sim_get_performance_counter = SIMCLICK_GET_PERFORMANCE_COUNTER,
+  METHOD_sim_cca_operation = SIMCLICK_CCA_OPERATION,
+  METHOD_sim_wifi_set_backoff = SIMCLICK_WIFI_SET_BACKOFF,
+  METHOD_sim_wifi_get_backoff = SIMCLICK_WIFI_GET_BACKOFF,                   //25
+  METHOD_sim_wifi_tx_control = SIMCLICK_WIFI_TX_CONTROL,
+  METHOD_sim_wifi_rx_control = SIMCLICK_WIFI_RX_CONTROL,
+  METHOD_sim_wifi_get_rxtxstats = SIMCLICK_WIFI_GET_RXTXSTATS,
+  METHOD_sim_wifi_get_tx_power = SIMCLICK_WIFI_GET_TXPOWER,
+  METHOD_sim_wifi_set_tx_power = SIMCLICK_WIFI_SET_TXPOWER,     //30
+  METHOD_sim_wifi_get_rates = SIMCLICK_WIFI_GET_RATES,          //31
+
+  _METHOD_COUNT = 32
 };
 
 namespace brn {
