@@ -65,7 +65,7 @@ class Packet { public:
     typedef void (*buffer_destructor_type)(unsigned char* buf, size_t sz, void* argument);
     static WritablePacket* make(unsigned char* data, uint32_t length,
 				buffer_destructor_type buffer_destructor,
-                                void* argument = (void*) 0) CLICK_WARN_UNUSED_RESULT;
+                                void* argument = (void*) 0, int headroom = 0, int tailroom = 0) CLICK_WARN_UNUSED_RESULT;
 #endif
 
     static void static_cleanup();
@@ -271,6 +271,7 @@ class Packet { public:
     inline void shrink_data(const unsigned char *data, uint32_t length);
     inline void change_headroom_and_length(uint32_t headroom, uint32_t length);
 #endif
+    bool copy(Packet* p, int headroom=0);
     //@}
 
     /** @name Header Pointers */
@@ -638,6 +639,12 @@ class Packet { public:
 #endif
 	*reinterpret_cast<click_aliasable_void_pointer_t *>(xanno()->c + i) = const_cast<void *>(x);
     }
+
+#if !CLICK_LINUXMODULE
+    inline Packet* data_packet() {
+        return _data_packet;
+    }
+#endif
 
     inline void clear_annotations(bool all = true);
     inline void copy_annotations(const Packet *);

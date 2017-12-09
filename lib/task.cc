@@ -7,7 +7,7 @@
  * Copyright (c) 2002 International Computer Science Institute
  * Copyright (c) 2004-2007 Regents of the University of California
  * Copyright (c) 2008-2009 Meraki, Inc.
- * Copyright (c) 1999-2012 Eddie Kohler
+ * Copyright (c) 1999-2017 Eddie Kohler
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -88,19 +88,33 @@ CLICK_DECLS
  * @endcode
  */
 
+// Lock protection:
+// - _status, which contains home_thread_id, is_scheduled, and
+//   is_strong_unscheduled, may be changed at any time without locking.
+// - Changes to _thread are protected by old(_thread)->_pending_lock.
+//   Furthermore, only old(_thread) itself may change _thread
+//   (except that if old(_thread) is quiescent, anyone may change _thread).
+// - _pending_nextptr is generally protected by _thread->_pending_lock.
+//   It may be set by another thread only if it is 0.
+//   After acquiring _thread->_pending_lock, verify that _thread has not
+//   changed.
+// - _thread may be read at any time. However, if it is being read from a
+//   different thread, it might change underneath. Read it into a local
+//   variable. To arrange for _thread to change, set home_thread_id and
+//   add_pending().
+
 // Invariants:
-// - _home_thread_id, _is_scheduled, _is_strong_unscheduled may be changed
-//   at any time without locking.
-// - If _is_scheduled && !_is_strong_unscheduled && not on quiescent thread,
-//   then either on_scheduled_list() or _pending_nextptr != 0.
-// - _thread may be read at any time, but since it might change underneath,
-//   read it into a local variable.
-// - Changes to _thread are protected by _thread->_pending_lock.
-//   Furthermore, only _thread itself may change _thread
-//   (except that if _thread is quiescent, anyone may change _thread).
-//   To arrange for _thread to change, set _home_thread_id and add_pending().
-// - _pending_nextptr is protected by _thread->_pending_lock.
-//   But after acquiring this lock, verify that _thread has not changed.
+// - If is_scheduled && !is_strong_unscheduled && not on quiescent thread,
+//   then on_scheduled_list() || on_pending_list(). (The invariant is
+//   temporarily violated during the operation of schedule(), which sets
+//   is_scheduled then manipulates lists.)
+// - If on quiescent thread, then !on_scheduled_list() && !on_pending_list().
+//   (It is possible to transiently have _thread quiescent && on a list, if
+//   the task's thread is being changed.)
+// - If on_scheduled_list(), then _thread owns the relevant scheduled list.
+// - _pending_nextptr may be 0 (not on pending list), 1 (currently being
+//   processed by Task::process_pending: a temporary state), 2 (at end of
+//   list), >2 (in middle of list).
 
 bool
 Task::error_hook(Task *, void *)
@@ -111,8 +125,8 @@ Task::error_hook(Task *, void *)
 
 Task::~Task()
 {
-    if (scheduled() || on_pending_list())
-	cleanup();
+    if (needs_cleanup())
+        cleanup();
 }
 
 Master *
@@ -123,62 +137,132 @@ Task::master() const
 }
 
 
-inline void
-Task::add_pending_locked(RouterThread *thread)
+void
+Task::complete_schedule(RouterThread* process_pending_thread)
 {
-    if (!_pending_nextptr.x) {
-	_pending_nextptr.x = 1;
-	thread->_pending_tail->t = this;
-	thread->_pending_tail = &_pending_nextptr;
-	thread->add_pending();
+    RouterThread* thread = _thread;
+    if (!thread)
+        return;
+
+    // If called from another thread, or task's router isn't running,
+    // add_pending instead.
+    if ((process_pending_thread
+         ? process_pending_thread != thread
+         : !thread->current_thread_is_running())
+        || !router()->running()) {
+        if (_pending_nextptr.x < 2)
+            add_pending(process_pending_thread != 0);
+        return;
+    }
+
+    // If we get here, we know that thread->task_lock() is held by the
+    // current thread.
+
+    // Skip if already scheduled.
+    if (on_scheduled_list())
+        goto done;
+
+#if CLICK_LINUXMODULE
+    // tasks never run at interrupt time in Linux
+    assert(!in_interrupt());
+#endif
+#if CLICK_BSDMODULE
+    GIANT_REQUIRED;
+#endif
+
+#if HAVE_STRIDE_SCHED
+    // update pass
+    _pass = thread->pass() + _stride;
+
+# if HAVE_TASK_HEAP
+    _schedpos = thread->_task_heap.size();
+    thread->_task_heap.push_back(RouterThread::task_heap_element());
+    thread->task_reheapify_from(_schedpos, this);
+# elif 0
+    {
+        // look for 'n' immediately before where we should be scheduled
+        TaskLink *n = thread->_prev;
+        while (n != thread && PASS_GT(n->_pass, _pass))
+            n = n->_prev;
+        // schedule after 'n'
+        _next = n->_next;
+        _prev = n;
+        n->_next = this;
+        _next->_prev = this;
+    }
+# else
+    {
+        // look for 'n' immediately after where we should be scheduled
+        TaskLink *n = thread->_task_link._next;
+        while (n != &thread->_task_link && !PASS_GT(n->_pass, _pass))
+            n = n->_next;
+        // schedule before 'n'
+        _prev = n->_prev;
+        _next = n;
+        n->_prev = this;
+        _prev->_next = this;
+    }
+# endif
+
+#else /* !HAVE_STRIDE_SCHED */
+    // schedule at the end of the list
+    _prev = thread->_task_link._prev;
+    _next = &thread->_task_link;
+    thread->_task_link._prev = this;
+    _prev->_next = this;
+#endif /* HAVE_STRIDE_SCHED */
+
+ done:
+    if (process_pending_thread) {
+        click_fence();
+        _pending_nextptr.x = 0;
     }
 }
 
-void
-Task::add_pending()
-{
-    bool thread_match;
-    do {
-	RouterThread *thread = _thread;
-	SpinlockIRQ::flags_t flags = thread->_pending_lock.acquire();
-	thread_match = thread == _thread;
-	if (thread_match && thread->thread_id() >= 0)
-	    add_pending_locked(thread);
-	thread->_pending_lock.release(flags);
-    } while (!thread_match);
-}
 
-inline void
-Task::remove_pending_locked(RouterThread *thread)
+void
+Task::add_pending(bool always)
 {
-    if (_pending_nextptr.x) {
-	Pending *tptr = &thread->_pending_head;
-	while (tptr->x > 1 && tptr->t != this)
-	    tptr = &tptr->t->_pending_nextptr;
-	if (tptr->t == this) {
-	    *tptr = _pending_nextptr;
-	    if (_pending_nextptr.x <= 1) {
-		thread->_pending_tail = tptr;
-		if (tptr == &thread->_pending_head)
-		    tptr->x = 0;
-	    }
-	    _pending_nextptr.x = 0;
-	}
+    // lock current thread and wait for current process_pending to complete
+    // (indicated by _pending_nextptr.x == 1)
+    RouterThread* thread;
+    SpinlockIRQ::flags_t flags;
+    while (1) {
+        thread = _thread;
+        flags = thread->_pending_lock.acquire();
+        if (thread == _thread && (_pending_nextptr.x != 1 || always))
+            break;
+        thread->_pending_lock.release(flags);
     }
-}
 
-void
-Task::remove_pending()
-{
-    bool thread_match;
-    do {
-	RouterThread *thread = _thread;
-	SpinlockIRQ::flags_t flags = thread->_pending_lock.acquire();
-	thread_match = thread == _thread;
-	if (thread_match)
-	    remove_pending_locked(thread);
-	thread->_pending_lock.release(flags);
-    } while (!thread_match);
+    // quiescent threads have no pending list; if current thread is
+    // quiescent, but task has been moved, change threads now
+    if (thread->thread_id() < 0 && _status.home_thread_id >= 0) {
+        assert(!on_scheduled_list() && !on_pending_list());
+        RouterThread* next_thread = thread->master()->thread(_status.home_thread_id);
+        if (next_thread != thread) {
+            // No deadlock: lock order by thread_id()
+            SpinlockIRQ::flags_t next_flags = next_thread->_pending_lock.acquire();
+            _thread = next_thread;
+            thread->_pending_lock.release(flags);
+            thread = next_thread;
+            flags = next_flags;
+        }
+    }
+
+    // add to list, unless the router is in the process of dying
+    if (_pending_nextptr.x < 2) {
+        assert(_pending_nextptr.x == 0 || always);
+        if (thread->thread_id() >= 0 && !router()->dying()) {
+            _pending_nextptr.x = 2;
+            thread->_pending_tail->t = this;
+            thread->_pending_tail = &_pending_nextptr;
+            thread->add_pending();
+        } else
+            _pending_nextptr.x = 0;
+    }
+
+    thread->_pending_lock.release(flags);
 }
 
 
@@ -188,7 +272,9 @@ Task::initialize(Element *owner, bool schedule)
     assert(owner && !initialized() && !scheduled());
 
     Router *router = owner->router();
-    int tid = router->home_thread_id(owner);
+    int tid = _status.home_thread_id;
+    if (tid == -2)
+        tid = router->home_thread_id(owner);
     // Master::thread() returns the quiescent thread if its argument is out of
     // range
     _thread = router->master()->thread(tid);
@@ -204,7 +290,7 @@ Task::initialize(Element *owner, bool schedule)
     _status.home_thread_id = _thread->thread_id();
     _status.is_scheduled = schedule;
     if (schedule)
-	add_pending();
+        add_pending(false);
 }
 
 void
@@ -223,122 +309,98 @@ Task::cleanup()
     GIANT_REQUIRED;
 #endif
     if (initialized()) {
-        // Mark the task as unscheduled.
-	strong_unschedule();
+        // Move the task to a quiescent thread.
+        _status.home_thread_id = -1;
+        click_fence();
 
-	// Perhaps the task is enqueued on the current pending
-	// collection.  If so, remove it.
-	if (on_pending_list())
-	    remove_pending();
+        // Task must not be scheduled. If scheduled on another thread, wait
+        // for that thread to notice. If scheduled on this thread, remove
+        // it ourselves.
 
-        // If not on the current pending list, perhaps this task
-        // is on some list currently being processed by
-        // RouterThread::process_pending().  Wait until that
-        // processing is done.  It is safe to simply spin because
-        // pending list processing is so simple: processing a
-        // pending list will NEVER cause a task to get deleted, so
-        // ~Task is never called from RouterThread::process_pending().
-        while (on_pending_list())
-            click_relax_fence();
+        // Task must not be on any pending list. If on another thread, wait
+        // for that thread to notice. If on this thread, we must remove it
+        // ourselves.
 
-        // If currently scheduled, remove from schedule list.
-        // If scheduled on another thread, wait for that thread to
-        // notice. If scheduled on this thread, remove it.
-        if (on_scheduled_list()) {
-            assert(_thread && _thread->thread_id() >= 0);
-            while (on_scheduled_list()
-                   && !_thread->current_thread_is_running())
+        while (needs_cleanup()) {
+            RouterThread* thread = _thread;
+            if (!thread->current_thread_is_running_cleanup()) {
                 click_relax_fence();
-            if (_thread->current_thread_is_running())
+                continue;
+            }
+
+            if (on_scheduled_list()) {
                 remove_from_scheduled_list();
+                click_fence();
+                continue;
+            }
+
+            SpinlockIRQ::flags_t flags = thread->_pending_lock.acquire();
+            if (thread == _thread && on_pending_list()) {
+                Pending *tptr = &thread->_pending_head;
+                while (tptr->x > 2 && tptr->t != this)
+                    tptr = &tptr->t->_pending_nextptr;
+                // We'll usually have `tptr->t == this`; but if another
+                // thread's `Task::process_pending()` has just set
+                // `this->_thread` to this thread (because of an earlier
+                // move_thread), we might have `tptr->x == 1` (because the
+                // task is on the other thread's pending list still).
+                if (tptr->t == this) {
+                    *tptr = _pending_nextptr;
+                    if (_pending_nextptr.x == 2) {
+                        thread->_pending_tail = tptr;
+                        if (tptr == &thread->_pending_head)
+                            tptr->x = 0;
+                    }
+                    _pending_nextptr.x = 0;
+                }
+            }
+            thread->_pending_lock.release(flags);
         }
 
-	_owner = 0;
-	_thread = 0;
-    }
-}
-
-
-void
-Task::true_reschedule()
-{
-    RouterThread *thread = _thread;
-    if (unlikely(thread == 0 || thread->thread_id() < 0))
-	return;
-    if (thread->current_thread_is_running()) {
-	Router *router = _owner->router();
-	if (router->_running >= Router::RUNNING_BACKGROUND) {
-	    fast_schedule();
-	    return;
-	}
-    }
-    add_pending();
-}
-
-void
-Task::move_thread_second_half()
-{
-    RouterThread *old_thread;
-    SpinlockIRQ::flags_t flags;
-    while (1) {
-	old_thread = _thread;
-	flags = old_thread->_pending_lock.acquire();
-	if (old_thread == _thread)
-	    break;
-	old_thread->_pending_lock.release(flags);
-    }
-
-    if (old_thread->current_thread_is_running()
-	|| old_thread->thread_id() < 0) {
-	remove_from_scheduled_list();
-	remove_pending_locked(old_thread);
-	_thread = master()->thread(_status.home_thread_id);
-	old_thread->_pending_lock.release(flags);
-
-	if (_status.is_scheduled)
-	    add_pending();
-    } else {
-	add_pending_locked(old_thread);
-	old_thread->_pending_lock.release(flags);
+        _owner = 0;
+        _thread = 0;
     }
 }
 
 void
 Task::move_thread(int new_thread_id)
 {
-    if (likely(_thread != 0)) {
-	RouterThread *new_thread = master()->thread(new_thread_id);
-	// (new_thread->thread_id() might != new_thread_id)
-	_status.home_thread_id = new_thread->thread_id();
-	if (_status.home_thread_id != _thread->thread_id())
-	    move_thread_second_half();
-    }
+    _status.home_thread_id = new_thread_id;
+    click_fence();
+    Task::Status status(_status);
+    if (likely(_thread != 0)
+        && status.home_thread_id >= 0
+        && status.is_scheduled
+        && !status.is_strong_unscheduled
+        && _pending_nextptr.x < 2)
+        add_pending(false);
 }
 
 void
-Task::process_pending(RouterThread *thread)
+Task::process_pending(RouterThread* thread)
 {
-    // Must be called with thread->lock held.
-    // May be called in the process of destroying router(), so must check
-    // router()->_running when necessary.  (Not necessary for add_pending()
-    // since that function does it already.)
+    // Must be called with thread->task_lock held.
+    // May be called from thread->kill_router(), in which case
+    // !thread->current_thread_is_running().
+    assert(thread == _thread);
+
+    // Mark this task as being currently processed.
+    _pending_nextptr.x = 1;
+    click_fence();
 
     Task::Status status(_status);
-    if (status.is_strong_unscheduled == 2) {
-	// clean up is_strong_unscheduled values used for driver stop events
-	Task::Status new_status(status);
-	new_status.is_strong_unscheduled = false;
-	atomic_uint32_t::compare_swap(_status.status, status.status, new_status.status);
+    if (status.home_thread_id != thread->thread_id()) {
+        SpinlockIRQ::flags_t flags = thread->_pending_lock.acquire();
+        remove_from_scheduled_list();
+        click_fence();
+        _thread = thread->master()->thread(status.home_thread_id);
+        thread->_pending_lock.release(flags);
     }
 
-    if (status.home_thread_id != thread->thread_id())
-	move_thread_second_half();
-    else if (status.is_scheduled) {
-	if (router()->running())
-	    fast_schedule();
-	else
-	    add_pending();
-    }
+    if (status.is_scheduled && !status.is_strong_unscheduled)
+        complete_schedule(thread);
+    else
+        _pending_nextptr.x = 0;
 }
 
 CLICK_ENDDECLS

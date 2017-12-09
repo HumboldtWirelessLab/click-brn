@@ -319,8 +319,14 @@ ErrorHandler::clean_landmark(const String &landmark, bool with_colon)
 #define NUMBUF_SIZE	128
 #define ErrH		ErrorHandler
 
-static char *
-do_number(unsigned long num, char *after_last, int base, int flags)
+#if SIZEOF_UNSIGNED_LONG >= SIZEOF_VOID_P
+typedef unsigned long do_number_t;
+#else
+typedef uintptr_t do_number_t;
+#endif
+
+static char*
+do_number(do_number_t num, char *after_last, int base, int flags)
 {
     const char *digits =
 	((flags & ErrH::cf_uppercase) ? "0123456789ABCDEF" : "0123456789abcdef");
@@ -585,6 +591,7 @@ ErrorHandler::vxformat(int default_flags, const char *s, va_list val)
 	case 'd':
 	case 'i':
 	    flags |= cf_signed;
+            /* fallthrough */
 	case 'u':
 	number: {
 	    // protect numbuf from overflow
@@ -667,6 +674,7 @@ ErrorHandler::vxformat(int default_flags, const char *s, va_list val)
 
 	case 'X':
 	    flags |= cf_uppercase;
+            /* fallthrough */
 	case 'x':
 	    base = 16;
 	    goto number;
@@ -679,11 +687,10 @@ ErrorHandler::vxformat(int default_flags, const char *s, va_list val)
 		if (*s2 == '}')
 		    goto braces;
 	    }
-	    void *v = va_arg(val, void *);
+	    void* v = va_arg(val, void*);
 	    s2 = numbuf + NUMBUF_SIZE;
-	    s1 = do_number((unsigned long)v, (char *)s2, 16, flags);
-	    s1 = do_number_flags((char *)s1, (char *)s2, 16, flags | cf_alternate_form,
-				 precision, field_width);
+	    s1 = do_number((do_number_t) v, (char*) s2, 16, flags);
+	    s1 = do_number_flags((char*) s1, (char*) s2, 16, flags | cf_alternate_form, precision, field_width);
 	    break;
 	}
 

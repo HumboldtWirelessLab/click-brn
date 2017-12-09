@@ -27,13 +27,21 @@ On the contrary to FromDevice.u which acts as a sniffer by default, packets
 received by devices put in DPDK mode will NOT be received by the kernel, and
 will thus be processed only once.
 
+To use RSS (Receive Side Scaling) to receive packets from the same device
+on multiple queues (possibly pinned to different Click threads), simply
+use multiple FromDPDKDevice with the same PORT argument. Each
+FromDPDKDevice will open a different RX queue attached to the same port,
+and packets will be dispatched among the FromDPDKDevice elements that
+you can pin to different thread using StaticThreadSched.
+
 Arguments:
 
 =over 8
 
 =item PORT
 
-Integer.  Port identifier of the device.
+Integer or PCI address.  Port identifier of the device, or a PCI address in the
+format fffff:ff:ff.f
 
 =item QUEUE
 
@@ -53,6 +61,11 @@ The default is 32.
 =item NDESC
 
 Integer.  Number of descriptors per ring. The default is 256.
+
+=item ALLOW_NONEXISTENT
+
+Boolean.  Do not fail if the PORT do not existent. If it's the case the task
+will never run and this element will behave like Idle.
 
 =back
 
@@ -99,7 +112,7 @@ private:
     static int reset_count_handler(const String&, Element*, void*,
                                    ErrorHandler*) CLICK_COLD;
 
-    unsigned int _port_id;
+    DPDKDevice* _dev;
     int _queue_id;
     bool _promisc;
     unsigned int _burst_size;
