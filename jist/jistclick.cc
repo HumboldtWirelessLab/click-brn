@@ -788,6 +788,23 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
 #define SIMCLICK_GET_NODE_ID    9  // none
 #define SIMCLICK_GET_NEXT_PKT_ID  10 // none
 #define SIMCLICK_CHANGE_CHANNEL   11 // int ifid, int channelid
+#define SIMCLICK_IF_PROMISC		12 // int ifid
+#define SIMCLICK_IPPREFIX_FROM_NAME	13 // const char *ifname, char *buf, int len
+#define SIMCLICK_GET_RANDOM_INT		14 // uint32_t *result, uint32_t max
+#define SIMCLICK_GET_DEFINES		15 // char *buf, size_t *size
+
+#define SIMCLICK_GET_NODE_POSITION       20 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_SET_NODE_POSITION       21 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_GET_PERFORMANCE_COUNTER 22 // int ifid, int *performance_counter
+#define SIMCLICK_CCA_OPERATION           23 // int ifid, int cca_operation, int cca_value
+#define SIMCLICK_WIFI_SET_BACKOFF        24 // int (no queues) + int (no max queues) + int *cwmin + int *cwmax
+#define SIMCLICK_WIFI_GET_BACKOFF        25 // int (no queues) + int (no max queues) + int *cwmin + int *cwmax
+#define SIMCLICK_WIFI_TX_CONTROL         26 // int (operation) +  data //see elements/brn/sim/txcontrol.h
+#define SIMCLICK_WIFI_RX_CONTROL         27 // int (operation) +  data //see elements/brn/sim/txcontrol.h
+#define SIMCLICK_WIFI_GET_RXTXSTATS      28 // void *rxtxstats (struct rx_tx_stats*)
+#define SIMCLICK_WIFI_GET_TXPOWER        29 // int (txpower)
+#define SIMCLICK_WIFI_SET_TXPOWER        30 // int (txpower)
+#define SIMCLICK_WIFI_GET_RATES          31 // int no_rates, int* rates
 */
 //  printf("command: %d\n",cmd);
   switch (cmd) {
@@ -868,6 +885,8 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
           printf("unsupported command: %d\n",cmd);
           router_state->unsupported_command_counter++;
         }
+      } else {
+        printf("unsupported command: %d\n",cmd);
       }
       r = -1;
     }
