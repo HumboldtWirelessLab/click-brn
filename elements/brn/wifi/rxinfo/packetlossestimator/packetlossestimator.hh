@@ -5,7 +5,6 @@
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <click/args.hh>
-#include <click/ip6address.hh>
 #include <click/packet_anno.hh>
 #include <click/router.hh>
 
