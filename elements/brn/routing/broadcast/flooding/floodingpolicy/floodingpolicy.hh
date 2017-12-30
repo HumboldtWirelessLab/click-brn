@@ -6,10 +6,11 @@
 
 CLICK_DECLS
 
-#define POLICY_ID_SIMPLE      1
-#define POLICY_ID_PROBABILITY 2
-#define POLICY_ID_MPR         3
-#define POLICY_ID_OVERLAY     4
+#define POLICY_ID_SIMPLE       1
+#define POLICY_ID_PROBABILITY  2
+#define POLICY_ID_MPR          3
+#define POLICY_ID_OVERLAY      4
+#define POLICY_ID_COUNTERBASED 5
 
 /** TODO: add extra element for FloodingInfd (like db)
  */
