@@ -1933,7 +1933,7 @@ TCPConnection::print_state(StringAccum &sa)
 	
 	sa.snprintf(80, "| Seq    : snd_nxt: %u, snd_una: %u, (in-flight: %u)\n", 
 		tp->snd_nxt, tp->snd_una, tp->snd_nxt - tp->snd_una); 
-	sa.snprintf(80, "| Windows: rcv_adv: %u, rcv_wnd: %u, snd_cwnd: %u \n",
+	sa.snprintf(80, "| Windows: rcv_adv: %u, rcv_wnd: %lu, snd_cwnd: %lu \n",
 		tp->rcv_adv, tp->rcv_wnd, tp->snd_cwnd); 
 	sa.snprintf(80, "| Timing: t_srtt: %u, t_rttvar: %u, now: %u\n",
 		tp->t_srtt, tp->t_rttvar, speaker()->tcp_now()); 
