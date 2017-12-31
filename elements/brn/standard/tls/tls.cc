@@ -560,5 +560,5 @@ void TLS::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns)
+ELEMENT_REQUIRES(ns)
 EXPORT_ELEMENT(TLS)

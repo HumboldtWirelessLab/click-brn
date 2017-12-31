@@ -195,5 +195,5 @@ void ShamirServer::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns TLS)
+ELEMENT_REQUIRES(ns TLS)
 EXPORT_ELEMENT(ShamirServer)

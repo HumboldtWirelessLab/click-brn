@@ -110,4 +110,5 @@ String BrnAnnRateNet::test()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(ns)
 ELEMENT_PROVIDES(BrnAnnRateNet)

@@ -12,7 +12,6 @@
 #ifndef KeyServer_HH_
 #define KeyServer_HH_
 
-
 #include <string>
 #include <click/timer.hh>
 #include <click/element.hh>
