@@ -1540,6 +1540,56 @@ fi
 AC_SUBST(TCC_INCLUDES)
 AC_SUBST(TCC_LIBS)
 
+dnl tcceasy library
+
+explicit_tcceasy=no
+AC_ARG_WITH(tcceasy, [[  --with-tcceasy[=PREFIX]   locate tcceasy library (optional)]],
+  [tcceasyprefix=$withval; if test -z "$withval" -o "$withval" = yes; then tcceasyprefix=; fi],
+  tcceasyprefix=; explicit_tcceasy=no)
+
+if test "$tcceasyprefix" != no -a "$have_tcc_h" = yes -a "$have_libtcc" = yes; then
+    saveflags="$CPPFLAGS"; test -n "$tcceasyprefix" && CPPFLAGS="$CPPFLAGS -I$tcceasyprefix/include/tcceasy"
+    AC_CHECK_HEADER(tcceasy/dynamic_source.h, have_tcceasy_h=yes, have_tcceasy_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    tcceasysavelibs="$LIBS"
+    LIBS="-ldl $LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tcceasyprefix" && LDFLAGS="$LDFLAGS -ldl -ltcc -L$tcceasyprefix/lib"
+    AC_CHECK_LIB(tcceasy, new_dynamic_src, have_libtcceasy=yes, have_libtcceasy=no)
+    LDFLAGS="$saveflags"
+    LIBS="$tcceasysavelibs"
+
+    if test $have_tcceasy_h = yes -a $have_libtcceasy = yes; then
+	test -n "$tcceasyprefix" && TCCEASY_INCLUDES="-I$tcceasyprefix/include" && TCCEASY_LIBS="-L$tcceasyprefix/lib"
+	TCCEASY_LIBS="$TCCEASY_LIBS -ltcceasy "
+        AC_DEFINE([HAVE_TCCEASY], [1], [Define if you have -ltcceasy and dynamic_source.h.])
+	LIBS="$LIBS $TCCEASY_LIBS"
+    else
+      if test $explicit_tcceasy = yes; then
+	TCCEASY_INCLUDES= TCCEASY_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-tcceasy, but the tcceasy headers and/or libraries
+are not where you said they would be.  Run again supplying --without-tcceasy
+or --with-tcceasy=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,TCCEASY"
+      else
+        FINDELEMFLAGS="$FINDELEMFLAGS -x TCCEASY"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(TCCEASY_INCLUDES)
+AC_SUBST(TCCEASY_LIBS)
+
 dnl lwip library
 
 explicit_lwip=no

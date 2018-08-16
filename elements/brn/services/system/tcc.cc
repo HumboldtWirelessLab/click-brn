@@ -18,6 +18,13 @@ TCC::TCC():
   click_tcc_simple_action(NULL)
 {
   BRNElement::init();
+#ifdef HAVE_TCCEASY
+  tcceasy_handler = new_dynamic_src();
+  add_dependency(tcceasy_handler, "tcc_packet_resize",(void*)tcc_packet_resize);
+  add_dependency(tcceasy_handler, "tcc_packet_size",(void*)tcc_packet_size);
+  add_dependency(tcceasy_handler, "tcc_packet_data",(void*)tcc_packet_data);
+  add_dependency(tcceasy_handler, "tcc_packet_kill",(void*)tcc_packet_kill);
+#endif
 }
 
 TCC::~TCC() {
@@ -73,22 +80,46 @@ TCC::set_simple_action_code(String code)
 
     /* get entry symbol */
     int (*click_tcc_init)();
+
+#ifdef HAVE_TCCEASY
+    src_function* tcceasy_srcfunc = find_func(tcceasy_handler, "click_tcc_init");
+
+    if ( tcceasy_srcfunc != NULL ) {
+      click_chatter("Funcname: %s",get_name(tcceasy_srcfunc));
+	  click_tcc_init = (int(*)())tcc_get_symbol(tcceasy_srcfunc->state->s, "click_tcc_init");
+    } else {
+      click_chatter("Failed");
+    }
+#else
     click_tcc_init = (int(*)())tcc_get_symbol(_tcc_s, "click_tcc_init");
 
     if (!click_tcc_init) {
       _tcc_s = NULL;
       return;
     }
+#endif
 
     /* run the code */
     int result = click_tcc_init();
     BRN_ERROR("Init: %d",result);
 
+#ifdef HAVE_TCCEASY
+    tcceasy_srcfunc = find_func(tcceasy_handler, "click_tcc_simple_action");
+
+    if ( tcceasy_srcfunc != NULL ) {
+      click_chatter("Funcname: %s",get_name(tcceasy_srcfunc));
+      click_tcc_simple_action = (int(*)())tcc_get_symbol(tcceasy_srcfunc->state->s, "click_tcc_simple_action");
+    } else {
+      click_chatter("Failed");
+    }
+#else
     click_tcc_simple_action = (Packet*(*)(Packet *))tcc_get_symbol(_tcc_s, "click_tcc_simple_action");
+#endif
 
     if (!click_tcc_simple_action) {
       BRN_ERROR("no simple_action");
     }
+
 
     return;
 }
@@ -146,6 +177,11 @@ TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_
    mem = malloc(size); //TODO: memleak!!! use TCCFUNCTION to hold pointer
    tcc_relocate(tcc_s, mem);
 #endif
+#endif
+
+#ifdef HAVE_TCCEASY
+  click_chatter("Use easy TCC");
+  dynamic_load_from_string(tcceasy_handler, code.c_str(), "default", true);
 #endif
 
   return 0;

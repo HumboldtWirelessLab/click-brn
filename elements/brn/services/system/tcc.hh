@@ -7,6 +7,14 @@
 
 #include "libtcc.h"
 
+#ifdef HAVE_TCCEASY
+
+extern "C" {
+#include "tcceasy/tcceasy.h"
+}
+
+#endif
+
 CLICK_DECLS
 
 #define DATATYPE_UNKNOWN       0
@@ -98,6 +106,8 @@ class TCC : public BRNElement {
  private:
 
   TCCState *_tcc_s;
+
+  dyn_src *tcceasy_handler;
 
   Packet *(*click_tcc_simple_action)(Packet *p);
 

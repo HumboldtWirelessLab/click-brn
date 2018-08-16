@@ -666,6 +666,8 @@ LIBIW_LIBS
 LIBIW_INCLUDES
 LWIP_LIBS
 LWIP_INCLUDES
+TCCEASY_LIBS
+TCCEASY_INCLUDES
 TCC_LIBS
 TCC_INCLUDES
 OPENSSL_LIBS
@@ -876,6 +878,7 @@ with_proper
 with_expat
 with_openssl
 with_tcc
+with_tcceasy
 with_libiw
 with_openann
 with_libos
@@ -1600,6 +1603,7 @@ Optional Packages:
   --with-expat[=PREFIX]   locate expat XML library (optional)
   --with-openssl[=PREFIX]   locate openssl library (optional)
   --with-tcc[=PREFIX]   locate tcc library (optional)
+  --with-tcceasy[=PREFIX]   locate tcceasy library (optional)
   --with-lwip[=PREFIX]   locate lwip library (optional)
   --with-libiw[=PREFIX]   locate iw library (optional)
   --with-openann[=PREFIX]   locate openann library (optional)
@@ -11464,6 +11468,115 @@ or --with-tcc=PREFIX.
         FINDELEMFLAGS="$FINDELEMFLAGS,TCC"
       else
         FINDELEMFLAGS="$FINDELEMFLAGS -x TCC"
+      fi
+
+
+    fi
+fi
+
+
+
+
+explicit_tcceasy=no
+
+# Check whether --with-tcceasy was given.
+if test "${with_tcceasy+set}" = set; then :
+  withval=$with_tcceasy; tcceasyprefix=$withval; if test -z "$withval" -o "$withval" = yes; then tcceasyprefix=; fi
+else
+  tcceasyprefix=; explicit_tcceasy=no
+fi
+
+
+if test "$tcceasyprefix" != no -a "$have_tcc_h" = yes -a "$have_libtcc" = yes; then
+    saveflags="$CPPFLAGS"; test -n "$tcceasyprefix" && CPPFLAGS="$CPPFLAGS -I$tcceasyprefix/include/tcceasy"
+    ac_fn_c_check_header_mongrel "$LINENO" "tcceasy/dynamic_source.h" "ac_cv_header_tcceasy_dynamic_source_h" "$ac_includes_default"
+if test "x$ac_cv_header_tcceasy_dynamic_source_h" = xyes; then :
+  have_tcceasy_h=yes
+else
+  have_tcceasy_h=no
+fi
+
+
+    CPPFLAGS="$saveflags"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    tcceasysavelibs="$LIBS"
+    LIBS="-ldl $LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tcceasyprefix" && LDFLAGS="$LDFLAGS -ldl -ltcc -L$tcceasyprefix/lib"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for new_dynamic_src in -ltcceasy" >&5
+$as_echo_n "checking for new_dynamic_src in -ltcceasy... " >&6; }
+if ${ac_cv_lib_tcceasy_new_dynamic_src+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ltcceasy  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char new_dynamic_src ();
+int
+main ()
+{
+return new_dynamic_src ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_tcceasy_new_dynamic_src=yes
+else
+  ac_cv_lib_tcceasy_new_dynamic_src=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_tcceasy_new_dynamic_src" >&5
+$as_echo "$ac_cv_lib_tcceasy_new_dynamic_src" >&6; }
+if test "x$ac_cv_lib_tcceasy_new_dynamic_src" = xyes; then :
+  have_libtcceasy=yes
+else
+  have_libtcceasy=no
+fi
+
+    LDFLAGS="$saveflags"
+    LIBS="$tcceasysavelibs"
+
+    if test $have_tcceasy_h = yes -a $have_libtcceasy = yes; then
+	test -n "$tcceasyprefix" && TCCEASY_INCLUDES="-I$tcceasyprefix/include" && TCCEASY_LIBS="-L$tcceasyprefix/lib"
+	TCCEASY_LIBS="$TCCEASY_LIBS -ltcceasy "
+
+$as_echo "#define HAVE_TCCEASY 1" >>confdefs.h
+
+	LIBS="$LIBS $TCCEASY_LIBS"
+    else
+      if test $explicit_tcceasy = yes; then
+	TCCEASY_INCLUDES= TCCEASY_LIBS=
+	as_fn_error $? "
+=========================================
+
+You explicitly specified --with-tcceasy, but the tcceasy headers and/or libraries
+are not where you said they would be.  Run again supplying --without-tcceasy
+or --with-tcceasy=PREFIX.
+
+=========================================" "$LINENO" 5
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,TCCEASY"
+      else
+        FINDELEMFLAGS="$FINDELEMFLAGS -x TCCEASY"
       fi
 
 

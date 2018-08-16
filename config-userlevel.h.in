@@ -153,6 +153,9 @@
 /* Define if you have -ltcc */
 #undef HAVE_TCC
 
+/* Define if you have -ltcceasy */
+#undef HAVE_TCCEASY
+
 /* Define if you have -llwip */
 #undef HAVE_LWIP
 
